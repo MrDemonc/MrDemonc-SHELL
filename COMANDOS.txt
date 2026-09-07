@@ -1,0 +1,79 @@
+=====================================================
+ GUÍA DE COMANDOS - CUSTOM QUICKSHELL
+=====================================================
+
+1. LANZADOR Y BUSCADOR DE APLICACIONES (App Launcher)
+-----------------------------------------------------
+• Abrir/Cerrar el Buscador y Lanzador de Aplicaciones:
+    shell-apps
+    (Ideal para vincular a Super / Alt+Space en Hyprland)
+
+• Atajos dentro de la ventana de Aplicaciones:
+    Escribir texto : Filtra aplicaciones al instante con animaciones fluidas
+    ↑ / ↓ : Navegar entre los resultados
+    Enter : Lanzar la aplicación seleccionada
+    Esc : Cerrar ventana
+
+
+2. GESTIÓN DE TEMAS (Dark / Light / Personalizados)
+-----------------------------------------------------
+• Abrir/Cerrar el Selector de Temas Minimalista (UI):
+    shell-theme
+
+• Listar todos los temas instalados en JSON/CLI:
+    shell-theme list
+
+• Cambiar tema directamente desde terminal/atajo:
+    shell-theme set catppuccin-mocha
+    shell-theme set tokyo-night
+    shell-theme set gruvbox-dark
+    shell-theme set oled-black
+    shell-theme set catppuccin-latte
+
+• Atajos dentro de la ventana de Temas:
+    ↑ / ↓ / ← / → : Navegar entre temas
+    Enter / Espacio : Aplicar tema enfocado
+    Esc : Cerrar ventana
+
+
+3. GESTIÓN DE FONDOS DE PANTALLA (WALLPAPERS)
+-----------------------------------------------------
+• Abrir/Cerrar el Selector de Fondos de Pantalla (UI):
+    shell-wallpaper
+
+• Abrir la carpeta de wallpapers en el explorador de archivos:
+    shell-wallpaper folder
+    (o dentro de la ventana de wallpapers presionar la tecla 'i')
+
+• Carpeta de Wallpapers:
+    ~/Pictures/Wallpapers
+
+• Atajos dentro de la ventana de Wallpapers:
+    ↑ / ↓ : Navegar entre imágenes disponibles
+    Enter / Espacio : Aplicar fondo enfocado
+    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador (Nautilus) para añadir nuevas imágenes
+    Esc : Cerrar ventana
+
+
+4. GESTIÓN DE MENÚS Y POPOUTS (Barra y Atajos)
+-----------------------------------------------------
+• Abrir/Cerrar menú desplegable individual por comando:
+    shell-popout wifi
+    shell-popout audio
+    shell-popout battery
+    shell-popout bluetooth
+    shell-popout power
+
+• Cerrar cualquier menú activo:
+    shell-popout close
+
+• Reordenar los indicadores de la barra:
+    python3 /home/demonc/Documents/Proyects/shell/scripts/manage_order.py save audio,wifi,battery,bluetooth
+
+
+5. REINICIAR / PROBAR LA SHELL
+-----------------------------------------------------
+• Reiniciar servicio Quickshell:
+    killall -9 quickshell; quickshell -p /home/demonc/Documents/Proyects/shell &
+
+=====================================================
