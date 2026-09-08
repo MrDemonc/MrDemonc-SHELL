@@ -27,7 +27,7 @@ QtObject {
 
     // Proceso para listar aplicaciones instaladas
     property Process listProc: Process {
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/app_launcher.py", "list"]
+        command: [Quickshell.shellDir + "/scripts/app_launcher.py", "list"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -96,7 +96,7 @@ QtObject {
     }
 
     function launchApp(execCmd, isTerminal) {
-        launchProc.command = ["/home/demonc/Documents/Proyects/shell/scripts/app_launcher.py", "launch", execCmd, isTerminal ? "true" : "false"];
+        launchProc.command = [Quickshell.shellDir + "/scripts/app_launcher.py", "launch", execCmd, isTerminal ? "true" : "false"];
         launchProc.running = false;
         launchProc.running = true;
     }

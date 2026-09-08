@@ -6,7 +6,7 @@
 -----------------------------------------------------
 • Abrir/Cerrar el Buscador y Lanzador de Aplicaciones:
     shell-apps
-    (Ideal para vincular a Super / Alt+Space en Hyprland)
+    Atajo Hyprland: SUPER + Espacio
 
 • Atajos dentro de la ventana de Aplicaciones:
     Escribir texto : Filtra aplicaciones al instante con animaciones fluidas
@@ -19,6 +19,7 @@
 -----------------------------------------------------
 • Abrir/Cerrar el Selector de Temas Minimalista (UI):
     shell-theme
+    Atajo Hyprland: SUPER + SHIFT + T
 
 • Listar todos los temas instalados en JSON/CLI:
     shell-theme list
@@ -40,6 +41,7 @@
 -----------------------------------------------------
 • Abrir/Cerrar el Selector de Fondos de Pantalla (UI):
     shell-wallpaper
+    Atajo Hyprland: SUPER + SHIFT + W
 
 • Abrir la carpeta de wallpapers en el explorador de archivos:
     shell-wallpaper folder
@@ -51,11 +53,24 @@
 • Atajos dentro de la ventana de Wallpapers:
     ↑ / ↓ : Navegar entre imágenes disponibles
     Enter / Espacio : Aplicar fondo enfocado
-    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador (Nautilus) para añadir nuevas imágenes
+    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador (Dolphin) para añadir nuevas imágenes
     Esc : Cerrar ventana
 
 
-4. GESTIÓN DE MENÚS Y POPOUTS (Barra y Atajos)
+4. ATAJOS GENERALES DE HYPRLAND CONFIGURADOS
+-----------------------------------------------------
+• SUPER + ENTER             : Abrir terminal (Kitty con transparencia)
+• SUPER + W                 : Cerrar ventana activa
+• SUPER + T                 : Alternar ventana flotante (Float toggle)
+• SUPER + SHIFT + W         : Selector de Wallpapers
+• SUPER + SHIFT + T         : Selector de Temas
+• SUPER + Espacio           : Lanzador de aplicaciones
+• SUPER + E                 : Explorador de archivos (Dolphin)
+• SUPER + Flechas           : Cambiar foco entre ventanas
+• SUPER + SHIFT + Flechas   : Mover ventanas de posición en la pantalla
+
+
+5. GESTIÓN DE MENÚS Y POPOUTS (Barra y Atajos)
 -----------------------------------------------------
 • Abrir/Cerrar menú desplegable individual por comando:
     shell-popout wifi
@@ -68,12 +83,35 @@
     shell-popout close
 
 • Reordenar los indicadores de la barra:
-    python3 /home/demonc/Documents/Proyects/shell/scripts/manage_order.py save audio,wifi,battery,bluetooth
+    python3 ~/Documentos/MrDemonc-SHELL/scripts/manage_order.py save audio,wifi,battery,bluetooth
 
 
-5. REINICIAR / PROBAR LA SHELL
+6. POSICIÓN DINÁMICA DE LA BARRA (Mover a cualquier lateral)
+-----------------------------------------------------
+• Mover con el ratón (Arrastrar):
+    Haz clic sostenido con el botón izquierdo en cualquier espacio vacío de la barra
+    y arrastra el cursor hacia el borde de pantalla deseado (Arriba, Abajo, Izquierda, Derecha).
+    Aparecerá una guía visual translúcida y un indicador central de acoplamiento.
+    Al soltar el botón del ratón, la barra se fijará al lateral elegido automáticamente.
+
+• Comportamiento en Laterales Verticales (Izquierda / Derecha):
+    - Se oculta todo el texto (porcentajes, nombres de red, etiquetas de apps).
+    - Se muestran exclusivamente los ICONOS limpios centrados.
+    - Los escritorios (workspaces) se ordenan verticalmente como puntos/cápsulas.
+    - El reloj cambia a un elegante icono "󰥔".
+    - Los popouts se despliegan automáticamente alineados al lateral de la barra.
+
+• Cambiar posición por comando CLI:
+    shell-bar pos top         # Arriba (horizontal completa con texto)
+    shell-bar pos bottom      # Abajo (horizontal completa con texto)
+    shell-bar pos left        # Izquierda (vertical minimalista, solo iconos)
+    shell-bar pos right       # Derecha (vertical minimalista, solo iconos)
+    shell-bar get-pos         # Ver la posición activa actual
+
+
+7. REINICIAR / PROBAR LA SHELL
 -----------------------------------------------------
 • Reiniciar servicio Quickshell:
-    killall -9 quickshell; quickshell -p /home/demonc/Documents/Proyects/shell &
+    killall -9 quickshell; quickshell -p ~/Documentos/MrDemonc-SHELL &
 
 =====================================================

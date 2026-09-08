@@ -46,7 +46,7 @@ QtObject {
 
     // Proceso de Carga y Guardado de Orden
     property var loadOrderProc: Process {
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/manage_order.py", "get"]
+        command: [Quickshell.shellDir + "/scripts/manage_order.py", "get"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -79,7 +79,7 @@ QtObject {
     }
 
     function toggle(name, centerX) {
-        if (activePopout === name) {
+        if (!name || name === "close" || activePopout === name) {
             close();
         } else {
             open(name, centerX);
@@ -94,7 +94,7 @@ QtObject {
     })
 
     property var loadSectionsProc: Process {
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/manage_order.py", "get_sections"]
+        command: [Quickshell.shellDir + "/scripts/manage_order.py", "get_sections"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -113,8 +113,58 @@ QtObject {
     function setSections(newSec) {
         if (!newSec || typeof newSec !== "object") return;
         barSections = Object.assign({}, newSec);
-        saveSectionsProc.command = ["/home/demonc/Documents/Proyects/shell/scripts/manage_order.py", "save_sections", JSON.stringify(newSec)];
+        saveSectionsProc.command = [Quickshell.shellDir + "/scripts/manage_order.py", "save_sections", JSON.stringify(newSec)];
         saveSectionsProc.running = false;
         saveSectionsProc.running = true;
+    }
+
+    // Posición dinámica de la barra: "top", "bottom", "left", "right"
+    property string barPosition: "top"
+    readonly property bool isVertical: barPosition === "left" || barPosition === "right"
+    property bool isBarDragging: false
+    property string candidateBarPosition: ""
+
+    property var loadPositionProc: Process {
+        command: [Quickshell.shellDir + "/scripts/manage_order.py", "get_position"]
+        running: true
+        stdout: SplitParser {
+            onRead: function(data) {
+                try {
+                    let parsed = JSON.parse(String(data).trim());
+                    if (parsed.position && ["top", "bottom", "left", "right"].indexOf(parsed.position) !== -1) {
+                        popoutMgr.barPosition = parsed.position;
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+
+    // Monitoreo de cambio de posición de la barra por comando CLI
+    property var watchPositionProc: Process {
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_bar_position.set\"; while true; do if [ -f \"$STATE\" ]; then POS=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"POS:$POS\"; fi; sleep 0.15; done"]
+        running: true
+        stdout: SplitParser {
+            onRead: function(data) {
+                let str = String(data).trim();
+                if (str.indexOf("POS:") === 0) {
+                    let target = str.substring(4).trim();
+                    if (["top", "bottom", "left", "right"].indexOf(target) !== -1) {
+                        popoutMgr.barPosition = target;
+                    }
+                }
+            }
+        }
+    }
+
+    property var savePositionProc: Process {}
+
+    function setBarPosition(newPos) {
+        if (!newPos || ["top", "bottom", "left", "right"].indexOf(newPos) === -1) return;
+        if (barPosition === newPos) return;
+        close();
+        barPosition = newPos;
+        savePositionProc.command = [Quickshell.shellDir + "/scripts/manage_order.py", "save_position", newPos];
+        savePositionProc.running = false;
+        savePositionProc.running = true;
     }
 }

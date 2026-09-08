@@ -5,9 +5,12 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import "./"
 
-RowLayout {
+GridLayout {
     id: root
-    spacing: 5
+    columns: PopoutManager.isVertical ? 1 : 99
+    rows: PopoutManager.isVertical ? 99 : 1
+    rowSpacing: 5
+    columnSpacing: 5
 
     property var barWindowRef: null
     property var barContentRef: null
@@ -64,7 +67,11 @@ RowLayout {
 
         // 2. Extraer nombre de la aplicación por su clase (evita mostrar rutas de carpetas)
         let cls = "";
-        if (toplevel.lastIpcObject) {
+        if (toplevel.class) {
+            cls = toplevel.class;
+        } else if (toplevel.initialClass) {
+            cls = toplevel.initialClass;
+        } else if (toplevel.lastIpcObject) {
             cls = toplevel.lastIpcObject.initialClass || toplevel.lastIpcObject.class || "";
         }
         if (!cls && toplevel.handle) {
@@ -92,7 +99,7 @@ RowLayout {
             if (lower === "brave-browser" || lower === "brave") return "Brave";
 
             // Terminales
-            if (lower === "kitty") return "Kitty";
+            if (lower === "kitty" || lower.includes("kitty")) return "Kitty";
             if (lower === "alacritty") return "Alacritty";
             if (lower === "foot") return "Foot";
             if (lower === "ghostty") return "Ghostty";
@@ -116,12 +123,27 @@ RowLayout {
             return cls.charAt(0).toUpperCase() + cls.slice(1);
         }
 
+        let initTitle = "";
+        if (toplevel.initialTitle) initTitle = toplevel.initialTitle;
+        if (!initTitle && toplevel.lastIpcObject) initTitle = toplevel.lastIpcObject.initialTitle || "";
+        if (initTitle) {
+            let lowerInit = initTitle.toLowerCase();
+            if (lowerInit === "kitty" || lowerInit.includes("kitty")) return "Kitty";
+            if (lowerInit === "alacritty") return "Alacritty";
+            if (lowerInit === "foot") return "Foot";
+            if (lowerInit === "ghostty") return "Ghostty";
+        }
+
         let title = toplevel.title || "";
         if (title) {
-            if (title.startsWith("/") || title.startsWith("~") || title.includes("/")) {
-                return "Files";
+            let lowerTitle = title.toLowerCase();
+            if (lowerTitle === "kitty" || lowerTitle.includes("kitty") || lowerTitle.startsWith("~") || lowerTitle.includes("@") || lowerTitle.includes("bash") || lowerTitle.includes("zsh")) {
+                return "Kitty";
             }
-            return title;
+            if (lowerTitle.includes("dolphin")) return "Dolphin";
+            if (lowerTitle.includes("thunar")) return "Thunar";
+            if (lowerTitle.includes("nautilus")) return "Files";
+            return title.length > 20 ? (title.slice(0, 18) + "…") : title;
         }
         return "";
     }
@@ -170,10 +192,20 @@ RowLayout {
             property bool isFocused: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id === wsId : false
             property bool isOccupied: root.isWorkspaceOccupied(wsId)
             property bool isHovered: wsMouse.containsMouse
-            readonly property bool hasApp: isFocused && root.focusedAppName !== ""
+            readonly property bool hasApp: isFocused && root.focusedAppName !== "" && !PopoutManager.isVertical
 
-            implicitHeight: 20
+            implicitHeight: {
+                if (PopoutManager.isVertical) {
+                    if (isFocused) return 18;
+                    if (isHovered) return 14;
+                    return isOccupied ? 10 : 6;
+                }
+                return 20;
+            }
             implicitWidth: {
+                if (PopoutManager.isVertical) {
+                    return isFocused ? 20 : 6;
+                }
                 if (isFocused) {
                     return hasApp ? Math.min(180, contentLayout.implicitWidth + 14) : 18;
                 }
@@ -189,11 +221,19 @@ RowLayout {
                 }
             }
 
+            Behavior on implicitHeight {
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveFastSpatial
+                }
+            }
+
             Rectangle {
                 id: pillBg
                 anchors.centerIn: parent
-                width: parent.width
-                height: wsItem.isFocused ? 20 : 6
+                width: PopoutManager.isVertical ? (wsItem.isFocused ? 20 : 6) : parent.width
+                height: PopoutManager.isVertical ? parent.height : (wsItem.isFocused ? 20 : 6)
                 radius: wsItem.isFocused ? 6 : 3
                 color: {
                     if (wsItem.isFocused) return Theme.bgHover;
@@ -206,6 +246,7 @@ RowLayout {
                 Behavior on color { ColorAnimation { duration: 120 } }
                 Behavior on opacity { NumberAnimation { duration: 150 } }
                 Behavior on height { NumberAnimation { duration: 150 } }
+                Behavior on width { NumberAnimation { duration: 150 } }
                 Behavior on radius { NumberAnimation { duration: 150 } }
 
                 // Contenido interno del workspace
@@ -225,9 +266,9 @@ RowLayout {
                         Behavior on color { ColorAnimation { duration: 120 } }
                     }
 
-                    // Nombre de la app en foco (solo visible en el workspace activo)
+                    // Nombre de la app en foco (solo visible en el workspace activo en modo horizontal)
                     Text {
-                        visible: wsItem.isFocused && wsItem.hasApp
+                        visible: !PopoutManager.isVertical && wsItem.isFocused && wsItem.hasApp
                         text: root.focusedAppName
                         color: Theme.text
                         font.family: Theme.fontFamily
@@ -245,17 +286,21 @@ RowLayout {
                 hoverEnabled: true
                 cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
-                property real pressGlobalX: 0
-                property real initialModuleX: 0
+                property real pressGlobalCoord: 0
+                property real initialModuleCoord: 0
                 property bool isDraggingThis: false
 
                 onPressed: mouse => {
                     if (root.barContentRef) {
                         let globalPt = mapToItem(root.barContentRef, mouse.x, mouse.y);
-                        pressGlobalX = globalPt.x;
+                        pressGlobalCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
                     }
                     let m = root.barWindowRef ? root.barWindowRef.getModule("workspaces") : null;
-                    initialModuleX = m ? m.x : (root.barWindowRef ? root.barWindowRef.getSlotX("workspaces") : 0);
+                    if (PopoutManager.isVertical) {
+                        initialModuleCoord = m ? m.y : (root.barWindowRef ? root.barWindowRef.getSlotY("workspaces") : 0);
+                    } else {
+                        initialModuleCoord = m ? m.x : (root.barWindowRef ? root.barWindowRef.getSlotX("workspaces") : 0);
+                    }
                     isDraggingThis = false;
                 }
 
@@ -263,15 +308,16 @@ RowLayout {
                     if (!pressed) return;
                     if (!root.barContentRef || !root.barWindowRef) return;
                     let globalPt = mapToItem(root.barContentRef, mouse.x, mouse.y);
-                    let delta = globalPt.x - pressGlobalX;
+                    let currentCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let delta = currentCoord - pressGlobalCoord;
                     if (!isDraggingThis) {
                         if (Math.abs(delta) > 6) {
                             isDraggingThis = true;
-                            root.barWindowRef.startModuleDrag("workspaces", initialModuleX);
+                            root.barWindowRef.startModuleDrag("workspaces", initialModuleCoord);
                         }
                     }
                     if (isDraggingThis) {
-                        root.barWindowRef.updateModuleDrag("workspaces", initialModuleX + delta);
+                        root.barWindowRef.updateModuleDrag("workspaces", initialModuleCoord + delta);
                     }
                 }
 

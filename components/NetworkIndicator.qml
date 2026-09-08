@@ -10,6 +10,7 @@ Item {
     implicitHeight: 24
 
     property bool isConnected: false
+    property bool isEthernet: false
     property string ssid: ""
     property int signalStrength: 0
     property string ipAddress: ""
@@ -25,7 +26,7 @@ Item {
 
     Process {
         id: scanProc
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/get_network_info.py"]
+        command: [Quickshell.shellDir + "/scripts/get_network_info.py"]
         stdout: SplitParser {
             onRead: data => { root.rawWifiOutput += data; }
         }
@@ -33,6 +34,7 @@ Item {
             try {
                 let info = JSON.parse(root.rawWifiOutput.trim());
                 root.isConnected = info.isConnected;
+                root.isEthernet = !!info.isEthernet;
                 root.ssid = info.ssid;
                 root.signalStrength = info.signalStrength;
                 root.ipAddress = info.ipAddress;
@@ -106,6 +108,7 @@ Item {
             Text {
                 text: {
                     if (!root.isConnected) return "󰤭";
+                    if (root.isEthernet) return "󰈀";
                     if (root.signalStrength >= 75) return "󰤨";
                     if (root.signalStrength >= 50) return "󰤥";
                     if (root.signalStrength >= 25) return "󰤢";

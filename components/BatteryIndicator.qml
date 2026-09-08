@@ -21,47 +21,25 @@ Item {
     property bool isHovered: false
     readonly property bool isPopoutActive: PopoutManager.activePopout === "battery"
 
+    property bool hasBattery: false
+
     Process {
         id: batProc
-        command: ["sh", "-c", "printf 'CAP:%s\nSTAT:%s\nCYC:%s\nFULL:%s\nDES:%s\nPROF:%s\nPOW:%s\nVOLT:%s\n' \"$(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null)\" \"$(cat /sys/class/power_supply/BAT0/status 2>/dev/null)\" \"$(cat /sys/class/power_supply/BAT0/cycle_count 2>/dev/null)\" \"$(cat /sys/class/power_supply/BAT0/energy_full 2>/dev/null || cat /sys/class/power_supply/BAT0/charge_full 2>/dev/null)\" \"$(cat /sys/class/power_supply/BAT0/energy_full_design 2>/dev/null || cat /sys/class/power_supply/BAT0/charge_full_design 2>/dev/null)\" \"$(powerprofilesctl get 2>/dev/null || echo balanced)\" \"$(cat /sys/class/power_supply/BAT0/power_now 2>/dev/null || cat /sys/class/power_supply/BAT0/current_now 2>/dev/null)\" \"$(cat /sys/class/power_supply/BAT0/voltage_now 2>/dev/null)\""]
+        command: [Quickshell.shellDir + "/scripts/get_battery_info.py"]
         running: true
         stdout: SplitParser {
             onRead: data => {
-                let lines = data.split("\n");
-                for (let i = 0; i < lines.length; i++) {
-                    let line = lines[i].trim();
-                    if (line.startsWith("CAP:")) {
-                        let cap = parseInt(line.substring(4).trim());
-                        if (!isNaN(cap)) root.percentage = cap;
-                    } else if (line.startsWith("STAT:")) {
-                        root.status = line.substring(5).trim() || "Discharging";
-                    } else if (line.startsWith("CYC:")) {
-                        let c = parseInt(line.substring(4).trim());
-                        if (!isNaN(c)) root.cycleCount = c;
-                    } else if (line.startsWith("FULL:")) {
-                        let f = parseFloat(line.substring(5).trim());
-                        if (!isNaN(f) && f > 0) root._full = f;
-                    } else if (line.startsWith("DES:")) {
-                        let d = parseFloat(line.substring(4).trim());
-                        if (!isNaN(d) && d > 0) root._design = d;
-                    } else if (line.startsWith("PROF:")) {
-                        root.currentProfile = line.substring(5).trim() || "balanced";
-                    } else if (line.startsWith("POW:")) {
-                        let p = parseFloat(line.substring(4).trim());
-                        if (!isNaN(p) && p > 0) {
-                            root.powerRate = (p / 1000000.0).toFixed(1) + " W";
-                        }
-                    } else if (line.startsWith("VOLT:")) {
-                        let v = parseFloat(line.substring(5).trim());
-                        if (!isNaN(v) && v > 0) {
-                            root.voltage = (v / 1000000.0).toFixed(1) + " V";
-                        }
-                    }
-                }
-                if (root._full > 0 && root._design > 0) {
-                    let h = Math.min(100, Math.round((root._full / root._design) * 100));
-                    root.health = h + "%";
-                }
+                try {
+                    let info = JSON.parse(String(data).trim());
+                    root.hasBattery = !!info.hasBattery;
+                    root.percentage = (info.percentage !== undefined && info.percentage !== null) ? info.percentage : 100;
+                    root.status = info.status || "AC";
+                    root.cycleCount = info.cycleCount || 0;
+                    root.health = info.health || "100%";
+                    root.powerRate = info.powerRate || "0.0 W";
+                    root.voltage = info.voltage || "0.0 V";
+                    root.currentProfile = info.profile || "balanced";
+                } catch (e) {}
             }
         }
     }
@@ -109,6 +87,7 @@ Item {
 
             Text {
                 text: {
+                    if (!root.hasBattery) return "󰚥";
                     if (root.status === "Charging") return "󰂄";
                     if (root.percentage >= 90) return "󰁹";
                     if (root.percentage >= 70) return "󰂀";
@@ -117,14 +96,17 @@ Item {
                     if (root.percentage >= 10) return "󰁺";
                     return "󰂎";
                 }
-                color: root.percentage <= 20 && root.status !== "Charging" ? Theme.danger : (root.status === "Charging" ? Theme.success : Theme.primary)
+                color: {
+                    if (!root.hasBattery) return Theme.primary;
+                    return root.percentage <= 20 && root.status !== "Charging" ? Theme.danger : (root.status === "Charging" ? Theme.success : Theme.primary);
+                }
                 font.family: Theme.fontFamily
                 font.pixelSize: 12
             }
 
             Text {
                 visible: root.showPercentage
-                text: root.percentage + "%"
+                text: root.hasBattery ? (root.percentage + "%") : "AC"
                 color: Theme.text
                 font.family: Theme.fontFamily
                 font.pixelSize: 11

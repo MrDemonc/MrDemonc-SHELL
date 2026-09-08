@@ -6,23 +6,44 @@ PanelWindow {
     id: popoutWindow
 
     anchors {
-        top: true
-        left: true
+        top: PopoutManager.barPosition !== "bottom"
+        bottom: PopoutManager.barPosition === "bottom"
+        left: PopoutManager.barPosition !== "right"
+        right: PopoutManager.barPosition === "right"
     }
     margins {
-        top: 26
-        left: {
-            if (PopoutManager.popoutCenter > 0) {
-                return Math.max(10, Math.min((popoutWindow.screen ? popoutWindow.screen.width : 1920) - 330, PopoutManager.popoutCenter - 160));
-            }
-            return Math.max(10, (popoutWindow.screen ? popoutWindow.screen.width : 1920) - 330);
+        top: {
+            if (PopoutManager.barPosition === "top") return 28;
+            if (PopoutManager.barPosition === "bottom") return 0;
+            let screenH = popoutWindow.screen ? popoutWindow.screen.height : 1080;
+            return Math.max(10, Math.min(screenH - popout.preferredHeight - 10, PopoutManager.popoutCenter - popout.preferredHeight / 2));
         }
+        bottom: PopoutManager.barPosition === "bottom" ? 28 : 0
+        left: {
+            if (PopoutManager.barPosition === "left") return 42;
+            if (PopoutManager.barPosition === "right") return 0;
+            let screenW = popoutWindow.screen ? popoutWindow.screen.width : 1920;
+            if (PopoutManager.popoutCenter > 0) {
+                return Math.max(10, Math.min(screenW - 330, PopoutManager.popoutCenter - 160));
+            }
+            return Math.max(10, screenW - 330);
+        }
+        right: PopoutManager.barPosition === "right" ? 42 : 0
     }
     implicitWidth: 320
     implicitHeight: popout.preferredHeight
 
     Behavior on margins.left {
-        enabled: PopoutManager.hasPopout && popout.animProgress > 0.05
+        enabled: !PopoutManager.isVertical && PopoutManager.hasPopout && popout.animProgress > 0.05
+        NumberAnimation {
+            duration: Theme.anim.fastSpatial
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+        }
+    }
+
+    Behavior on margins.top {
+        enabled: PopoutManager.isVertical && PopoutManager.hasPopout && popout.animProgress > 0.05
         NumberAnimation {
             duration: Theme.anim.fastSpatial
             easing.type: Easing.BezierSpline

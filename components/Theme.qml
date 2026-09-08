@@ -25,9 +25,9 @@ QtObject {
     property color pink: isDark ? "#f5c2e7" : "#ea76cb"
 
     // Tipografía estándar
-    property string fontFamily: "JetBrainsMono Nerd Font Propo"
-    property string iconFontFamily: "JetBrainsMono Nerd Font"
-    property string monoFontFamily: "JetBrainsMono Nerd Font"
+    property string fontFamily: "JetBrainsMono Nerd Font Mono"
+    property string iconFontFamily: "JetBrainsMono Nerd Font Mono"
+    property string monoFontFamily: "JetBrainsMono Nerd Font Mono"
 
     // Espaciado y Paddings al estilo Caelestia
     readonly property int paddingExtraSmall: 4
@@ -72,31 +72,52 @@ QtObject {
         return null;
     }
 
+    function applyThemeData(parsed) {
+        if (!parsed || !parsed.bg) return;
+        theme.activeThemeId = parsed.id || theme.activeThemeId;
+        theme.isDark = parsed.isDark !== undefined ? parsed.isDark : true;
+        theme.bg = parsed.bg;
+        theme.bgSurface = parsed.bgSurface || (theme.isDark ? "#181825" : "#e6e9ef");
+        theme.bgHover = parsed.bgHover || (theme.isDark ? "#313244" : "#ccd0da");
+        theme.border = parsed.border || (theme.isDark ? "#45475a" : "#bcc0cc");
+        theme.text = parsed.text || (theme.isDark ? "#cdd6f4" : "#4c4f69");
+        theme.subtext = parsed.subtext || (theme.isDark ? "#a6adc8" : "#6c6f85");
+        theme.overlay = parsed.overlay || (theme.isDark ? "#6c7086" : "#9ca0b0");
+        theme.primary = parsed.primary || (theme.isDark ? "#89b4fa" : "#1e66f5");
+        theme.success = parsed.success || (theme.isDark ? "#a6e3a1" : "#40a02b");
+        theme.warning = parsed.warning || (theme.isDark ? "#f9e2af" : "#df8e1d");
+        theme.danger = parsed.danger || (theme.isDark ? "#f38ba8" : "#d20f39");
+        theme.cyan = parsed.cyan || (theme.isDark ? "#89dceb" : "#04a5e5");
+        theme.pink = parsed.pink || (theme.isDark ? "#f5c2e7" : "#ea76cb");
+    }
+
+    // Observador para cambios externos de tema (vía shell-theme o script)
+    property var watchThemeChangeProc: Process {
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_theme_reload.toggle\"; while true; do if [ -f \"$STATE\" ]; then rm -f \"$STATE\"; echo 'RELOAD'; fi; sleep 0.15; done"]
+        running: true
+        stdout: SplitParser {
+            onRead: function(data) {
+                if (String(data).indexOf("RELOAD") !== -1) {
+                    theme.themeProc.running = false;
+                    theme.themeProc.running = true;
+                }
+            }
+        }
+    }
+
     // Detección automática y sincronización del tema nativo de la shell
     property Process themeProc: Process {
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/theme_manager.py"]
+        command: [Quickshell.shellDir + "/scripts/theme_manager.py"]
         running: true
 
         stdout: SplitParser {
             onRead: data => {
                 try {
-                    let parsed = JSON.parse(data.trim());
-                    if (parsed && parsed.bg) {
-                        theme.activeThemeId = parsed.id || theme.activeThemeId;
-                        theme.isDark = parsed.isDark !== undefined ? parsed.isDark : true;
-                        theme.bg = parsed.bg;
-                        theme.bgSurface = parsed.bgSurface;
-                        theme.bgHover = parsed.bgHover;
-                        theme.border = parsed.border;
-                        theme.text = parsed.text;
-                        theme.subtext = parsed.subtext;
-                        theme.overlay = parsed.overlay;
-                        theme.primary = parsed.primary;
-                        theme.success = parsed.success;
-                        theme.warning = parsed.warning;
-                        theme.danger = parsed.danger;
-                        theme.cyan = parsed.cyan;
-                        theme.pink = parsed.pink;
+                    let str = String(data).trim();
+                    let match = str.match(/\{[\s\S]*\}/);
+                    if (match) {
+                        let parsed = JSON.parse(match[0]);
+                        applyThemeData(parsed);
                     }
                 } catch (e) {}
             }
@@ -104,15 +125,19 @@ QtObject {
     }
 
     property Process themeListProc: Process {
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/theme_manager.py", "list"]
+        command: [Quickshell.shellDir + "/scripts/theme_manager.py", "list"]
         running: true
 
         stdout: SplitParser {
             onRead: data => {
                 try {
-                    let list = JSON.parse(data.trim());
-                    if (Array.isArray(list)) {
-                        theme.availableThemes = list;
+                    let str = String(data).trim();
+                    let match = str.match(/\[[\s\S]*\]/);
+                    if (match) {
+                        let list = JSON.parse(match[0]);
+                        if (Array.isArray(list)) {
+                            theme.availableThemes = list;
+                        }
                     }
                 } catch (e) {}
             }
@@ -120,6 +145,18 @@ QtObject {
     }
 
     property Process setThemeProc: Process {
+        stdout: SplitParser {
+            onRead: data => {
+                try {
+                    let str = String(data).trim();
+                    let match = str.match(/\{[\s\S]*\}/);
+                    if (match) {
+                        let parsed = JSON.parse(match[0]);
+                        applyThemeData(parsed);
+                    }
+                } catch (e) {}
+            }
+        }
         onExited: {
             theme.themeProc.running = false;
             theme.themeProc.running = true;
@@ -129,7 +166,17 @@ QtObject {
     }
 
     function setTheme(themeId) {
-        setThemeProc.command = ["/home/demonc/Documents/Proyects/shell/scripts/theme_manager.py", "set", themeId];
+        if (!themeId) return;
+        // Aplicación inmediata si ya está cargado en la lista
+        if (availableThemes && Array.isArray(availableThemes)) {
+            for (let i = 0; i < availableThemes.length; i++) {
+                if (availableThemes[i].id === themeId) {
+                    applyThemeData(availableThemes[i]);
+                    break;
+                }
+            }
+        }
+        setThemeProc.command = [Quickshell.shellDir + "/scripts/theme_manager.py", "set", themeId];
         setThemeProc.running = false;
         setThemeProc.running = true;
     }

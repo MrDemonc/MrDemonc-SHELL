@@ -100,6 +100,11 @@ def set_wallpaper(path):
 
 def open_folder():
     ensure_dirs()
+    import shutil
+    for fm in ["dolphin", "nautilus", "thunar", "nemo", "pcmanfm"]:
+        if shutil.which(fm):
+            subprocess.Popen([fm, WALLPAPER_DIR])
+            return {"status": "opened", "manager": fm}
     subprocess.Popen(["xdg-open", WALLPAPER_DIR])
     return {"status": "opened"}
 

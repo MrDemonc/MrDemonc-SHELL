@@ -23,7 +23,7 @@ Item {
 
     Process {
         id: scanProc
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/get_audio_info.py"]
+        command: [Quickshell.shellDir + "/scripts/get_audio_info.py"]
         stdout: SplitParser {
             onRead: data => { root.rawAudioOutput += data; }
         }

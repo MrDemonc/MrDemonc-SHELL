@@ -35,7 +35,7 @@ QtObject {
 
     // Proceso para obtener el wallpaper actual
     property Process getCurProc: Process {
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/wallpaper_manager.py", "get"]
+        command: [Quickshell.shellDir + "/scripts/wallpaper_manager.py", "get"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -51,7 +51,7 @@ QtObject {
 
     // Proceso para listar los wallpapers disponibles en ~/Pictures/Wallpapers
     property Process listProc: Process {
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/wallpaper_manager.py", "list"]
+        command: [Quickshell.shellDir + "/scripts/wallpaper_manager.py", "list"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -76,13 +76,13 @@ QtObject {
     }
 
     property Process openFolderProc: Process {
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/wallpaper_manager.py", "open_dir"]
+        command: [Quickshell.shellDir + "/scripts/wallpaper_manager.py", "open_dir"]
     }
 
     function setWallpaper(path) {
         if (!path) return;
         currentWallpaper = path;
-        setProc.command = ["/home/demonc/Documents/Proyects/shell/scripts/wallpaper_manager.py", "set", path];
+        setProc.command = [Quickshell.shellDir + "/scripts/wallpaper_manager.py", "set", path];
         setProc.running = false;
         setProc.running = true;
     }

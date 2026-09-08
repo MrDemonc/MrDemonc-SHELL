@@ -76,4 +76,16 @@ ShellRoot {
             }
         }
     }
+
+    // 7. Guía visual de acoplamiento de la barra al arrastrar
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            BarDockGuide {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
 }

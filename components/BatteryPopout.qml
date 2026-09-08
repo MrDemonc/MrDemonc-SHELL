@@ -75,7 +75,7 @@ Item {
                     font.pixelSize: 9
                 }
                 Text {
-                    text: batteryRef ? batteryRef.status : "Unknown"
+                    text: batteryRef ? (batteryRef.hasBattery ? batteryRef.status : "Alimentación CA") : "Unknown"
                     color: batteryRef && batteryRef.status === "Charging" ? Theme.success : Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 10

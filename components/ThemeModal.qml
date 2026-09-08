@@ -353,6 +353,37 @@ PanelWindow {
                         }
 
                         Item { Layout.fillHeight: true }
+
+                        // Botón de Aplicar Tema
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: 34
+                            radius: 8
+                            color: (Theme.previewThemeData && Theme.previewThemeData.id === Theme.activeThemeId) ? (Theme.previewThemeData.primary || Theme.primary) : (applyMouse.containsMouse ? Theme.bgHover : Theme.bgSurface)
+                            border.color: Theme.previewThemeData ? (Theme.previewThemeData.primary || Theme.primary) : Theme.primary
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: (Theme.previewThemeData && Theme.previewThemeData.id === Theme.activeThemeId) ? "󰄬 Tema Aplicado" : "Aplicar este Tema (Enter)"
+                                color: (Theme.previewThemeData && Theme.previewThemeData.id === Theme.activeThemeId) ? (Theme.isDark ? "#11111b" : "#ffffff") : (Theme.previewThemeData ? (Theme.previewThemeData.primary || Theme.primary) : Theme.primary)
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                font.bold: true
+                            }
+
+                            MouseArea {
+                                id: applyMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (Theme.previewThemeData) {
+                                        Theme.setTheme(Theme.previewThemeData.id);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

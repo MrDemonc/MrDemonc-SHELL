@@ -7,17 +7,60 @@ PanelWindow {
     id: barWindow
 
     anchors {
-        top: true
-        left: true
-        right: true
+        top: PopoutManager.barPosition !== "bottom"
+        bottom: PopoutManager.barPosition !== "top"
+        left: PopoutManager.barPosition !== "right"
+        right: PopoutManager.barPosition !== "left"
     }
-    implicitHeight: 26
+    implicitHeight: PopoutManager.isVertical ? (barWindow.screen ? barWindow.screen.height : 800) : 26
+    implicitWidth: PopoutManager.isVertical ? 38 : (barWindow.screen ? barWindow.screen.width : 1280)
     color: Theme.bg
 
     WlrLayershell.namespace: "shell-bar"
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.exclusiveZone: PopoutManager.isVertical ? 38 : 26
     exclusionMode: ExclusionMode.Auto
+
+    onWidthChanged: console.log("BAR DIM: width=" + width + " height=" + height + " pos=" + PopoutManager.barPosition)
+    onHeightChanged: console.log("BAR DIM: width=" + width + " height=" + height + " pos=" + PopoutManager.barPosition)
+
+    function getScreenCoords(localX, localY) {
+        let screenW = barWindow.screen ? barWindow.screen.width : 1280;
+        let screenH = barWindow.screen ? barWindow.screen.height : 800;
+        let sX = localX;
+        let sY = localY;
+        if (PopoutManager.barPosition === "bottom") {
+            sY = (screenH - barWindow.height) + localY;
+        } else if (PopoutManager.barPosition === "right") {
+            sX = (screenW - barWindow.width) + localX;
+        }
+        return { x: sX, y: sY, w: screenW, h: screenH };
+    }
+
+    function calculateTargetEdge(screenX, screenY, screenW, screenH) {
+        let dTop = Math.max(0, screenY);
+        let dBottom = Math.max(0, screenH - screenY);
+        let dLeft = Math.max(0, screenX);
+        let dRight = Math.max(0, screenW - screenX);
+
+        let minD = dTop;
+        let edge = "top";
+
+        if (dBottom < minD) {
+            minD = dBottom;
+            edge = "bottom";
+        }
+        if (dLeft < minD) {
+            minD = dLeft;
+            edge = "left";
+        }
+        if (dRight < minD) {
+            minD = dRight;
+            edge = "right";
+        }
+        return edge;
+    }
 
     property var currentSections: PopoutManager.barSections
     property var displaySections: {
@@ -52,8 +95,17 @@ PanelWindow {
     }
 
     function getModuleWidth(name) {
+        if (PopoutManager.isVertical) return 28;
         let m = getModule(name);
         return m ? Math.max(22, m.implicitWidth || m.width) : 30;
+    }
+
+    function getModuleHeight(name) {
+        if (!PopoutManager.isVertical) return 24;
+        if (name === "workspaces") {
+            return wsComp ? Math.max(28, wsComp.implicitHeight) : 80;
+        }
+        return 28;
     }
 
     function getSectionWidth(secList) {
@@ -66,7 +118,20 @@ PanelWindow {
         return w;
     }
 
+    function getSectionHeight(secList) {
+        if (!secList || secList.length === 0) return 0;
+        let h = 0;
+        for (let i = 0; i < secList.length; i++) {
+            h += getModuleHeight(secList[i]);
+            if (i < secList.length - 1) h += 8;
+        }
+        return h;
+    }
+
     function getSlotX(name) {
+        if (PopoutManager.isVertical) {
+            return (barWindow.width - getModuleWidth(name)) / 2;
+        }
         let sec = displaySections || {};
         let leftList = (sec && sec.left) ? sec.left : [];
         let centerList = (sec && sec.center) ? sec.center : [];
@@ -106,13 +171,61 @@ PanelWindow {
         return 10;
     }
 
-    property real dragCurrentX: 0
+    function getSlotY(name) {
+        if (!PopoutManager.isVertical) {
+            return (barWindow.height - getModuleHeight(name)) / 2;
+        }
+        let sec = displaySections || {};
+        let leftList = (sec && sec.left) ? sec.left : [];
+        let centerList = (sec && sec.center) ? sec.center : [];
+        let rightList = (sec && sec.right) ? sec.right : [];
 
-    function startModuleDrag(name, startX) {
+        let leftIdx = leftList.indexOf(name);
+        if (leftIdx !== -1) {
+            let curY = 10;
+            for (let i = 0; i < leftIdx; i++) {
+                curY += getModuleHeight(leftList[i]) + 8;
+            }
+            return curY;
+        }
+
+        let centerIdx = centerList.indexOf(name);
+        if (centerIdx !== -1) {
+            let totalCenterH = getSectionHeight(centerList);
+            let startY = (barWindow.height - totalCenterH) / 2;
+            let curY = startY;
+            for (let i = 0; i < centerIdx; i++) {
+                curY += getModuleHeight(centerList[i]) + 8;
+            }
+            return curY;
+        }
+
+        let rightIdx = rightList.indexOf(name);
+        if (rightIdx !== -1) {
+            let totalRightH = getSectionHeight(rightList);
+            let startY = barWindow.height - totalRightH - 10;
+            let curY = startY;
+            for (let i = 0; i < rightIdx; i++) {
+                curY += getModuleHeight(rightList[i]) + 8;
+            }
+            return curY;
+        }
+
+        return 10;
+    }
+
+    property real dragCurrentX: 0
+    property real dragCurrentY: 0
+
+    function startModuleDrag(name, startCoord) {
         PopoutManager.isDraggingAny = true;
         PopoutManager.close();
         draggingModName = name;
-        dragCurrentX = startX;
+        if (PopoutManager.isVertical) {
+            dragCurrentY = startCoord;
+        } else {
+            dragCurrentX = startCoord;
+        }
         displaySections = {
             "left": [...(currentSections.left || [])],
             "center": [...(currentSections.center || [])],
@@ -120,14 +233,20 @@ PanelWindow {
         };
     }
 
-    function updateModuleDrag(name, newX) {
+    function updateModuleDrag(name, newCoord) {
         if (draggingModName !== name) return;
 
-        let itemW = getModuleWidth(name);
-        let clampedX = Math.max(10, Math.min(barContent.width - itemW - 10, newX));
-        dragCurrentX = clampedX;
+        let isVert = PopoutManager.isVertical;
+        let itemSize = isVert ? getModuleHeight(name) : getModuleWidth(name);
+        let maxBound = isVert ? barContent.height : barContent.width;
+        let clamped = Math.max(10, Math.min(maxBound - itemSize - 10, newCoord));
+        if (isVert) {
+            dragCurrentY = clamped;
+        } else {
+            dragCurrentX = clamped;
+        }
 
-        let dragCenter = clampedX + itemW / 2;
+        let dragCenter = clamped + itemSize / 2;
 
         let baseLeft = (currentSections.left || []).filter(n => n !== name);
         let baseCenter = (currentSections.center || []).filter(n => n !== name);
@@ -151,24 +270,24 @@ PanelWindow {
                 let candSub = [...secItems];
                 candSub.splice(k, 0, name);
 
-                let totalW = 0;
+                let totalSize = 0;
                 for (let j = 0; j < candSub.length; j++) {
-                    totalW += getModuleWidth(candSub[j]) + (j < candSub.length - 1 ? 8 : 0);
+                    totalSize += (isVert ? getModuleHeight(candSub[j]) : getModuleWidth(candSub[j])) + (j < candSub.length - 1 ? 8 : 0);
                 }
 
-                let secStartX = 10;
+                let secStart = 10;
                 if (secId === "center") {
-                    secStartX = (barContent.width - totalW) / 2;
+                    secStart = (maxBound - totalSize) / 2;
                 } else if (secId === "right") {
-                    secStartX = barContent.width - totalW - 10;
+                    secStart = maxBound - totalSize - 10;
                 }
 
-                let candItemX = secStartX;
+                let candItemCoord = secStart;
                 for (let j = 0; j < k; j++) {
-                    candItemX += getModuleWidth(candSub[j]) + 8;
+                    candItemCoord += (isVert ? getModuleHeight(candSub[j]) : getModuleWidth(candSub[j])) + 8;
                 }
 
-                let candCenter = candItemX + itemW / 2;
+                let candCenter = candItemCoord + itemSize / 2;
                 let dist = Math.abs(dragCenter - candCenter);
                 if (dist < minDistance) {
                     minDistance = dist;
@@ -222,21 +341,84 @@ PanelWindow {
         id: barContent
         anchors.fill: parent
 
+        // 0. Área de arrastre de la barra en espacios vacíos
+        MouseArea {
+            id: barBgDragArea
+            anchors.fill: parent
+            z: 0
+            hoverEnabled: true
+            cursorShape: PopoutManager.isBarDragging ? Qt.ClosedHandCursor : Qt.ArrowCursor
+
+            property real pressLocalX: 0
+            property real pressLocalY: 0
+            property bool isDraggingBar: false
+
+            onPressed: mouse => {
+                pressLocalX = mouse.x;
+                pressLocalY = mouse.y;
+                isDraggingBar = false;
+            }
+
+            onPositionChanged: mouse => {
+                if (!pressed) return;
+                let dist = Math.hypot(mouse.x - pressLocalX, mouse.y - pressLocalY);
+                if (!isDraggingBar && dist > 15) {
+                    isDraggingBar = true;
+                    PopoutManager.isBarDragging = true;
+                    PopoutManager.close();
+                }
+                if (isDraggingBar) {
+                    let coords = barWindow.getScreenCoords(mouse.x, mouse.y);
+                    let edge = barWindow.calculateTargetEdge(coords.x, coords.y, coords.w, coords.h);
+                    PopoutManager.candidateBarPosition = edge;
+                }
+            }
+
+            onReleased: {
+                if (isDraggingBar) {
+                    isDraggingBar = false;
+                    PopoutManager.isBarDragging = false;
+                    let edge = PopoutManager.candidateBarPosition;
+                    PopoutManager.candidateBarPosition = "";
+                    if (edge && edge !== PopoutManager.barPosition) {
+                        PopoutManager.setBarPosition(edge);
+                    }
+                }
+            }
+
+            onCanceled: {
+                if (isDraggingBar) {
+                    isDraggingBar = false;
+                    PopoutManager.isBarDragging = false;
+                    PopoutManager.candidateBarPosition = "";
+                }
+            }
+        }
+
         // 1. Módulo Workspaces
         Item {
             id: modWorkspaces
             property string modName: "workspaces"
-            implicitWidth: wsComp.implicitWidth
+            implicitWidth: PopoutManager.isVertical ? 28 : wsComp.implicitWidth
             width: implicitWidth
-            height: 26
-            anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: PopoutManager.isVertical ? wsComp.implicitHeight : 26
+            height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
 
-            x: isBeingDragged ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
 
             Behavior on x {
-                enabled: !modWorkspaces.isBeingDragged
+                enabled: !PopoutManager.isVertical && !modWorkspaces.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+            Behavior on y {
+                enabled: PopoutManager.isVertical && !modWorkspaces.isBeingDragged
                 NumberAnimation {
                     duration: Theme.anim.fastSpatial
                     easing.type: Easing.BezierSpline
@@ -254,7 +436,7 @@ PanelWindow {
 
             Workspaces {
                 id: wsComp
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.centerIn: parent
                 barWindowRef: barWindow
                 barContentRef: barContent
             }
@@ -264,17 +446,26 @@ PanelWindow {
         Item {
             id: modClock
             property string modName: "clock"
-            implicitWidth: clockComp.implicitWidth + 14
+            implicitWidth: PopoutManager.isVertical ? 28 : (clockComp.implicitWidth + 14)
             width: implicitWidth
-            height: 26
-            anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: PopoutManager.isVertical ? 28 : 26
+            height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
 
-            x: isBeingDragged ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
 
             Behavior on x {
-                enabled: !modClock.isBeingDragged
+                enabled: !PopoutManager.isVertical && !modClock.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+            Behavior on y {
+                enabled: PopoutManager.isVertical && !modClock.isBeingDragged
                 NumberAnimation {
                     duration: Theme.anim.fastSpatial
                     easing.type: Easing.BezierSpline
@@ -308,30 +499,35 @@ PanelWindow {
                 hoverEnabled: true
                 cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
-                property real pressGlobalX: 0
-                property real initialModuleX: 0
+                property real pressCoord: 0
+                property real initialCoord: 0
                 property bool isDraggingThis: false
 
                 onPressed: mouse => {
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    pressGlobalX = globalPt.x;
+                    pressCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
                     let m = modClock;
-                    initialModuleX = m ? m.x : barWindow.getSlotX("clock");
+                    if (PopoutManager.isVertical) {
+                        initialCoord = m ? m.y : barWindow.getSlotY("clock");
+                    } else {
+                        initialCoord = m ? m.x : barWindow.getSlotX("clock");
+                    }
                     isDraggingThis = false;
                 }
 
                 onPositionChanged: mouse => {
                     if (!pressed) return;
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    let delta = globalPt.x - pressGlobalX;
+                    let curCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let delta = curCoord - pressCoord;
                     if (!isDraggingThis) {
                         if (Math.abs(delta) > 6) {
                             isDraggingThis = true;
-                            barWindow.startModuleDrag("clock", initialModuleX);
+                            barWindow.startModuleDrag("clock", initialCoord);
                         }
                     }
                     if (isDraggingThis) {
-                        barWindow.updateModuleDrag("clock", initialModuleX + delta);
+                        barWindow.updateModuleDrag("clock", initialCoord + delta);
                     }
                 }
 
@@ -355,19 +551,28 @@ PanelWindow {
         Item {
             id: modAudio
             property string modName: "audio"
-            implicitWidth: audioRow.implicitWidth + 12
+            implicitWidth: PopoutManager.isVertical ? 28 : (audioRow.implicitWidth + 12)
             width: implicitWidth
-            height: 24
-            anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: PopoutManager.isVertical ? 28 : 24
+            height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
             readonly property bool isHovered: audioMouse.containsMouse && !PopoutManager.isDraggingAny && !audioMouse.pressed
             readonly property bool isActive: (audioIndicator && audioIndicator.isPopoutActive) || isHovered || isBeingDragged
 
-            x: isBeingDragged ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
 
             Behavior on x {
-                enabled: !modAudio.isBeingDragged
+                enabled: !PopoutManager.isVertical && !modAudio.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+            Behavior on y {
+                enabled: PopoutManager.isVertical && !modAudio.isBeingDragged
                 NumberAnimation {
                     duration: Theme.anim.fastSpatial
                     easing.type: Easing.BezierSpline
@@ -407,6 +612,7 @@ PanelWindow {
                     font.pixelSize: 12
                 }
                 Text {
+                    visible: !PopoutManager.isVertical
                     text: audioIndicator ? (audioIndicator.masterMuted ? "Mute" : (audioIndicator.masterVolume + "%")) : ""
                     color: (audioIndicator && audioIndicator.masterMuted) ? Theme.overlay : Theme.text
                     font.family: Theme.fontFamily
@@ -420,30 +626,35 @@ PanelWindow {
                 hoverEnabled: true
                 cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
-                property real pressGlobalX: 0
-                property real initialModuleX: 0
+                property real pressCoord: 0
+                property real initialCoord: 0
                 property bool isDraggingThis: false
 
                 onPressed: mouse => {
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    pressGlobalX = globalPt.x;
+                    pressCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
                     let m = modAudio;
-                    initialModuleX = m ? m.x : barWindow.getSlotX("audio");
+                    if (PopoutManager.isVertical) {
+                        initialCoord = m ? m.y : barWindow.getSlotY("audio");
+                    } else {
+                        initialCoord = m ? m.x : barWindow.getSlotX("audio");
+                    }
                     isDraggingThis = false;
                 }
 
                 onPositionChanged: mouse => {
                     if (!pressed) return;
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    let delta = globalPt.x - pressGlobalX;
+                    let curCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let delta = curCoord - pressCoord;
                     if (!isDraggingThis) {
                         if (Math.abs(delta) > 6) {
                             isDraggingThis = true;
-                            barWindow.startModuleDrag("audio", initialModuleX);
+                            barWindow.startModuleDrag("audio", initialCoord);
                         }
                     }
                     if (isDraggingThis) {
-                        barWindow.updateModuleDrag("audio", initialModuleX + delta);
+                        barWindow.updateModuleDrag("audio", initialCoord + delta);
                     }
                 }
 
@@ -453,7 +664,8 @@ PanelWindow {
                         barWindow.finishModuleDrag();
                     } else {
                         if (!PopoutManager.isDraggingAny) {
-                            PopoutManager.toggle("audio", modAudio.x + modAudio.width / 2);
+                            let centerCoord = PopoutManager.isVertical ? (modAudio.y + modAudio.height / 2) : (modAudio.x + modAudio.width / 2);
+                            PopoutManager.toggle("audio", centerCoord);
                         }
                     }
                 }
@@ -481,19 +693,28 @@ PanelWindow {
         Item {
             id: modBluetooth
             property string modName: "bluetooth"
-            implicitWidth: btRow.implicitWidth + 12
+            implicitWidth: PopoutManager.isVertical ? 28 : (btRow.implicitWidth + 12)
             width: implicitWidth
-            height: 24
-            anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: PopoutManager.isVertical ? 28 : 24
+            height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
             readonly property bool isHovered: btMouse.containsMouse && !PopoutManager.isDraggingAny && !btMouse.pressed
             readonly property bool isActive: (btIndicator && btIndicator.isPopoutActive) || isHovered || isBeingDragged
 
-            x: isBeingDragged ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
 
             Behavior on x {
-                enabled: !modBluetooth.isBeingDragged
+                enabled: !PopoutManager.isVertical && !modBluetooth.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+            Behavior on y {
+                enabled: PopoutManager.isVertical && !modBluetooth.isBeingDragged
                 NumberAnimation {
                     duration: Theme.anim.fastSpatial
                     easing.type: Easing.BezierSpline
@@ -533,7 +754,7 @@ PanelWindow {
                     font.pixelSize: 12
                 }
                 Text {
-                    visible: btIndicator && btIndicator.isConnected && btIndicator.connectedCount > 0
+                    visible: !PopoutManager.isVertical && btIndicator && btIndicator.isConnected && btIndicator.connectedCount > 0
                     text: btIndicator ? btIndicator.connectedCount.toString() : ""
                     color: Theme.text
                     font.family: Theme.fontFamily
@@ -547,30 +768,35 @@ PanelWindow {
                 hoverEnabled: true
                 cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
-                property real pressGlobalX: 0
-                property real initialModuleX: 0
+                property real pressCoord: 0
+                property real initialCoord: 0
                 property bool isDraggingThis: false
 
                 onPressed: mouse => {
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    pressGlobalX = globalPt.x;
+                    pressCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
                     let m = modBluetooth;
-                    initialModuleX = m ? m.x : barWindow.getSlotX("bluetooth");
+                    if (PopoutManager.isVertical) {
+                        initialCoord = m ? m.y : barWindow.getSlotY("bluetooth");
+                    } else {
+                        initialCoord = m ? m.x : barWindow.getSlotX("bluetooth");
+                    }
                     isDraggingThis = false;
                 }
 
                 onPositionChanged: mouse => {
                     if (!pressed) return;
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    let delta = globalPt.x - pressGlobalX;
+                    let curCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let delta = curCoord - pressCoord;
                     if (!isDraggingThis) {
                         if (Math.abs(delta) > 6) {
                             isDraggingThis = true;
-                            barWindow.startModuleDrag("bluetooth", initialModuleX);
+                            barWindow.startModuleDrag("bluetooth", initialCoord);
                         }
                     }
                     if (isDraggingThis) {
-                        barWindow.updateModuleDrag("bluetooth", initialModuleX + delta);
+                        barWindow.updateModuleDrag("bluetooth", initialCoord + delta);
                     }
                 }
 
@@ -580,7 +806,8 @@ PanelWindow {
                         barWindow.finishModuleDrag();
                     } else {
                         if (!PopoutManager.isDraggingAny) {
-                            PopoutManager.toggle("bluetooth", modBluetooth.x + modBluetooth.width / 2);
+                            let centerCoord = PopoutManager.isVertical ? (modBluetooth.y + modBluetooth.height / 2) : (modBluetooth.x + modBluetooth.width / 2);
+                            PopoutManager.toggle("bluetooth", centerCoord);
                         }
                     }
                 }
@@ -598,19 +825,28 @@ PanelWindow {
         Item {
             id: modWifi
             property string modName: "wifi"
-            implicitWidth: wifiRow.implicitWidth + 12
+            implicitWidth: PopoutManager.isVertical ? 28 : (wifiRow.implicitWidth + 12)
             width: implicitWidth
-            height: 24
-            anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: PopoutManager.isVertical ? 28 : 24
+            height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
             readonly property bool isHovered: wifiMouse.containsMouse && !PopoutManager.isDraggingAny && !wifiMouse.pressed
             readonly property bool isActive: (netIndicator && netIndicator.isPopoutActive) || isHovered || isBeingDragged
 
-            x: isBeingDragged ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
 
             Behavior on x {
-                enabled: !modWifi.isBeingDragged
+                enabled: !PopoutManager.isVertical && !modWifi.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+            Behavior on y {
+                enabled: PopoutManager.isVertical && !modWifi.isBeingDragged
                 NumberAnimation {
                     duration: Theme.anim.fastSpatial
                     easing.type: Easing.BezierSpline
@@ -641,6 +877,7 @@ PanelWindow {
                 Text {
                     text: {
                         if (!netIndicator || !netIndicator.isConnected) return "󰤭";
+                        if (netIndicator.isEthernet) return "󰈀";
                         if (netIndicator.signalStrength >= 75) return "󰤨";
                         if (netIndicator.signalStrength >= 50) return "󰤥";
                         if (netIndicator.signalStrength >= 25) return "󰤢";
@@ -651,7 +888,7 @@ PanelWindow {
                     font.pixelSize: 12
                 }
                 Text {
-                    visible: netIndicator && netIndicator.isConnected && netIndicator.ssid.length > 0
+                    visible: !PopoutManager.isVertical && netIndicator && netIndicator.isConnected && netIndicator.ssid.length > 0
                     text: netIndicator ? netIndicator.ssid : ""
                     color: Theme.text
                     font.family: Theme.fontFamily
@@ -667,30 +904,35 @@ PanelWindow {
                 hoverEnabled: true
                 cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
-                property real pressGlobalX: 0
-                property real initialModuleX: 0
+                property real pressCoord: 0
+                property real initialCoord: 0
                 property bool isDraggingThis: false
 
                 onPressed: mouse => {
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    pressGlobalX = globalPt.x;
+                    pressCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
                     let m = modWifi;
-                    initialModuleX = m ? m.x : barWindow.getSlotX("wifi");
+                    if (PopoutManager.isVertical) {
+                        initialCoord = m ? m.y : barWindow.getSlotY("wifi");
+                    } else {
+                        initialCoord = m ? m.x : barWindow.getSlotX("wifi");
+                    }
                     isDraggingThis = false;
                 }
 
                 onPositionChanged: mouse => {
                     if (!pressed) return;
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    let delta = globalPt.x - pressGlobalX;
+                    let curCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let delta = curCoord - pressCoord;
                     if (!isDraggingThis) {
                         if (Math.abs(delta) > 6) {
                             isDraggingThis = true;
-                            barWindow.startModuleDrag("wifi", initialModuleX);
+                            barWindow.startModuleDrag("wifi", initialCoord);
                         }
                     }
                     if (isDraggingThis) {
-                        barWindow.updateModuleDrag("wifi", initialModuleX + delta);
+                        barWindow.updateModuleDrag("wifi", initialCoord + delta);
                     }
                 }
 
@@ -700,7 +942,8 @@ PanelWindow {
                         barWindow.finishModuleDrag();
                     } else {
                         if (!PopoutManager.isDraggingAny) {
-                            PopoutManager.toggle("wifi", modWifi.x + modWifi.width / 2);
+                            let centerCoord = PopoutManager.isVertical ? (modWifi.y + modWifi.height / 2) : (modWifi.x + modWifi.width / 2);
+                            PopoutManager.toggle("wifi", centerCoord);
                         }
                     }
                 }
@@ -718,19 +961,28 @@ PanelWindow {
         Item {
             id: modBattery
             property string modName: "battery"
-            implicitWidth: batRow.implicitWidth + 12
+            implicitWidth: PopoutManager.isVertical ? 28 : (batRow.implicitWidth + 12)
             width: implicitWidth
-            height: 24
-            anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: PopoutManager.isVertical ? 28 : 24
+            height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
             readonly property bool isHovered: batMouse.containsMouse && !PopoutManager.isDraggingAny && !batMouse.pressed
             readonly property bool isActive: (batIndicator && batIndicator.isPopoutActive) || isHovered || isBeingDragged
 
-            x: isBeingDragged ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
 
             Behavior on x {
-                enabled: !modBattery.isBeingDragged
+                enabled: !PopoutManager.isVertical && !modBattery.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+            Behavior on y {
+                enabled: PopoutManager.isVertical && !modBattery.isBeingDragged
                 NumberAnimation {
                     duration: Theme.anim.fastSpatial
                     easing.type: Easing.BezierSpline
@@ -761,6 +1013,7 @@ PanelWindow {
                 Text {
                     text: {
                         if (!batIndicator) return "󰁹";
+                        if (!batIndicator.hasBattery) return "󰚥";
                         if (batIndicator.status === "Charging") return "󰂄";
                         if (batIndicator.percentage >= 90) return "󰁹";
                         if (batIndicator.percentage >= 70) return "󰂀";
@@ -771,14 +1024,19 @@ PanelWindow {
                     }
                     color: {
                         if (!batIndicator) return Theme.primary;
+                        if (!batIndicator.hasBattery) return Theme.primary;
                         return batIndicator.percentage <= 20 && batIndicator.status !== "Charging" ? Theme.danger : (batIndicator.status === "Charging" ? Theme.success : Theme.primary);
                     }
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
                 Text {
-                    visible: batIndicator && batIndicator.showPercentage
-                    text: batIndicator ? (batIndicator.percentage + "%") : "0%"
+                    visible: !PopoutManager.isVertical && batIndicator && batIndicator.showPercentage
+                    text: {
+                        if (!batIndicator) return "0%";
+                        if (!batIndicator.hasBattery) return "AC";
+                        return batIndicator.percentage + "%";
+                    }
                     color: Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -791,30 +1049,35 @@ PanelWindow {
                 hoverEnabled: true
                 cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
-                property real pressGlobalX: 0
-                property real initialModuleX: 0
+                property real pressCoord: 0
+                property real initialCoord: 0
                 property bool isDraggingThis: false
 
                 onPressed: mouse => {
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    pressGlobalX = globalPt.x;
+                    pressCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
                     let m = modBattery;
-                    initialModuleX = m ? m.x : barWindow.getSlotX("battery");
+                    if (PopoutManager.isVertical) {
+                        initialCoord = m ? m.y : barWindow.getSlotY("battery");
+                    } else {
+                        initialCoord = m ? m.x : barWindow.getSlotX("battery");
+                    }
                     isDraggingThis = false;
                 }
 
                 onPositionChanged: mouse => {
                     if (!pressed) return;
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
-                    let delta = globalPt.x - pressGlobalX;
+                    let curCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let delta = curCoord - pressCoord;
                     if (!isDraggingThis) {
                         if (Math.abs(delta) > 6) {
                             isDraggingThis = true;
-                            barWindow.startModuleDrag("battery", initialModuleX);
+                            barWindow.startModuleDrag("battery", initialCoord);
                         }
                     }
                     if (isDraggingThis) {
-                        barWindow.updateModuleDrag("battery", initialModuleX + delta);
+                        barWindow.updateModuleDrag("battery", initialCoord + delta);
                     }
                 }
 
@@ -824,7 +1087,8 @@ PanelWindow {
                         barWindow.finishModuleDrag();
                     } else {
                         if (!PopoutManager.isDraggingAny) {
-                            PopoutManager.toggle("battery", modBattery.x + modBattery.width / 2);
+                            let centerCoord = PopoutManager.isVertical ? (modBattery.y + modBattery.height / 2) : (modBattery.x + modBattery.width / 2);
+                            PopoutManager.toggle("battery", centerCoord);
                         }
                     }
                 }

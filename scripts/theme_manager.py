@@ -359,10 +359,40 @@ bright7={(subtext if is_dark else fg).lstrip('#')}
 
         # Notificar a las instancias abiertas de Kitty para recargar colores en vivo
         import subprocess
-        subprocess.run(["killall", "-SIGUSR1", "kitty"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["kitty", "@", "set-colors", "-a", kitty_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            subprocess.run(["killall", "-SIGUSR1", "kitty"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
     except Exception as e:
-        print(f"Warning syncing terminal theme: {e}", file=sys.stderr)
+        pass
+
+def sync_hyprland_theme(theme_data):
+    try:
+        primary = theme_data.get("primary", "#7aa2f7").lstrip('#')
+        cyan = theme_data.get("cyan", "#7dcfff").lstrip('#')
+        border = theme_data.get("border", "#3b4261").lstrip('#')
+        
+        # 1. Actualizar ~/.config/hypr/theme_colors.lua para que Hyprland lo lea al iniciar/recargar
+        hypr_dir = os.path.expanduser("~/.config/hypr")
+        os.makedirs(hypr_dir, exist_ok=True)
+        theme_lua = os.path.join(hypr_dir, "theme_colors.lua")
+        
+        lua_content = f"""-- Generado automáticamente por Quickshell Theme Manager
+return {{
+    active_border    = "rgba({primary}ee)",
+    secondary_border = "rgba({cyan}ee)",
+    inactive_border  = "rgba({border}aa)",
+}}
+"""
+        with open(theme_lua, "w", encoding="utf-8") as f:
+            f.write(lua_content)
+            
+        # 2. Aplicar bordes de ventana en caliente en Hyprland en tiempo real
+        import subprocess
+        lua_cmd = f'hl.config({{ general = {{ col = {{ active_border = {{ colors = {{"rgba({primary}ee)", "rgba({cyan}ee)"}}, angle = 45 }}, inactive_border = "rgba({border}aa)" }} }} }})'
+        subprocess.run(["hyprctl", "repl", lua_cmd], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=0.25)
+    except Exception:
+        pass
 
 def set_theme(name):
     ensure_dirs()
@@ -373,9 +403,19 @@ def set_theme(name):
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         json.dump({"theme": name}, f, indent=2)
     
+    # Notificar a Quickshell para recarga instantánea
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    trigger = os.path.join(runtime_dir, "quickshell_theme_reload.toggle")
+    try:
+        with open(trigger, 'w') as f:
+            f.write(name)
+    except Exception:
+        pass
+
     theme_obj = all_themes[name]
     theme_obj["id"] = name
     sync_terminal_theme(theme_obj)
+    sync_hyprland_theme(theme_obj)
     return True
 
 def main():
@@ -418,8 +458,6 @@ def main():
             return
     
     current_th = get_theme()
-    # Sincronizar terminal al consultar tema actual
-    sync_terminal_theme(current_th)
     print(json.dumps(current_th))
 
 if __name__ == '__main__':

@@ -91,10 +91,13 @@ def get_bluetooth_data():
 
     connected_count = sum(1 for d in dev_list if d["isConnected"])
 
+    has_adapter = bool(controller_name or is_powered)
+
     return {
+        "hasAdapter": has_adapter,
         "isPowered": is_powered,
         "isScanning": is_scanning,
-        "controllerName": controller_name,
+        "controllerName": controller_name if controller_name else ("Sin adaptador" if not has_adapter else "Bluetooth"),
         "connectedCount": connected_count,
         "devices": dev_list
     }

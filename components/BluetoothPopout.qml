@@ -160,7 +160,7 @@ Item {
 
                 Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "Bluetooth Desactivado"
+                    text: (bluetoothRef && !bluetoothRef.hasAdapter) ? "Sin adaptador Bluetooth" : "Bluetooth Desactivado"
                     color: Theme.overlay
                     font.family: Theme.fontFamily
                     font.pixelSize: 10

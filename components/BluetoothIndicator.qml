@@ -12,7 +12,9 @@ Item {
     property bool isPowered: false
     property bool isConnected: false
     property bool isScanning: false
+    property bool hasAdapter: false
     property string controllerName: ""
+    property alias adapterName: root.controllerName
     property int connectedCount: 0
     property var devices: []
     property string rawBtOutput: ""
@@ -22,7 +24,7 @@ Item {
 
     Process {
         id: scanProc
-        command: ["/home/demonc/Documents/Proyects/shell/scripts/get_bluetooth_info.py"]
+        command: [Quickshell.shellDir + "/scripts/get_bluetooth_info.py"]
         stdout: SplitParser {
             onRead: data => { root.rawBtOutput += data; }
         }
@@ -31,6 +33,7 @@ Item {
                 let info = JSON.parse(root.rawBtOutput.trim());
                 root.isPowered = info.isPowered;
                 root.isConnected = info.isConnected;
+                root.hasAdapter = !!info.hasAdapter;
                 root.controllerName = info.controllerName || "";
                 root.connectedCount = info.connectedCount || 0;
                 root.devices = info.devices || [];
@@ -43,6 +46,10 @@ Item {
     Process {
         id: actionProc
         onExited: { root.rescan(); }
+    }
+
+    function toggleScan() {
+        root.rescan();
     }
 
     function togglePower() {
