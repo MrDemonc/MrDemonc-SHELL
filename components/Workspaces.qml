@@ -42,9 +42,25 @@ GridLayout {
         return false;
     }
 
+    readonly property var currentActiveToplevel: {
+        if (Hyprland.activeToplevel) return Hyprland.activeToplevel;
+        if (Hyprland.toplevels && Hyprland.toplevels.values) {
+            for (let i = 0; i < Hyprland.toplevels.values.length; i++) {
+                let t = Hyprland.toplevels.values[i];
+                if (t && t.lastIpcObject && t.lastIpcObject.focusHistoryID === 0) {
+                    return t;
+                }
+            }
+            if (Hyprland.toplevels.values.length === 1) {
+                return Hyprland.toplevels.values[0];
+            }
+        }
+        return null;
+    }
+
     readonly property string focusedAppName: {
-        if (!Hyprland.activeToplevel) return "";
-        let toplevel = Hyprland.activeToplevel;
+        let toplevel = root.currentActiveToplevel;
+        if (!toplevel) return "";
 
         // 1. Validar que la ventana pertenece estrictamente al workspace enfocado actualmente
         let curWsId = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : -1;
@@ -148,6 +164,27 @@ GridLayout {
         return "";
     }
 
+    readonly property string focusedAppIcon: {
+        let app = root.focusedAppName.toLowerCase();
+        if (!app) return "";
+        if (app.includes("kitty")) return "󰄛";
+        if (app.includes("alacritty") || app.includes("foot") || app.includes("ghostty") || app.includes("term")) return "";
+        if (app.includes("zen") || app.includes("browser") || app.includes("firefox")) return "󰈹";
+        if (app.includes("chrome") || app.includes("chromium") || app.includes("brave")) return "󰊯";
+        if (app.includes("code") || app.includes("vscode") || app.includes("codium")) return "󰨞";
+        if (app.includes("neovim") || app.includes("nvim")) return "";
+        if (app.includes("discord") || app.includes("vesktop") || app.includes("webcord")) return "󰙯";
+        if (app.includes("telegram")) return "";
+        if (app.includes("spotify")) return "󰓇";
+        if (app.includes("files") || app.includes("dolphin") || app.includes("thunar") || app.includes("nemo") || app.includes("nautilus")) return "󰉋";
+        if (app.includes("obsidian")) return "󱓧";
+        if (app.includes("steam")) return "󰓓";
+        if (app.includes("vlc") || app.includes("mpv")) return "󰕼";
+        if (app.includes("gimp") || app.includes("inkscape") || app.includes("blender")) return "󰥟";
+        if (app.includes("obs")) return "󰑋";
+        return "󱂬";
+    }
+
     readonly property int maxWorkspaceCount: {
         let maxId = 5; // Mínimo 5 escritorios siempre visibles
 
@@ -192,11 +229,13 @@ GridLayout {
             property bool isFocused: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id === wsId : false
             property bool isOccupied: root.isWorkspaceOccupied(wsId)
             property bool isHovered: wsMouse.containsMouse
-            readonly property bool hasApp: isFocused && root.focusedAppName !== "" && !PopoutManager.isVertical
+            readonly property bool hasApp: isFocused && root.focusedAppName !== ""
+
+            Layout.alignment: Qt.AlignCenter
 
             implicitHeight: {
                 if (PopoutManager.isVertical) {
-                    if (isFocused) return 18;
+                    if (isFocused) return (hasApp && root.focusedAppIcon !== "") ? 24 : 18;
                     if (isHovered) return 14;
                     return isOccupied ? 10 : 6;
                 }
@@ -204,10 +243,10 @@ GridLayout {
             }
             implicitWidth: {
                 if (PopoutManager.isVertical) {
-                    return isFocused ? 20 : 6;
+                    return 20;
                 }
                 if (isFocused) {
-                    return hasApp ? Math.min(180, contentLayout.implicitWidth + 14) : 18;
+                    return (hasApp && !PopoutManager.isVertical) ? Math.min(200, contentLayout.implicitWidth + 16) : 18;
                 }
                 if (isHovered) return 14;
                 return isOccupied ? 10 : 6;
@@ -249,18 +288,41 @@ GridLayout {
                 Behavior on width { NumberAnimation { duration: 150 } }
                 Behavior on radius { NumberAnimation { duration: 150 } }
 
-                // Contenido interno del workspace
+                // Icono de la aplicación en foco (para formato vertical)
+                Text {
+                    visible: PopoutManager.isVertical && wsItem.isFocused && wsItem.hasApp && root.focusedAppIcon !== ""
+                    anchors.centerIn: parent
+                    text: root.focusedAppIcon
+                    color: Theme.primary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 12
+                }
+
+                // Contenido interno del workspace horizontal
                 RowLayout {
                     id: contentLayout
                     anchors.centerIn: parent
-                    spacing: 5
+                    spacing: 6
+                    visible: !PopoutManager.isVertical || !(wsItem.isFocused && wsItem.hasApp && root.focusedAppIcon !== "")
 
-                    // Punto indicador de foco
+                    // Icono de la aplicación en foco (modo horizontal)
+                    Text {
+                        visible: !PopoutManager.isVertical && wsItem.isFocused && wsItem.hasApp && root.focusedAppIcon !== ""
+                        text: root.focusedAppIcon
+                        color: Theme.primary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 12
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    // Punto indicador de foco (visible cuando no hay icono de app en foco)
                     Rectangle {
+                        visible: !(!PopoutManager.isVertical && wsItem.isFocused && wsItem.hasApp && root.focusedAppIcon !== "")
                         width: wsItem.isFocused ? 6 : (wsItem.isHovered ? 8 : 4)
                         height: wsItem.isFocused ? 6 : 4
                         radius: 3
                         color: wsItem.isFocused ? Theme.primary : (wsItem.isHovered ? Theme.text : "transparent")
+                        Layout.alignment: Qt.AlignVCenter
 
                         Behavior on width { NumberAnimation { duration: 120 } }
                         Behavior on color { ColorAnimation { duration: 120 } }
@@ -275,7 +337,8 @@ GridLayout {
                         font.pixelSize: 11
                         font.weight: Font.Medium
                         elide: Text.ElideRight
-                        Layout.maximumWidth: 140
+                        Layout.maximumWidth: 150
+                        Layout.alignment: Qt.AlignVCenter
                     }
                 }
             }
@@ -289,8 +352,11 @@ GridLayout {
                 property real pressGlobalCoord: 0
                 property real initialModuleCoord: 0
                 property bool isDraggingThis: false
+                property bool wasDragged: false
 
                 onPressed: mouse => {
+                    wasDragged = false;
+                    isDraggingThis = false;
                     if (root.barContentRef) {
                         let globalPt = mapToItem(root.barContentRef, mouse.x, mouse.y);
                         pressGlobalCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
@@ -301,7 +367,6 @@ GridLayout {
                     } else {
                         initialModuleCoord = m ? m.x : (root.barWindowRef ? root.barWindowRef.getSlotX("workspaces") : 0);
                     }
-                    isDraggingThis = false;
                 }
 
                 onPositionChanged: mouse => {
@@ -313,6 +378,7 @@ GridLayout {
                     if (!isDraggingThis) {
                         if (Math.abs(delta) > 6) {
                             isDraggingThis = true;
+                            wasDragged = true;
                             root.barWindowRef.startModuleDrag("workspaces", initialModuleCoord);
                         }
                     }
@@ -322,7 +388,7 @@ GridLayout {
                 }
 
                 onClicked: {
-                    if (!isDraggingThis) {
+                    if (!wasDragged && !isDraggingThis) {
                         try {
                             Hyprland.dispatch("hl.dsp.focus({ workspace = " + wsItem.wsId + " })");
                         } catch (e) {}
@@ -330,6 +396,7 @@ GridLayout {
                         switchWsProc.running = false;
                         switchWsProc.running = true;
                     }
+                    wasDragged = false;
                 }
 
                 onReleased: {
@@ -344,6 +411,7 @@ GridLayout {
                         isDraggingThis = false;
                         if (root.barWindowRef) root.barWindowRef.finishModuleDrag();
                     }
+                    wasDragged = false;
                 }
             }
         }

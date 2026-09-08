@@ -13,13 +13,13 @@ PanelWindow {
         right: PopoutManager.barPosition !== "left"
     }
     implicitHeight: PopoutManager.isVertical ? (barWindow.screen ? barWindow.screen.height : 800) : 26
-    implicitWidth: PopoutManager.isVertical ? 38 : (barWindow.screen ? barWindow.screen.width : 1280)
+    implicitWidth: PopoutManager.isVertical ? 26 : (barWindow.screen ? barWindow.screen.width : 1280)
     color: Theme.bg
 
     WlrLayershell.namespace: "shell-bar"
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    WlrLayershell.exclusiveZone: PopoutManager.isVertical ? 38 : 26
+    WlrLayershell.exclusiveZone: 26
     exclusionMode: ExclusionMode.Auto
 
     onWidthChanged: console.log("BAR DIM: width=" + width + " height=" + height + " pos=" + PopoutManager.barPosition)
@@ -63,26 +63,37 @@ PanelWindow {
     }
 
     property var currentSections: PopoutManager.barSections
+    property string currentPosition: PopoutManager.barPosition
+
     property var displaySections: {
         let cur = PopoutManager.barSections;
+        let l = (cur && cur.left) ? [...cur.left] : ["workspaces"];
+        let c = (cur && cur.center) ? [...cur.center] : ["clock"];
+        let r = (cur && cur.right) ? [...cur.right] : ["audio", "bluetooth", "wifi", "battery"];
         return {
-            "left": (cur && cur.left) ? [...cur.left] : ["workspaces"],
-            "center": (cur && cur.center) ? [...cur.center] : ["clock"],
-            "right": (cur && cur.right) ? [...cur.right] : ["audio", "bluetooth", "wifi", "battery"]
+            "left": l,
+            "center": c,
+            "right": r
         };
     }
     property string draggingModName: ""
 
-    onCurrentSectionsChanged: {
+    function updateSectionsDisplay() {
         if (draggingModName === "") {
             let cur = currentSections;
+            let l = (cur && cur.left) ? [...cur.left] : ["workspaces"];
+            let c = (cur && cur.center) ? [...cur.center] : ["clock"];
+            let r = (cur && cur.right) ? [...cur.right] : ["audio", "bluetooth", "wifi", "battery"];
             displaySections = {
-                "left": (cur && cur.left) ? [...cur.left] : ["workspaces"],
-                "center": (cur && cur.center) ? [...cur.center] : ["clock"],
-                "right": (cur && cur.right) ? [...cur.right] : ["audio", "bluetooth", "wifi", "battery"]
+                "left": l,
+                "center": c,
+                "right": r
             };
         }
     }
+
+    onCurrentSectionsChanged: updateSectionsDisplay()
+    onCurrentPositionChanged: updateSectionsDisplay()
 
     function getModule(name) {
         if (name === "workspaces") return modWorkspaces;
@@ -95,7 +106,7 @@ PanelWindow {
     }
 
     function getModuleWidth(name) {
-        if (PopoutManager.isVertical) return 28;
+        if (PopoutManager.isVertical) return 22;
         let m = getModule(name);
         return m ? Math.max(22, m.implicitWidth || m.width) : 30;
     }
@@ -103,9 +114,10 @@ PanelWindow {
     function getModuleHeight(name) {
         if (!PopoutManager.isVertical) return 24;
         if (name === "workspaces") {
-            return wsComp ? Math.max(28, wsComp.implicitHeight) : 80;
+            return wsComp ? Math.max(24, wsComp.implicitHeight) : 60;
         }
-        return 28;
+        if (name === "clock") return 26;
+        return 22;
     }
 
     function getSectionWidth(secList) {
@@ -399,7 +411,7 @@ PanelWindow {
         Item {
             id: modWorkspaces
             property string modName: "workspaces"
-            implicitWidth: PopoutManager.isVertical ? 28 : wsComp.implicitWidth
+            implicitWidth: PopoutManager.isVertical ? 22 : wsComp.implicitWidth
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? wsComp.implicitHeight : 26
             height: implicitHeight
@@ -446,9 +458,9 @@ PanelWindow {
         Item {
             id: modClock
             property string modName: "clock"
-            implicitWidth: PopoutManager.isVertical ? 28 : (clockComp.implicitWidth + 14)
+            implicitWidth: PopoutManager.isVertical ? 22 : (clockComp.implicitWidth + 14)
             width: implicitWidth
-            implicitHeight: PopoutManager.isVertical ? 28 : 26
+            implicitHeight: PopoutManager.isVertical ? 26 : 26
             height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
@@ -551,9 +563,9 @@ PanelWindow {
         Item {
             id: modAudio
             property string modName: "audio"
-            implicitWidth: PopoutManager.isVertical ? 28 : (audioRow.implicitWidth + 12)
+            implicitWidth: PopoutManager.isVertical ? 22 : (audioRow.implicitWidth + 12)
             width: implicitWidth
-            implicitHeight: PopoutManager.isVertical ? 28 : 24
+            implicitHeight: PopoutManager.isVertical ? 22 : 24
             height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
@@ -693,9 +705,9 @@ PanelWindow {
         Item {
             id: modBluetooth
             property string modName: "bluetooth"
-            implicitWidth: PopoutManager.isVertical ? 28 : (btRow.implicitWidth + 12)
+            implicitWidth: PopoutManager.isVertical ? 22 : (btRow.implicitWidth + 12)
             width: implicitWidth
-            implicitHeight: PopoutManager.isVertical ? 28 : 24
+            implicitHeight: PopoutManager.isVertical ? 22 : 24
             height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
@@ -825,9 +837,9 @@ PanelWindow {
         Item {
             id: modWifi
             property string modName: "wifi"
-            implicitWidth: PopoutManager.isVertical ? 28 : (wifiRow.implicitWidth + 12)
+            implicitWidth: PopoutManager.isVertical ? 22 : (wifiRow.implicitWidth + 12)
             width: implicitWidth
-            implicitHeight: PopoutManager.isVertical ? 28 : 24
+            implicitHeight: PopoutManager.isVertical ? 22 : 24
             height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
@@ -961,9 +973,9 @@ PanelWindow {
         Item {
             id: modBattery
             property string modName: "battery"
-            implicitWidth: PopoutManager.isVertical ? 28 : (batRow.implicitWidth + 12)
+            implicitWidth: PopoutManager.isVertical ? 22 : (batRow.implicitWidth + 12)
             width: implicitWidth
-            implicitHeight: PopoutManager.isVertical ? 28 : 24
+            implicitHeight: PopoutManager.isVertical ? 22 : 24
             height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName

@@ -3,17 +3,49 @@ import Quickshell
 
 Item {
     id: clockRoot
-    implicitWidth: PopoutManager.isVertical ? 22 : clockText.implicitWidth
-    implicitHeight: PopoutManager.isVertical ? 22 : clockText.implicitHeight
+    property string hoursStr: "00"
+    property string minutesStr: "00"
+    property string fullDateStr: ""
 
+    implicitWidth: PopoutManager.isVertical ? 22 : horizontalText.implicitWidth
+    implicitHeight: PopoutManager.isVertical ? verticalCol.implicitHeight : horizontalText.implicitHeight
+
+    // 1. Reloj en formato horizontal
     Text {
-        id: clockText
+        id: horizontalText
+        visible: !PopoutManager.isVertical
         anchors.centerIn: parent
         color: Theme.text
         font.family: Theme.fontFamily
-        font.pixelSize: PopoutManager.isVertical ? 13 : 11
+        font.pixelSize: 11
         font.bold: false
-        text: PopoutManager.isVertical ? "󰥔" : ""
+        text: fullDateStr
+    }
+
+    // 2. Reloj en formato vertical para laterales (HH arriba, MM abajo)
+    Column {
+        id: verticalCol
+        visible: PopoutManager.isVertical
+        anchors.centerIn: parent
+        spacing: -1
+
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: Theme.text
+            font.family: Theme.fontFamily
+            font.pixelSize: 10
+            font.weight: Font.DemiBold
+            text: clockRoot.hoursStr
+        }
+
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: Theme.subtext
+            font.family: Theme.fontFamily
+            font.pixelSize: 10
+            font.weight: Font.Medium
+            text: clockRoot.minutesStr
+        }
     }
 
     Timer {
@@ -22,15 +54,11 @@ Item {
         repeat: true
         triggeredOnStart: true
         onTriggered: {
-            if (PopoutManager.isVertical) {
-                clockText.text = "󰥔";
-            } else {
-                let now = new Date();
-                let hours = String(now.getHours()).padStart(2, '0');
-                let minutes = String(now.getMinutes()).padStart(2, '0');
-                let dateStr = Qt.formatDate(now, "ddd d MMM");
-                clockText.text = `${dateStr}  ${hours}:${minutes}`;
-            }
+            let now = new Date();
+            clockRoot.hoursStr = String(now.getHours()).padStart(2, '0');
+            clockRoot.minutesStr = String(now.getMinutes()).padStart(2, '0');
+            let dateStr = Qt.formatDate(now, "ddd d MMM");
+            clockRoot.fullDateStr = `${dateStr}  ${clockRoot.hoursStr}:${clockRoot.minutesStr}`;
         }
     }
 }

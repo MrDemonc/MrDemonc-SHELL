@@ -13,22 +13,22 @@ PanelWindow {
     }
     margins {
         top: {
-            if (PopoutManager.barPosition === "top") return 28;
+            if (PopoutManager.barPosition === "top") return 26;
             if (PopoutManager.barPosition === "bottom") return 0;
-            let screenH = popoutWindow.screen ? popoutWindow.screen.height : 1080;
+            let screenH = popoutWindow.screen ? popoutWindow.screen.height : 800;
             return Math.max(10, Math.min(screenH - popout.preferredHeight - 10, PopoutManager.popoutCenter - popout.preferredHeight / 2));
         }
-        bottom: PopoutManager.barPosition === "bottom" ? 28 : 0
+        bottom: PopoutManager.barPosition === "bottom" ? 26 : 0
         left: {
-            if (PopoutManager.barPosition === "left") return 42;
+            if (PopoutManager.barPosition === "left") return 26;
             if (PopoutManager.barPosition === "right") return 0;
-            let screenW = popoutWindow.screen ? popoutWindow.screen.width : 1920;
+            let screenW = popoutWindow.screen ? popoutWindow.screen.width : 1280;
             if (PopoutManager.popoutCenter > 0) {
                 return Math.max(10, Math.min(screenW - 330, PopoutManager.popoutCenter - 160));
             }
             return Math.max(10, screenW - 330);
         }
-        right: PopoutManager.barPosition === "right" ? 42 : 0
+        right: PopoutManager.barPosition === "right" ? 26 : 0
     }
     implicitWidth: 320
     implicitHeight: popout.preferredHeight
