@@ -38,20 +38,23 @@ export GUM_CONFIRM_SELECTED_BACKGROUND="2"
 export GUM_CONFIRM_UNSELECTED_FOREGROUND="7"
 export GUM_CONFIRM_UNSELECTED_BACKGROUND="0"
 
-# Logo ARCH estilizado con silueta icónica y tipografía moderna (53 columnas, 6 líneas)
+# Logo ARCH elaborado (tipografía idéntica a Omarchy, 47 columnas, 9 líneas)
 LOGO_TEXT=$(cat << "EOF"
-       /\         ▄█████▄   ██████   ▄█████▄  ██   ██
-      /  \       ███   ███  ██   ██ ███   ▀▀  ██   ██
-     /\   \      █████████  ██████  ██        ███████
-    /      \     ███   ███  ██   ██ ███   ▄▄  ██   ██
-   /   ,,   \    ███   ███  ██   ██  ▀█████▀  ██   ██
-  /_-''    ''-_\ ─── A R C H   L I N U X ────────────
+ ▄███████    ▄███████     ▄███████    ▄█   █▄  
+███   ███   ███   ███    ███   ███   ███   ███ 
+███   ███   ███   ███    ███   █▀    ███   ███ 
+███▄▄▄███   ███▄▄▄██▀    ███         ███▄▄▄███▄
+███▀▀▀███   ███▀▀▀▀      ███         ███▀▀▀███ 
+███   ███   █████████    ███   █▄    ███   ███ 
+███   ███   ███   ███    ███   ███   ███   ███ 
+███   █▀    ███   ███    ███████▀    ███   █▀  
+            ███   █▀                           
 EOF
 )
-LOGO_WIDTH=53
-LOGO_HEIGHT=6
+LOGO_WIDTH=47
+LOGO_HEIGHT=9
 
-# Medición dinámica de columnas y filas del terminal y cálculo de padding para centrado
+# Medición dinámica del ancho del terminal y cálculo de padding para centrado
 measure_terminal() {
     TERM_WIDTH=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
     (( TERM_WIDTH > 0 )) || TERM_WIDTH=${COLUMNS:-80}
@@ -102,6 +105,7 @@ g_style() {
         case "$fg" in
             1) color="\033[38;5;196m" ;;
             2) color="\033[38;5;42m" ;;
+            3) color="\033[38;5;220m" ;;
             6) color="\033[38;5;39m" ;;
             8) color="\033[38;5;242m" ;;
         esac
@@ -112,15 +116,17 @@ g_style() {
 }
 
 clear_logo() {
-    local est_height="${1:-14}"
     measure_terminal
-    local top_pad=$(((TERM_HEIGHT - est_height) / 2))
-    (( top_pad < 1 )) && top_pad=1
-    printf "\033[H\033[2J\033[%d;1H" "$top_pad"
-    while IFS= read -r line; do
-        center_text "\033[38;5;39m${line}\033[0m" "$TERM_WIDTH"
-    done <<< "$LOGO_TEXT"
-    echo
+    printf "\033[H\033[2J" # Limpiar pantalla y posicionar el cursor arriba (idéntico a Omarchy)
+    if command -v gum >/dev/null 2>&1; then
+        gum style --foreground 2 --padding "1 0 0 $PADDING_LEFT" "$LOGO_TEXT"
+    else
+        echo ""
+        while IFS= read -r line; do
+            echo -e "${PADDING_LEFT_SPACES}${GREEN}${line}${NC}"
+        done <<< "$LOGO_TEXT"
+        echo ""
+    fi
 }
 
 say() {
@@ -861,16 +867,20 @@ perform_installation_worker() {
     exec >> "$INSTALL_LOG_FILE" 2>&1
 
     set_phase "Preparando particiones en el almacenamiento" 5
+    echo "==> Limpiando montajes previos y contenedores abiertos..."
     swapoff -a 2>/dev/null || true
+    fuser -km /mnt 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     cryptsetup close cryptroot 2>/dev/null || true
 
+    echo "==> Eliminando firmas de disco previas en $TARGET_DISK..."
+    wipefs -af "$TARGET_DISK" >/dev/null 2>&1 || true
     sgdisk --zap-all "$TARGET_DISK" >/dev/null 2>&1 || true
-    wipefs -a "$TARGET_DISK" >/dev/null 2>&1 || true
     partprobe "$TARGET_DISK" 2>/dev/null || true
     udevadm settle 2>/dev/null || true
     sleep 1
 
+    echo "==> Creando tabla de particiones GPT..."
     # Partición 1: EFI 1024MB | Partición 2: LUKS2 Linux
     sgdisk -n 1:0:+1024M -t 1:ef00 -c 1:"EFI System Partition" "$TARGET_DISK"
     sgdisk -n 2:0:0 -t 2:8300 -c 2:"Linux LUKS Btrfs" "$TARGET_DISK"
@@ -886,24 +896,40 @@ perform_installation_worker() {
         PART_ROOT="${TARGET_DISK}2"
     fi
 
-    set_phase "Formateando partición EFI y configurando LUKS2" 15
-    mkfs.fat -F 32 -n EFI "$PART_EFI" >/dev/null
+    echo "==> Esperando nodos de partición $PART_EFI y $PART_ROOT..."
+    for i in {1..10}; do
+        [ -b "$PART_EFI" ] && [ -b "$PART_ROOT" ] && break
+        sleep 1
+    done
 
-    echo -n "$MASTER_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode "$PART_ROOT" -
+    set_phase "Formateando partición EFI y configurando LUKS2" 15
+    echo "==> Formateando partición EFI ($PART_EFI)..."
+    mkfs.fat -F 32 -n EFI "$PART_EFI"
+
+    echo "==> Cifrando partición raíz con LUKS2 (Argon2id)..."
+    echo -n "$MASTER_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --pbkdf-memory 524288 --pbkdf-parallel 2 --batch-mode "$PART_ROOT" -
     echo -n "$MASTER_PASS" | cryptsetup open "$PART_ROOT" cryptroot -
+
+    for i in {1..10}; do
+        [ -b "/dev/mapper/cryptroot" ] && break
+        sleep 1
+    done
 
     set_phase "Creando sistema de archivos y subvolúmenes Btrfs" 25
     ROOT_DEV="/dev/mapper/cryptroot"
-    mkfs.btrfs -f -L ARCHROOT "$ROOT_DEV" >/dev/null
+    echo "==> Formateando Btrfs en $ROOT_DEV..."
+    mkfs.btrfs -f -L ARCHROOT "$ROOT_DEV"
 
+    echo "==> Creando subvolúmenes Btrfs (@, @home, @snapshots, @var_log, @pkg)..."
     mount "$ROOT_DEV" /mnt
-    btrfs subvolume create /mnt/@ >/dev/null
-    btrfs subvolume create /mnt/@home >/dev/null
-    btrfs subvolume create /mnt/@snapshots >/dev/null
-    btrfs subvolume create /mnt/@var_log >/dev/null
-    btrfs subvolume create /mnt/@pkg >/dev/null
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    btrfs subvolume create /mnt/@snapshots
+    btrfs subvolume create /mnt/@var_log
+    btrfs subvolume create /mnt/@pkg
     umount /mnt
 
+    echo "==> Montando subvolúmenes Btrfs en /mnt..."
     BTRFS_MOUNT_OPTS="noatime,compress=zstd,space_cache=v2"
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@" "$ROOT_DEV" /mnt
     mkdir -p /mnt/{home,.snapshots,var/log,var/cache/pacman/pkg,boot}
@@ -914,6 +940,7 @@ perform_installation_worker() {
     mount "$PART_EFI" /mnt/boot
 
     set_phase "Instalando paquetes base con pacstrap" 35
+    echo "==> Iniciando instalación de paquetes del sistema..."
     UCODE_PKG=""
     if grep -q "AuthenticAMD" /proc/cpuinfo; then
         UCODE_PKG="amd-ucode"
@@ -1020,7 +1047,9 @@ su - "$SYS_USER" -c "git config --global init.defaultBranch main" 2>/dev/null ||
 sed -i "s/^HOOKS=.*/HOOKS=($MKINITCPIO_HOOKS)/" /etc/mkinitcpio.conf
 mkinitcpio -P
 
-bootctl install --esp-path=/boot
+bootctl install --esp-path=/boot 2>/dev/null || bootctl install --esp-path=/boot --no-variables 2>/dev/null || true
+mkdir -p /boot/EFI/BOOT
+cp -f /boot/EFI/systemd/systemd-bootx64.efi /boot/EFI/BOOT/BOOTX64.EFI 2>/dev/null || true
 
 cat << LOADER > /boot/loader/loader.conf
 default  arch.conf
@@ -1092,15 +1121,16 @@ CHROOT_SCRIPT
     rm -f /mnt/root/setup_chroot.sh
 
     set_phase "Desplegando entorno gráfico MrDemonc-SHELL" 88
+    echo "==> Desplegando MrDemonc-SHELL en el directorio de usuario..."
     DEST_REPO="/mnt/home/$SYS_USER/Documentos/MrDemonc-SHELL"
-    mkdir -p "/mnt/home/$SYS_USER/Documentos"
+    mkdir -p "$DEST_REPO"
 
     if [ -d "/usr/share/mrdemonc-shell" ]; then
-        cp -a /usr/share/mrdemonc-shell "$DEST_REPO"
+        cp -a /usr/share/mrdemonc-shell/. "$DEST_REPO/"
     elif [ -d "/home/demonc-test/Documentos/MrDemonc-SHELL" ]; then
-        cp -a "/home/demonc-test/Documentos/MrDemonc-SHELL" "$DEST_REPO"
+        cp -a "/home/demonc-test/Documentos/MrDemonc-SHELL/." "$DEST_REPO/"
     else
-        git clone https://github.com/MrDemonc/MrDemonc-SHELL.git "$DEST_REPO" || true
+        git clone https://github.com/MrDemonc/MrDemonc-SHELL.git "$DEST_REPO" 2>/dev/null || true
     fi
 
     chmod +x "$DEST_REPO"/scripts/*.sh 2>/dev/null || true
@@ -1174,7 +1204,7 @@ foreground = "#cdd6f4"
 THEME_TOML
 
     if [ -f "$DEST_REPO/scripts/theme_manager.py" ]; then
-        python3 "$DEST_REPO/scripts/theme_manager.py" apply catppuccin-mocha 2>/dev/null || true
+        arch-chroot /mnt su - "$SYS_USER" -c "python3 ~/Documentos/MrDemonc-SHELL/scripts/theme_manager.py apply catppuccin-mocha" 2>/dev/null || true
     fi
 
     cat << STARSHIP_CONF > "$USER_HOME/.config/starship.toml"
@@ -1201,7 +1231,9 @@ STARSHIP_CONF
     arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER"
 
     set_phase "Finalizando instalación y sincronizando almacenamiento" 98
+    echo "==> Sincronizando datos a disco y desmontando particiones..."
     sync
+    fuser -km /mnt 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     cryptsetup close cryptroot 2>/dev/null || true
 
@@ -1210,19 +1242,11 @@ STARSHIP_CONF
 
 run_install_with_dashboard() {
     local start_epoch=$SECONDS
-    local tty_cols=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
-    (( tty_cols > 0 )) || tty_cols=${COLUMNS:-80}
-    local tty_rows=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
-    [[ $tty_rows =~ ^[0-9]+$ ]] || tty_rows=${LINES:-24}
+    measure_terminal
 
-    # Altura del bloque completo del dashboard:
-    # 6 líneas de logo + 1 separador + 1 título + 1 fase + 1 barra + 1 separador + 1 tip = 12 líneas
-    local content_h=12
-    local top_row=$(((tty_rows - content_h) / 2))
-    (( top_row < 1 )) && top_row=1
-
-    # Ocultar cursor y limpiar pantalla
-    printf '\033[?25l\033[H\033[2J'
+    # Limpiar pantalla y dibujar el logo arriba (idéntico a Omarchy)
+    clear_logo
+    printf '\033[?25l' # Ocultar cursor
 
     rm -f "$INSTALL_STATE_FILE" "$INSTALL_LOG_FILE"
     touch "$INSTALL_LOG_FILE"
@@ -1235,26 +1259,9 @@ run_install_with_dashboard() {
     local current_phase="Iniciando instalación de Arch Linux..."
     local tip_idx=0
     local last_tip_time=$SECONDS
-    local frame=0
-
-    local spinners=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
-    local logo_lines=(
-        "       /\\         ▄█████▄   ██████   ▄█████▄  ██   ██"
-        "      /  \\       ███   ███  ██   ██ ███   ▀▀  ██   ██"
-        "     /\\   \\      █████████  ██████  ██        ███████"
-        "    /      \\     ███   ███  ██   ██ ███   ▄▄  ██   ██"
-        "   /   ,,   \\    ███   ███  ██   ██  ▀█████▀  ██   ██"
-        "  /_-''    ''-_\\ ─── A R C H   L I N U X ────────────"
-    )
 
     while kill -0 "$worker_pid" 2>/dev/null; do
-        # Leer dimensiones dinámicamente si cambia el tamaño de la terminal
-        tty_cols=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
-        (( tty_cols > 0 )) || tty_cols=${COLUMNS:-80}
-        tty_rows=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
-        [[ $tty_rows =~ ^[0-9]+$ ]] || tty_rows=${LINES:-24}
-        top_row=$(((tty_rows - content_h) / 2))
-        (( top_row < 1 )) && top_row=1
+        measure_terminal
 
         if [ -f "$INSTALL_STATE_FILE" ]; then
             local state_line
@@ -1286,68 +1293,51 @@ run_install_with_dashboard() {
             last_tip_time=$SECONDS
         fi
         local tip="${tips[$tip_idx]}"
-        local spinner="${spinners[$(( frame % ${#spinners[@]} ))]}"
 
-        # Posicionar el cursor en la fila de inicio (centrado vertical exacto)
-        printf '\033[%d;1H' "$top_row"
+        # Posicionar el cursor justo debajo del logo (línea 12)
+        printf '\033[12;1H'
 
-        # 1. Renderizado del Logo animado con onda de destello neón
-        local wave_pos=$(( frame % 8 ))
-        for idx in "${!logo_lines[@]}"; do
-            local line="${logo_lines[$idx]}"
-            local dist=$(( idx - wave_pos ))
-            (( dist < 0 )) && dist=$(( -dist ))
+        # 1. Título y fase actual
+        printf '\033[2K%s\033[1;37mInstalando Arch Linux...\033[0m  \033[38;5;220m%s\033[0m\n' "$PADDING_LEFT_SPACES" "$current_phase"
 
-            local color_code="\033[38;5;39m"  # Arch Blue base
-            if [ "$dist" -eq 0 ]; then
-                color_code="\033[1;97m"      # Destello blanco puro en el pico de la onda
-            elif [ "$dist" -eq 1 ]; then
-                color_code="\033[38;5;123m"  # Cyan eléctrico brillante
-            elif [ "$dist" -eq 2 ]; then
-                color_code="\033[38;5;81m"   # Cyan vívido
-            elif [ "$dist" -eq 3 ]; then
-                color_code="\033[38;5;75m"   # Azul cielo Arch
-            fi
-
-            center_text "${color_code}${line}\033[0m" "$tty_cols"
-            printf '\r\033[2K\n'
-        done
-
-        # 2. Separador
-        printf '\r\033[2K\n'
-
-        # 3. Título con spinner animado
-        center_text "\033[38;5;81m${spinner}\033[0m  \033[1;37mInstalando Arch Linux\033[0m" "$tty_cols"
-        printf '\r\033[2K\n'
-
-        # 4. Fase actual
-        center_text "\033[38;5;244m${current_phase}\033[0m" "$tty_cols"
-        printf '\r\033[2K\n'
-
-        # 5. Barra de progreso centrada con bloques suaves
-        local bar_w=36
+        # 2. Barra de progreso suave (40 columnas)
+        local bar_w=40
         local filled=$(( last_pct * bar_w / 100 ))
         local empty=$(( bar_w - filled ))
         local bar_str=""
         for ((i=0; i<filled; i++)); do bar_str+="█"; done
         local empty_str=""
         for ((i=0; i<empty; i++)); do empty_str+="░"; done
-        local bar_rendered="\033[38;5;42m${bar_str}\033[38;5;238m${empty_str}\033[0m  \033[1;37m${last_pct}%\033[0m"
-        center_text "$bar_rendered" "$tty_cols"
-        printf '\r\033[2K\n'
+        printf '\033[2K%s\033[38;5;42m[%s\033[38;5;238m%s\033[38;5;42m]\033[0m  \033[1;37m%d%%\033[0m\n' "$PADDING_LEFT_SPACES" "$bar_str" "$empty_str" "$last_pct"
 
-        # 6. Separador
-        printf '\r\033[2K\n'
+        # 3. Tip rotativo
+        printf '\033[2K%s\033[2mTip:\033[0m \033[38;5;42m%s\033[0m\n' "$PADDING_LEFT_SPACES" "$tip"
 
-        # 7. Tip centrado
-        center_text "\033[2mTip:\033[0m \033[38;5;42m${tip}\033[0m" "$tty_cols"
-        printf '\r\033[2K\n'
+        # 4. Separador
+        printf '\033[2K\n'
 
-        # Limpiar cualquier residuo inferior
+        # 5. Salida de log en vivo (Live Log Stream idéntico a Omarchy)
+        local log_rows=$(( TERM_HEIGHT - 17 ))
+        (( log_rows < 4 )) && log_rows=4
+        (( log_rows > 18 )) && log_rows=18
+        local max_w=$(( TERM_WIDTH - PADDING_LEFT - 6 ))
+        (( max_w < 20 )) && max_w=20
+
+        mapfile -t lines_tail < <(tail -n "$log_rows" "$INSTALL_LOG_FILE" 2>/dev/null)
+        for ((i=0; i<log_rows; i++)); do
+            local l="${lines_tail[i]:-}"
+            if (( ${#l} > max_w )); then
+                l="${l:0:$max_w}..."
+            fi
+            if [ -n "$l" ]; then
+                printf '\033[2K%s\033[38;5;244m  → %s\033[0m\n' "$PADDING_LEFT_SPACES" "$l"
+            else
+                printf '\033[2K\n'
+            fi
+        done
         printf '\033[J'
 
-        frame=$(( frame + 1 ))
-        sleep 0.25
+        sleep 0.15
     done
 
     wait "$worker_pid"
@@ -1356,18 +1346,51 @@ run_install_with_dashboard() {
     # Restaurar cursor visible
     printf '\033[?25h'
 
+    # MANEJO DE ERRORES: Muestra el error y permite navegar el registro completo
     if [ "$worker_exit" -ne 0 ]; then
-        printf '\033[H\033[2J'
+        clear_logo
         echo
-        say --foreground 1 "¡ERROR DURANTE LA INSTALACIÓN (Código de salida: $worker_exit)!"
-        say "Fase: $current_phase"
+        say --foreground 1 "¡LA INSTALACIÓN SE DETUVO DEBIDO A UN ERROR (Código: $worker_exit)!"
         echo
-        say --foreground 8 "Últimas líneas del registro (/tmp/arch-install.log):"
+        say "Fase en la que ocurrió el fallo: $current_phase"
         echo
-        tail -n 18 "$INSTALL_LOG_FILE" 2>/dev/null | sed "s/^/${PADDING_LEFT_SPACES}/"
+        say --foreground 3 "Últimas líneas del registro (/tmp/arch-install.log):"
         echo
-        say "Puedes revisar el registro completo con: cat /tmp/arch-install.log"
-        exit "$worker_exit"
+        local max_tail_w=$((TERM_WIDTH - PADDING_LEFT - 6))
+        (( max_tail_w < 20 )) && max_tail_w=20
+        tail -n 18 "$INSTALL_LOG_FILE" 2>/dev/null | while IFS= read -r line; do
+            if (( ${#line} > max_tail_w )); then
+                line="${line:0:$max_tail_w}..."
+            fi
+            echo -e "${PADDING_LEFT_SPACES}\033[38;5;244m  → ${line}\033[0m"
+        done
+        echo
+        say "Revisa el registro completo o presiona Enter para salir:"
+        echo
+
+        while true; do
+            local choice
+            choice=$(g_choose --header "Opciones de recuperación:" "Ver registro completo (visor less)" "Salir a la consola de Arch Linux")
+            case "$choice" in
+                *"Ver registro"*)
+                    if command -v less >/dev/null 2>&1; then
+                        less "$INSTALL_LOG_FILE"
+                    else
+                        cat "$INSTALL_LOG_FILE"
+                        read -r -p "Presiona Enter para continuar..."
+                    fi
+                    clear_logo
+                    echo
+                    say --foreground 1 "¡LA INSTALACIÓN SE DETUVO DEBIDO A UN ERROR (Código: $worker_exit)!"
+                    echo
+                    say "Fase en la que ocurrió el fallo: $current_phase"
+                    echo
+                    ;;
+                *)
+                    exit "$worker_exit"
+                    ;;
+            esac
+        done
     fi
 
     local elapsed=$(( SECONDS - start_epoch ))
@@ -1380,19 +1403,12 @@ run_install_with_dashboard() {
         duration_str="${secs}s"
     fi
 
-    # Pantalla final de finalización centrada vertical y horizontalmente
-    local finish_h=11
-    local f_top=$(((tty_rows - finish_h) / 2))
-    (( f_top < 1 )) && f_top=1
-    printf '\033[H\033[2J\033[%d;1H' "$f_top"
-
-    while IFS= read -r line; do
-        center_text "\033[38;5;42m${line}\033[0m" "$tty_cols"
-    done <<< "$LOGO_TEXT"
+    # PANTALLA FINAL: Instalación exitosa al estilo Omarchy (arriba con padding)
+    clear_logo
     echo
-    center_text "\033[1;32m¡Arch Linux instalado con éxito en ${duration_str}!\033[0m" "$tty_cols"
+    say --foreground 2 "¡Arch Linux instalado con éxito en ${duration_str}!"
     echo
-    center_text "\033[38;5;242mEl sistema está configurado y listo para iniciar directamente en Hyprland.\033[0m" "$tty_cols"
+    say --foreground 8 "El sistema está configurado y listo para iniciar directamente en Hyprland."
     echo
     echo
 
