@@ -6,7 +6,7 @@ set -e
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ISO_DIR="$REPO_DIR/iso"
-WORK_DIR="/tmp/archiso-mrdemonc-work"
+WORK_DIR="/var/tmp/archiso-mrdemonc-work"
 OUT_DIR="$REPO_DIR/out"
 
 # Colores
@@ -31,14 +31,30 @@ else
     echo -e "${GREEN}[1/4] 'archiso' ya está instalado.${NC}"
 fi
 
+# Verificar y sincronizar estructura del perfil si faltan directorios de boot
+if [ ! -d "$ISO_DIR/syslinux" ] || [ ! -d "$ISO_DIR/efiboot" ]; then
+    echo -e "${YELLOW}[2/4] Completando estructura de arranque desde /usr/share/archiso/configs/releng...${NC}"
+    for d in syslinux efiboot grub; do
+        if [ ! -d "$ISO_DIR/$d" ] && [ -d "/usr/share/archiso/configs/releng/$d" ]; then
+            cp -r "/usr/share/archiso/configs/releng/$d" "$ISO_DIR/"
+        fi
+    done
+    if [ ! -f "$ISO_DIR/pacman.conf" ] && [ -f "/usr/share/archiso/configs/releng/pacman.conf" ]; then
+        cp "/usr/share/archiso/configs/releng/pacman.conf" "$ISO_DIR/"
+    fi
+fi
+
 # Actualizar el script instalador dentro de la ISO
 echo -e "${YELLOW}[2/4] Sincronizando instalador y bienvenida en el perfil de la ISO...${NC}"
+mkdir -p "$ISO_DIR/airootfs/usr/local/bin"
 cp -f "$REPO_DIR/arch-iso-install.sh" "$ISO_DIR/airootfs/usr/local/bin/mrdemonc-installer"
 chmod +x "$ISO_DIR/airootfs/usr/local/bin/mrdemonc-installer"
 
+
 # Limpiar trabajo previo
-echo -e "${YELLOW}[3/4] Preparando directorios temporales de compilación...${NC}"
+echo -e "${YELLOW}[3/4] Preparando directorios de compilación (usando /var/tmp)...${NC}"
 sudo rm -rf "$WORK_DIR"
+sudo rm -rf "/tmp/archiso-mrdemonc-work"
 mkdir -p "$OUT_DIR"
 
 # Ejecutar compilación de la ISO con mkarchiso
