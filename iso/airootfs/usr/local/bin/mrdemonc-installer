@@ -38,24 +38,26 @@ export GUM_CONFIRM_SELECTED_BACKGROUND="2"
 export GUM_CONFIRM_UNSELECTED_FOREGROUND="7"
 export GUM_CONFIRM_UNSELECTED_BACKGROUND="0"
 
-# Logo ARCH en tipografía de bloques (49 columnas)
+# Logo ARCH estilizado con silueta icónica y tipografía moderna (53 columnas, 6 líneas)
 LOGO_TEXT=$(cat << "EOF"
-  ▄███████▄    ▄████████▄     ▄███████▄   ▄█   █▄
- ███     ███   ███    ███    ███     ▀▀   ███ ███
- ███     ███   ███    ███    ███          ███ ███
- ███████████   █████████▀    ███          ███████
- ███     ███   ███  ███      ███          ███ ███
- ███     ███   ███   ███     ███     ▄▄   ███ ███
- ███     ███   ███    ███     ▀███████▀   ███ ███
+       /\         ▄█████▄   ██████   ▄█████▄  ██   ██
+      /  \       ███   ███  ██   ██ ███   ▀▀  ██   ██
+     /\   \      █████████  ██████  ██        ███████
+    /      \     ███   ███  ██   ██ ███   ▄▄  ██   ██
+   /   ,,   \    ███   ███  ██   ██  ▀█████▀  ██   ██
+  /_-''    ''-_\ ─── A R C H   L I N U X ────────────
 EOF
 )
-LOGO_WIDTH=49
-LOGO_HEIGHT=7
+LOGO_WIDTH=53
+LOGO_HEIGHT=6
 
-# Medición dinámica del ancho del terminal y cálculo de padding para centrado
+# Medición dinámica de columnas y filas del terminal y cálculo de padding para centrado
 measure_terminal() {
     TERM_WIDTH=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
     (( TERM_WIDTH > 0 )) || TERM_WIDTH=${COLUMNS:-80}
+
+    TERM_HEIGHT=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
+    [[ $TERM_HEIGHT =~ ^[0-9]+$ ]] || TERM_HEIGHT=${LINES:-24}
 
     PADDING_LEFT=$(((TERM_WIDTH - LOGO_WIDTH) / 2))
     (( PADDING_LEFT < 0 )) && PADDING_LEFT=0
@@ -110,17 +112,15 @@ g_style() {
 }
 
 clear_logo() {
+    local est_height="${1:-14}"
     measure_terminal
-    printf "\033[H\033[2J"
-    if command -v gum >/dev/null 2>&1; then
-        gum style --foreground 2 --padding "1 0 0 $PADDING_LEFT" "$LOGO_TEXT"
-    else
-        echo ""
-        while IFS= read -r line; do
-            echo -e "${PADDING_LEFT_SPACES}${GREEN}${line}${NC}"
-        done <<< "$LOGO_TEXT"
-        echo ""
-    fi
+    local top_pad=$(((TERM_HEIGHT - est_height) / 2))
+    (( top_pad < 1 )) && top_pad=1
+    printf "\033[H\033[2J\033[%d;1H" "$top_pad"
+    while IFS= read -r line; do
+        center_text "\033[38;5;39m${line}\033[0m" "$TERM_WIDTH"
+    done <<< "$LOGO_TEXT"
+    echo
 }
 
 say() {
@@ -982,12 +982,12 @@ perform_installation_worker() {
     UCODE_LINE=""
     [ -n "$UCODE_PKG" ] && UCODE_LINE="initrd  /$UCODE_PKG.img"
 
-    cat << CHROOT_SCRIPT > /mnt/tmp/setup_chroot.sh
+    cat << CHROOT_SCRIPT > /mnt/root/setup_chroot.sh
 #!/usr/bin/env bash
 set -e
 
 ln -sf /usr/share/zoneinfo/$SYS_TIMEZONE /etc/localtime
-hwclock --systohc
+hwclock --systohc 2>/dev/null || true
 
 sed -i "s/#$SYS_LOCALE UTF-8/$SYS_LOCALE UTF-8/" /etc/locale.gen
 sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen 2>/dev/null || true
@@ -1003,7 +1003,7 @@ cat << HOSTS > /etc/hosts
 HOSTS
 
 echo "root:$MASTER_PASS" | chpasswd
-useradd -m -g users -G wheel,video,audio,storage,optical,network -s /usr/bin/zsh "$SYS_USER"
+id -u "$SYS_USER" &>/dev/null || useradd -m -g users -G wheel,video,audio,storage,optical,network -s /usr/bin/zsh "$SYS_USER"
 echo "$SYS_USER:$MASTER_PASS" | chpasswd
 
 echo "%wheel ALL=(ALL:ALL) ALL" > /etc/sudoers.d/wheel
@@ -1054,7 +1054,7 @@ mkdir -p /etc/systemd/system/getty@tty1.service.d
 cat << GETTY_CONF > /etc/systemd/system/getty@tty1.service.d/autologin.conf
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin $SYS_USER %I \$TERM
+ExecStart=-/usr/bin/agetty --noreset --noissue --autologin $SYS_USER - \$TERM
 Type=idle
 GETTY_CONF
 
@@ -1087,9 +1087,9 @@ fi
 
 CHROOT_SCRIPT
 
-    chmod +x /mnt/tmp/setup_chroot.sh
-    arch-chroot /mnt /tmp/setup_chroot.sh
-    rm -f /mnt/tmp/setup_chroot.sh
+    chmod +x /mnt/root/setup_chroot.sh
+    arch-chroot /mnt /root/setup_chroot.sh
+    rm -f /mnt/root/setup_chroot.sh
 
     set_phase "Desplegando entorno gráfico MrDemonc-SHELL" 88
     DEST_REPO="/mnt/home/$SYS_USER/Documentos/MrDemonc-SHELL"
@@ -1215,24 +1215,14 @@ run_install_with_dashboard() {
     local tty_rows=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
     [[ $tty_rows =~ ^[0-9]+$ ]] || tty_rows=${LINES:-24}
 
-    # Centrado vertical idéntico a Omarchy
-    local content_h=$((LOGO_HEIGHT + 7))
+    # Altura del bloque completo del dashboard:
+    # 6 líneas de logo + 1 separador + 1 título + 1 fase + 1 barra + 1 separador + 1 tip = 12 líneas
+    local content_h=12
     local top_row=$(((tty_rows - content_h) / 2))
-    (( top_row < 0 )) && top_row=0
-    local dynamic_row=$((top_row + LOGO_HEIGHT + 2))
+    (( top_row < 1 )) && top_row=1
 
     # Ocultar cursor y limpiar pantalla
     printf '\033[?25l\033[H\033[2J'
-
-    # Dibujar logo centrado una vez en la posición inicial
-    printf '\033[%d;1H' "$((top_row + 1))"
-    if command -v gum >/dev/null 2>&1; then
-        gum style --foreground 2 --padding "0 0 0 $PADDING_LEFT" "$LOGO_TEXT"
-    else
-        while IFS= read -r line; do
-            echo -e "${PADDING_LEFT_SPACES}${GREEN}${line}${NC}"
-        done <<< "$LOGO_TEXT"
-    fi
 
     rm -f "$INSTALL_STATE_FILE" "$INSTALL_LOG_FILE"
     touch "$INSTALL_LOG_FILE"
@@ -1245,8 +1235,27 @@ run_install_with_dashboard() {
     local current_phase="Iniciando instalación de Arch Linux..."
     local tip_idx=0
     local last_tip_time=$SECONDS
+    local frame=0
+
+    local spinners=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    local logo_lines=(
+        "       /\\         ▄█████▄   ██████   ▄█████▄  ██   ██"
+        "      /  \\       ███   ███  ██   ██ ███   ▀▀  ██   ██"
+        "     /\\   \\      █████████  ██████  ██        ███████"
+        "    /      \\     ███   ███  ██   ██ ███   ▄▄  ██   ██"
+        "   /   ,,   \\    ███   ███  ██   ██  ▀█████▀  ██   ██"
+        "  /_-''    ''-_\\ ─── A R C H   L I N U X ────────────"
+    )
 
     while kill -0 "$worker_pid" 2>/dev/null; do
+        # Leer dimensiones dinámicamente si cambia el tamaño de la terminal
+        tty_cols=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
+        (( tty_cols > 0 )) || tty_cols=${COLUMNS:-80}
+        tty_rows=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
+        [[ $tty_rows =~ ^[0-9]+$ ]] || tty_rows=${LINES:-24}
+        top_row=$(((tty_rows - content_h) / 2))
+        (( top_row < 1 )) && top_row=1
+
         if [ -f "$INSTALL_STATE_FILE" ]; then
             local state_line
             state_line=$(cat "$INSTALL_STATE_FILE" 2>/dev/null || true)
@@ -1277,16 +1286,45 @@ run_install_with_dashboard() {
             last_tip_time=$SECONDS
         fi
         local tip="${tips[$tip_idx]}"
+        local spinner="${spinners[$(( frame % ${#spinners[@]} ))]}"
 
-        # Renderizado estático-dinámico sin parpadeo (usando posicionamiento de cursor ANSI)
-        printf '\033[%d;1H' "$dynamic_row"
+        # Posicionar el cursor en la fila de inicio (centrado vertical exacto)
+        printf '\033[%d;1H' "$top_row"
 
-        center_text "\033[1;37mInstalando Arch Linux\033[0m" "$tty_cols"
+        # 1. Renderizado del Logo animado con onda de destello neón
+        local wave_pos=$(( frame % 8 ))
+        for idx in "${!logo_lines[@]}"; do
+            local line="${logo_lines[$idx]}"
+            local dist=$(( idx - wave_pos ))
+            (( dist < 0 )) && dist=$(( -dist ))
+
+            local color_code="\033[38;5;39m"  # Arch Blue base
+            if [ "$dist" -eq 0 ]; then
+                color_code="\033[1;97m"      # Destello blanco puro en el pico de la onda
+            elif [ "$dist" -eq 1 ]; then
+                color_code="\033[38;5;123m"  # Cyan eléctrico brillante
+            elif [ "$dist" -eq 2 ]; then
+                color_code="\033[38;5;81m"   # Cyan vívido
+            elif [ "$dist" -eq 3 ]; then
+                color_code="\033[38;5;75m"   # Azul cielo Arch
+            fi
+
+            center_text "${color_code}${line}\033[0m" "$tty_cols"
+            printf '\r\033[2K\n'
+        done
+
+        # 2. Separador
         printf '\r\033[2K\n'
 
-        center_text "\033[38;5;242m${current_phase}\033[0m" "$tty_cols"
+        # 3. Título con spinner animado
+        center_text "\033[38;5;81m${spinner}\033[0m  \033[1;37mInstalando Arch Linux\033[0m" "$tty_cols"
         printf '\r\033[2K\n'
 
+        # 4. Fase actual
+        center_text "\033[38;5;244m${current_phase}\033[0m" "$tty_cols"
+        printf '\r\033[2K\n'
+
+        # 5. Barra de progreso centrada con bloques suaves
         local bar_w=36
         local filled=$(( last_pct * bar_w / 100 ))
         local empty=$(( bar_w - filled ))
@@ -1298,11 +1336,18 @@ run_install_with_dashboard() {
         center_text "$bar_rendered" "$tty_cols"
         printf '\r\033[2K\n'
 
+        # 6. Separador
+        printf '\r\033[2K\n'
+
+        # 7. Tip centrado
         center_text "\033[2mTip:\033[0m \033[38;5;42m${tip}\033[0m" "$tty_cols"
         printf '\r\033[2K\n'
+
+        # Limpiar cualquier residuo inferior
         printf '\033[J'
 
-        sleep 0.5
+        frame=$(( frame + 1 ))
+        sleep 0.25
     done
 
     wait "$worker_pid"
@@ -1335,8 +1380,15 @@ run_install_with_dashboard() {
         duration_str="${secs}s"
     fi
 
-    # Pantalla final de finalización (Finish Screen estilo Omarchy)
-    clear_logo
+    # Pantalla final de finalización centrada vertical y horizontalmente
+    local finish_h=11
+    local f_top=$(((tty_rows - finish_h) / 2))
+    (( f_top < 1 )) && f_top=1
+    printf '\033[H\033[2J\033[%d;1H' "$f_top"
+
+    while IFS= read -r line; do
+        center_text "\033[38;5;42m${line}\033[0m" "$tty_cols"
+    done <<< "$LOGO_TEXT"
     echo
     center_text "\033[1;32m¡Arch Linux instalado con éxito en ${duration_str}!\033[0m" "$tty_cols"
     echo
