@@ -64,6 +64,7 @@ PACKAGES=(
     grim
     slurp
     wl-clipboard
+    wtype
     kitty
     dolphin
     ttf-jetbrains-mono-nerd
@@ -139,6 +140,7 @@ WRAPPER
 
 create_cli_wrapper "shell-apps" "scripts/toggle_apps.sh"
 create_cli_wrapper "shell-wallpaper" "scripts/toggle_wallpaper.sh"
+create_cli_wrapper "clipboard-action" "scripts/clipboard_action.sh"
 
 # Wrapper para shell-theme con soporte CLI ('set', 'list') y GUI
 cat << WRAPPER > "$BIN_DIR/shell-theme"

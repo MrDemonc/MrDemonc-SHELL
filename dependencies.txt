@@ -33,6 +33,7 @@ libnotify
 grim
 slurp
 wl-clipboard
+wtype
 
 # --- Aplicaciones Predeterminadas ---
 kitty
