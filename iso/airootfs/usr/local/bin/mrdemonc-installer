@@ -70,6 +70,17 @@ measure_terminal() {
     export GUM_CONFIRM_PADDING="$PADDING"
 }
 
+center_text() {
+    local text="$1"
+    local width="${2:-$TERM_WIDTH}"
+    local clean
+    clean=$(printf '%b' "$text" | sed -E $'s/\x1b\\[[0-9;?]*[A-Za-z]//g')
+    local len=${#clean}
+    local pad=$(( (width - len) / 2 ))
+    (( pad < 0 )) && pad=0
+    printf '%*s%b\n' "$pad" '' "$text"
+}
+
 # ------------------------------------------------------------------------------
 # 2. Capa de Compatibilidad / Wrappers para gum (con Fallback nativo ANSI)
 # ------------------------------------------------------------------------------
@@ -819,160 +830,159 @@ Idioma / Teclado|$SYS_LOCALE / $KEYMAP"
 install_confirm
 
 # ------------------------------------------------------------------------------
-# 10. Dashboard de Progreso de Instalación
+# 10. Vista de Instalación y Dashboard Dinámico (Estilo Omarchy)
 # ------------------------------------------------------------------------------
-show_progress() {
+INSTALL_STATE_FILE="/tmp/arch-install.state"
+INSTALL_LOG_FILE="/tmp/arch-install.log"
+
+set_phase() {
     local phase="$1"
-    local percent="$2"
-    local tip="$3"
-
-    clear_logo
-    echo
-    say --foreground 6 "$phase"
-    echo
-
-    local bar_w=36
-    local filled=$((percent * bar_w / 100))
-    local empty=$((bar_w - filled))
-    local bar=""
-    for ((i=0; i<filled; i++)); do bar+="█"; done
-    for ((i=0; i<empty; i++)); do bar+="░"; done
-
-    echo -e "${PADDING_LEFT_SPACES}[\033[38;5;42m$bar\033[0m] \033[1;37m${percent}%\033[0m"
-    echo
-    say --foreground 8 "💡 $tip"
-    echo
+    local pct="$2"
+    echo "${phase}|${pct}" > "$INSTALL_STATE_FILE"
 }
 
-# ------------------------------------------------------------------------------
-# 11. EJECUCIÓN DE LA INSTALACIÓN (Disco, BTRFS, Pacstrap, Chroot, MrDemonc-SHELL)
-# ------------------------------------------------------------------------------
-show_progress "[1/6] Particionando almacenamiento en $TARGET_DISK..." 10 "Super + Space abre el lanzador de aplicaciones"
-
-swapoff -a 2>/dev/null || true
-umount -R /mnt 2>/dev/null || true
-cryptsetup close cryptroot 2>/dev/null || true
-
-sgdisk --zap-all "$TARGET_DISK" >/dev/null 2>&1 || true
-wipefs -a "$TARGET_DISK" >/dev/null 2>&1 || true
-partprobe "$TARGET_DISK" 2>/dev/null || true
-udevadm settle 2>/dev/null || true
-sleep 1
-
-# Partición 1: EFI 1024MB | Partición 2: LUKS2 Linux
-sgdisk -n 1:0:+1024M -t 1:ef00 -c 1:"EFI System Partition" "$TARGET_DISK"
-sgdisk -n 2:0:0 -t 2:8300 -c 2:"Linux LUKS Btrfs" "$TARGET_DISK"
-partprobe "$TARGET_DISK" 2>/dev/null || true
-udevadm settle 2>/dev/null || true
-sleep 1
-
-if [[ "$TARGET_DISK" =~ [0-9]$ ]]; then
-    PART_EFI="${TARGET_DISK}p1"
-    PART_ROOT="${TARGET_DISK}p2"
-else
-    PART_EFI="${TARGET_DISK}1"
-    PART_ROOT="${TARGET_DISK}2"
-fi
-
-mkfs.fat -F 32 -n EFI "$PART_EFI" >/dev/null
-
-show_progress "[2/6] Cifrando partición con LUKS2 y formateando BTRFS..." 25 "Super + Return abre la terminal Kitty"
-
-echo -n "$MASTER_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode "$PART_ROOT" -
-echo -n "$MASTER_PASS" | cryptsetup open "$PART_ROOT" cryptroot -
-
-ROOT_DEV="/dev/mapper/cryptroot"
-mkfs.btrfs -f -L ARCHROOT "$ROOT_DEV" >/dev/null
-
-mount "$ROOT_DEV" /mnt
-btrfs subvolume create /mnt/@ >/dev/null
-btrfs subvolume create /mnt/@home >/dev/null
-btrfs subvolume create /mnt/@snapshots >/dev/null
-btrfs subvolume create /mnt/@var_log >/dev/null
-btrfs subvolume create /mnt/@pkg >/dev/null
-umount /mnt
-
-BTRFS_MOUNT_OPTS="noatime,compress=zstd,space_cache=v2"
-mount -o "$BTRFS_MOUNT_OPTS,subvol=@" "$ROOT_DEV" /mnt
-mkdir -p /mnt/{home,.snapshots,var/log,var/cache/pacman/pkg,boot}
-mount -o "$BTRFS_MOUNT_OPTS,subvol=@home" "$ROOT_DEV" /mnt/home
-mount -o "$BTRFS_MOUNT_OPTS,subvol=@snapshots" "$ROOT_DEV" /mnt/.snapshots
-mount -o "$BTRFS_MOUNT_OPTS,subvol=@var_log" "$ROOT_DEV" /mnt/var/log
-mount -o "$BTRFS_MOUNT_OPTS,subvol=@pkg" "$ROOT_DEV" /mnt/var/cache/pacman/pkg
-mount "$PART_EFI" /mnt/boot
-
-UCODE_PKG=""
-if grep -q "AuthenticAMD" /proc/cpuinfo; then
-    UCODE_PKG="amd-ucode"
-elif grep -q "GenuineIntel" /proc/cpuinfo; then
-    UCODE_PKG="intel-ucode"
-fi
-
-BASE_PACKAGES=(
-    base
-    base-devel
-    linux
-    linux-firmware
-    linux-headers
-    btrfs-progs
-    cryptsetup
-    networkmanager
-    sudo
-    git
-    zsh
-    zsh-autosuggestions
-    zsh-syntax-highlighting
-    starship
-    curl
-    wget
-    nano
-    neovim
-    hyprland
-    hyprlock
-    hypridle
-    quickshell
-    kitty
-    dolphin
-    ttf-jetbrains-mono-nerd
-    noto-fonts
-    noto-fonts-cjk
-    noto-fonts-emoji
-    pipewire
-    wireplumber
-    libpulse
-    playerctl
-    bluez
-    bluez-utils
-    upower
-    brightnessctl
-    xdg-utils
-    libnotify
-    grim
-    slurp
-    wl-clipboard
-    wtype
-    python
-    dosfstools
-    efibootmgr
-    e2fsprogs
+tips=(
+    "Super + Space abre el lanzador de aplicaciones de MrDemonc-SHELL"
+    "Super + Return abre la terminal Kitty con la paleta Tokyo Night"
+    "Super + 1..9 cambia rápidamente entre los escritorios virtuales"
+    "Super + Shift + Q cierra la ventana actualmente seleccionada"
+    "Super + E abre el gestor de archivos Dolphin"
+    "Super + V abre el historial del gestor de portapapeles"
+    "La barra superior es totalmente interactiva y modular con Quickshell"
+    "El sistema cuenta con Btrfs, snapshots y cifrado LUKS2 para máxima seguridad"
+    "Zsh viene preconfigurado con autosugerencias, resaltado y Starship prompt"
+    "El inicio de sesión Seamless te lleva directo a Hyprland sin intermediarios"
+    "Super + K muestra la guía completa de atajos de teclado"
+    "Puedes personalizar temas y acentos de color desde ~/.config/hypr"
 )
-[ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
-show_progress "[3/6] Instalando paquetes base con pacstrap..." 50 "Super + 1..9 cambia de espacio de trabajo en Hyprland"
+perform_installation_worker() {
+    set -eo pipefail
+    exec >> "$INSTALL_LOG_FILE" 2>&1
 
-pacstrap -K /mnt "${BASE_PACKAGES[@]}"
-genfstab -U /mnt >> /mnt/etc/fstab
+    set_phase "Preparando particiones en el almacenamiento" 5
+    swapoff -a 2>/dev/null || true
+    umount -R /mnt 2>/dev/null || true
+    cryptsetup close cryptroot 2>/dev/null || true
 
-show_progress "[4/6] Configurando sistema interno, initramfs y systemd-boot..." 75 "Seamless Login: Inicio de sesión instantáneo en tty1"
+    sgdisk --zap-all "$TARGET_DISK" >/dev/null 2>&1 || true
+    wipefs -a "$TARGET_DISK" >/dev/null 2>&1 || true
+    partprobe "$TARGET_DISK" 2>/dev/null || true
+    udevadm settle 2>/dev/null || true
+    sleep 1
 
-ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
-BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
-MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block encrypt btrfs filesystems fsck"
+    # Partición 1: EFI 1024MB | Partición 2: LUKS2 Linux
+    sgdisk -n 1:0:+1024M -t 1:ef00 -c 1:"EFI System Partition" "$TARGET_DISK"
+    sgdisk -n 2:0:0 -t 2:8300 -c 2:"Linux LUKS Btrfs" "$TARGET_DISK"
+    partprobe "$TARGET_DISK" 2>/dev/null || true
+    udevadm settle 2>/dev/null || true
+    sleep 1
 
-UCODE_LINE=""
-[ -n "$UCODE_PKG" ] && UCODE_LINE="initrd  /$UCODE_PKG.img"
+    if [[ "$TARGET_DISK" =~ [0-9]$ ]]; then
+        PART_EFI="${TARGET_DISK}p1"
+        PART_ROOT="${TARGET_DISK}p2"
+    else
+        PART_EFI="${TARGET_DISK}1"
+        PART_ROOT="${TARGET_DISK}2"
+    fi
 
-cat << CHROOT_SCRIPT > /mnt/tmp/setup_chroot.sh
+    set_phase "Formateando partición EFI y configurando LUKS2" 15
+    mkfs.fat -F 32 -n EFI "$PART_EFI" >/dev/null
+
+    echo -n "$MASTER_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode "$PART_ROOT" -
+    echo -n "$MASTER_PASS" | cryptsetup open "$PART_ROOT" cryptroot -
+
+    set_phase "Creando sistema de archivos y subvolúmenes Btrfs" 25
+    ROOT_DEV="/dev/mapper/cryptroot"
+    mkfs.btrfs -f -L ARCHROOT "$ROOT_DEV" >/dev/null
+
+    mount "$ROOT_DEV" /mnt
+    btrfs subvolume create /mnt/@ >/dev/null
+    btrfs subvolume create /mnt/@home >/dev/null
+    btrfs subvolume create /mnt/@snapshots >/dev/null
+    btrfs subvolume create /mnt/@var_log >/dev/null
+    btrfs subvolume create /mnt/@pkg >/dev/null
+    umount /mnt
+
+    BTRFS_MOUNT_OPTS="noatime,compress=zstd,space_cache=v2"
+    mount -o "$BTRFS_MOUNT_OPTS,subvol=@" "$ROOT_DEV" /mnt
+    mkdir -p /mnt/{home,.snapshots,var/log,var/cache/pacman/pkg,boot}
+    mount -o "$BTRFS_MOUNT_OPTS,subvol=@home" "$ROOT_DEV" /mnt/home
+    mount -o "$BTRFS_MOUNT_OPTS,subvol=@snapshots" "$ROOT_DEV" /mnt/.snapshots
+    mount -o "$BTRFS_MOUNT_OPTS,subvol=@var_log" "$ROOT_DEV" /mnt/var/log
+    mount -o "$BTRFS_MOUNT_OPTS,subvol=@pkg" "$ROOT_DEV" /mnt/var/cache/pacman/pkg
+    mount "$PART_EFI" /mnt/boot
+
+    set_phase "Instalando paquetes base con pacstrap" 35
+    UCODE_PKG=""
+    if grep -q "AuthenticAMD" /proc/cpuinfo; then
+        UCODE_PKG="amd-ucode"
+    elif grep -q "GenuineIntel" /proc/cpuinfo; then
+        UCODE_PKG="intel-ucode"
+    fi
+
+    BASE_PACKAGES=(
+        base
+        base-devel
+        linux
+        linux-firmware
+        linux-headers
+        btrfs-progs
+        cryptsetup
+        networkmanager
+        sudo
+        git
+        zsh
+        zsh-autosuggestions
+        zsh-syntax-highlighting
+        starship
+        curl
+        wget
+        nano
+        neovim
+        hyprland
+        hyprlock
+        hypridle
+        quickshell
+        kitty
+        dolphin
+        ttf-jetbrains-mono-nerd
+        noto-fonts
+        noto-fonts-cjk
+        noto-fonts-emoji
+        pipewire
+        wireplumber
+        libpulse
+        playerctl
+        bluez
+        bluez-utils
+        upower
+        brightnessctl
+        xdg-utils
+        libnotify
+        grim
+        slurp
+        wl-clipboard
+        wtype
+        python
+        dosfstools
+        efibootmgr
+        e2fsprogs
+    )
+    [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
+
+    pacstrap -K /mnt "${BASE_PACKAGES[@]}"
+    genfstab -U /mnt >> /mnt/etc/fstab
+
+    set_phase "Configurando sistema interno, usuarios e initramfs" 75
+    ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
+    BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
+    MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block encrypt btrfs filesystems fsck"
+
+    UCODE_LINE=""
+    [ -n "$UCODE_PKG" ] && UCODE_LINE="initrd  /$UCODE_PKG.img"
+
+    cat << CHROOT_SCRIPT > /mnt/tmp/setup_chroot.sh
 #!/usr/bin/env bash
 set -e
 
@@ -1077,64 +1087,63 @@ fi
 
 CHROOT_SCRIPT
 
-chmod +x /mnt/tmp/setup_chroot.sh
-arch-chroot /mnt /tmp/setup_chroot.sh
-rm -f /mnt/tmp/setup_chroot.sh
+    chmod +x /mnt/tmp/setup_chroot.sh
+    arch-chroot /mnt /tmp/setup_chroot.sh
+    rm -f /mnt/tmp/setup_chroot.sh
 
-show_progress "[5/6] Desplegando MrDemonc-SHELL (Hyprland + Quickshell)..." 90 "Presiona Super + K para ver todos los atajos de teclado"
+    set_phase "Desplegando entorno gráfico MrDemonc-SHELL" 88
+    DEST_REPO="/mnt/home/$SYS_USER/Documentos/MrDemonc-SHELL"
+    mkdir -p "/mnt/home/$SYS_USER/Documentos"
 
-DEST_REPO="/mnt/home/$SYS_USER/Documentos/MrDemonc-SHELL"
-mkdir -p "/mnt/home/$SYS_USER/Documentos"
+    if [ -d "/usr/share/mrdemonc-shell" ]; then
+        cp -a /usr/share/mrdemonc-shell "$DEST_REPO"
+    elif [ -d "/home/demonc-test/Documentos/MrDemonc-SHELL" ]; then
+        cp -a "/home/demonc-test/Documentos/MrDemonc-SHELL" "$DEST_REPO"
+    else
+        git clone https://github.com/MrDemonc/MrDemonc-SHELL.git "$DEST_REPO" || true
+    fi
 
-if [ -d "/usr/share/mrdemonc-shell" ]; then
-    cp -a /usr/share/mrdemonc-shell "$DEST_REPO"
-elif [ -d "/home/demonc-test/Documentos/MrDemonc-SHELL" ]; then
-    cp -a "/home/demonc-test/Documentos/MrDemonc-SHELL" "$DEST_REPO"
-else
-    git clone https://github.com/MrDemonc/MrDemonc-SHELL.git "$DEST_REPO" || true
-fi
+    chmod +x "$DEST_REPO"/scripts/*.sh 2>/dev/null || true
+    chmod +x "$DEST_REPO"/scripts/*.py 2>/dev/null || true
 
-chmod +x "$DEST_REPO"/scripts/*.sh 2>/dev/null || true
-chmod +x "$DEST_REPO"/scripts/*.py 2>/dev/null || true
+    USER_HOME="/mnt/home/$SYS_USER"
+    mkdir -p "$USER_HOME/.config/hypr"
+    mkdir -p "$USER_HOME/.config/kitty"
+    mkdir -p "$USER_HOME/.config/quickshell"
+    mkdir -p "$USER_HOME/.local/bin"
+    mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
+    mkdir -p "$USER_HOME/Pictures/Wallpapers"
 
-USER_HOME="/mnt/home/$SYS_USER"
-mkdir -p "$USER_HOME/.config/hypr"
-mkdir -p "$USER_HOME/.config/kitty"
-mkdir -p "$USER_HOME/.config/quickshell"
-mkdir -p "$USER_HOME/.local/bin"
-mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
-mkdir -p "$USER_HOME/Pictures/Wallpapers"
+    if [ -d "$DEST_REPO/hypr" ]; then
+        cp -f "$DEST_REPO/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
+        cp -f "$DEST_REPO/hypr/keybinds.lua" "$USER_HOME/.config/hypr/keybinds.lua"
+        cp -f "$DEST_REPO/hypr/theme_colors.lua" "$USER_HOME/.config/hypr/theme_colors.lua" 2>/dev/null || true
+        cp -f "$DEST_REPO/hypr/hyprlock.conf" "$USER_HOME/.config/hypr/hyprlock.conf" 2>/dev/null || true
+        cp -f "$DEST_REPO/hypr/hyprlock_colors.conf" "$USER_HOME/.config/hypr/hyprlock_colors.conf" 2>/dev/null || true
+        cp -f "$DEST_REPO/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf" 2>/dev/null || true
 
-if [ -d "$DEST_REPO/hypr" ]; then
-    cp -f "$DEST_REPO/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
-    cp -f "$DEST_REPO/hypr/keybinds.lua" "$USER_HOME/.config/hypr/keybinds.lua"
-    cp -f "$DEST_REPO/hypr/theme_colors.lua" "$USER_HOME/.config/hypr/theme_colors.lua" 2>/dev/null || true
-    cp -f "$DEST_REPO/hypr/hyprlock.conf" "$USER_HOME/.config/hypr/hyprlock.conf" 2>/dev/null || true
-    cp -f "$DEST_REPO/hypr/hyprlock_colors.conf" "$USER_HOME/.config/hypr/hyprlock_colors.conf" 2>/dev/null || true
-    cp -f "$DEST_REPO/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf" 2>/dev/null || true
+        sed "s|userHome .. \"/Documentos/MrDemonc-SHELL\"|\"/home/$SYS_USER/Documentos/MrDemonc-SHELL\"|g" \
+            "$DEST_REPO/hypr/hyprland.lua" > "$USER_HOME/.config/hypr/hyprland.lua"
+        sed -i "s/kb_layout  = \".*\"/kb_layout  = \"$HYPR_KB\"/g" "$USER_HOME/.config/hypr/hyprland.lua"
+    fi
 
-    sed "s|userHome .. \"/Documentos/MrDemonc-SHELL\"|\"/home/$SYS_USER/Documentos/MrDemonc-SHELL\"|g" \
-        "$DEST_REPO/hypr/hyprland.lua" > "$USER_HOME/.config/hypr/hyprland.lua"
-    sed -i "s/kb_layout  = \".*\"/kb_layout  = \"$HYPR_KB\"/g" "$USER_HOME/.config/hypr/hyprland.lua"
-fi
-
-cat << WRAP_APPS > "$USER_HOME/.local/bin/shell-apps"
+    cat << WRAP_APPS > "$USER_HOME/.local/bin/shell-apps"
 #!/usr/bin/env bash
 exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_apps.sh "\$@"
 WRAP_APPS
 
-cat << WRAP_WALL > "$USER_HOME/.local/bin/shell-wallpaper"
+    cat << WRAP_WALL > "$USER_HOME/.local/bin/shell-wallpaper"
 #!/usr/bin/env bash
 exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_wallpaper.sh "\$@"
 WRAP_WALL
 
-chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
+    chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
 
-if [ -d "$DEST_REPO/kitty" ]; then
-    cp -f "$DEST_REPO/kitty/kitty.conf" "$USER_HOME/.config/kitty/kitty.conf"
-fi
+    if [ -d "$DEST_REPO/kitty" ]; then
+        cp -f "$DEST_REPO/kitty/kitty.conf" "$USER_HOME/.config/kitty/kitty.conf"
+    fi
 
-cat << QS_CONFIG > "$USER_HOME/.config/quickshell/shell.qml"
+    cat << QS_CONFIG > "$USER_HOME/.config/quickshell/shell.qml"
 import Quickshell
 import "/home/$SYS_USER/Documentos/MrDemonc-SHELL"
 
@@ -1142,7 +1151,7 @@ ShellRoot {
 }
 QS_CONFIG
 
-cat << 'THEME_TOML' > "$USER_HOME/.local/state/mrdemonc/current/theme/colors.toml"
+    cat << 'THEME_TOML' > "$USER_HOME/.local/state/mrdemonc/current/theme/colors.toml"
 accent = "#89b4fa"
 background = "#1e1e2e"
 color0 = "#45475a"
@@ -1164,11 +1173,11 @@ color15 = "#a6adc8"
 foreground = "#cdd6f4"
 THEME_TOML
 
-if [ -f "$DEST_REPO/scripts/theme_manager.py" ]; then
-    python3 "$DEST_REPO/scripts/theme_manager.py" apply catppuccin-mocha 2>/dev/null || true
-fi
+    if [ -f "$DEST_REPO/scripts/theme_manager.py" ]; then
+        python3 "$DEST_REPO/scripts/theme_manager.py" apply catppuccin-mocha 2>/dev/null || true
+    fi
 
-cat << STARSHIP_CONF > "$USER_HOME/.config/starship.toml"
+    cat << STARSHIP_CONF > "$USER_HOME/.config/starship.toml"
 add_newline = false
 format = "[╭─](bold cyan)\$all[╰─❯ ](bold cyan)"
 
@@ -1189,27 +1198,161 @@ symbol = " "
 style = "bold red"
 STARSHIP_CONF
 
-arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER"
+    arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER"
 
-show_progress "[6/6] Finalizando desmontaje de volúmenes..." 100 "Sistema listo para el primer arranque"
+    set_phase "Finalizando instalación y sincronizando almacenamiento" 98
+    sync
+    umount -R /mnt 2>/dev/null || true
+    cryptsetup close cryptroot 2>/dev/null || true
 
-sync
-umount -R /mnt 2>/dev/null || true
-cryptsetup close cryptroot 2>/dev/null || true
+    set_phase "Instalación completada" 100
+}
 
-# ------------------------------------------------------------------------------
-# 12. PANTALLA FINAL: Instalación Exitosa y Reinicio
-# ------------------------------------------------------------------------------
-clear_logo
-echo
-say --foreground 2 "¡Instalación de Arch Linux completada con éxito!"
-say "El sistema está configurado y listo para iniciar directamente en Hyprland."
-echo
+run_install_with_dashboard() {
+    local start_epoch=$SECONDS
+    local tty_cols=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
+    (( tty_cols > 0 )) || tty_cols=${COLUMNS:-80}
+    local tty_rows=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
+    [[ $tty_rows =~ ^[0-9]+$ ]] || tty_rows=${LINES:-24}
 
-if g_confirm --affirmative "Reiniciar ahora" --negative "Salir a la consola" "¿Deseas reiniciar el equipo?"; then
-    say --foreground 6 "Reiniciando equipo..."
-    sleep 1
-    reboot
-else
-    say --foreground 8 "Puedes reiniciar manualmente escribiendo: reboot"
-fi
+    # Centrado vertical idéntico a Omarchy
+    local content_h=$((LOGO_HEIGHT + 7))
+    local top_row=$(((tty_rows - content_h) / 2))
+    (( top_row < 0 )) && top_row=0
+    local dynamic_row=$((top_row + LOGO_HEIGHT + 2))
+
+    # Ocultar cursor y limpiar pantalla
+    printf '\033[?25l\033[H\033[2J'
+
+    # Dibujar logo centrado una vez en la posición inicial
+    printf '\033[%d;1H' "$((top_row + 1))"
+    if command -v gum >/dev/null 2>&1; then
+        gum style --foreground 2 --padding "0 0 0 $PADDING_LEFT" "$LOGO_TEXT"
+    else
+        while IFS= read -r line; do
+            echo -e "${PADDING_LEFT_SPACES}${GREEN}${line}${NC}"
+        done <<< "$LOGO_TEXT"
+    fi
+
+    rm -f "$INSTALL_STATE_FILE" "$INSTALL_LOG_FILE"
+    touch "$INSTALL_LOG_FILE"
+
+    # Lanzar trabajador de instalación en segundo plano con registros redirigidos
+    perform_installation_worker &
+    local worker_pid=$!
+
+    local last_pct=5
+    local current_phase="Iniciando instalación de Arch Linux..."
+    local tip_idx=0
+    local last_tip_time=$SECONDS
+
+    while kill -0 "$worker_pid" 2>/dev/null; do
+        if [ -f "$INSTALL_STATE_FILE" ]; then
+            local state_line
+            state_line=$(cat "$INSTALL_STATE_FILE" 2>/dev/null || true)
+            if [ -n "$state_line" ]; then
+                IFS="|" read -r current_phase raw_pct <<< "$state_line"
+                if [[ "$raw_pct" =~ ^[0-9]+$ ]]; then
+                    if [ "$raw_pct" -gt "$last_pct" ]; then
+                        last_pct=$raw_pct
+                    fi
+                fi
+            fi
+        fi
+
+        # Si estamos en pacstrap, extrapolar avance en tiempo real según paquetes instalados en /mnt
+        if [[ "$current_phase" =~ pacstrap ]]; then
+            local pkg_count
+            pkg_count=$(ls -1 /mnt/var/lib/pacman/local 2>/dev/null | wc -l)
+            if [ "$pkg_count" -gt 0 ]; then
+                local dynamic_calc=$(( 35 + (pkg_count * 38 / 115) ))
+                if [ "$dynamic_calc" -gt "$last_pct" ] && [ "$dynamic_calc" -lt 75 ]; then
+                    last_pct=$dynamic_calc
+                fi
+            fi
+        fi
+
+        if (( SECONDS - last_tip_time >= 8 )); then
+            tip_idx=$(( (tip_idx + 1) % ${#tips[@]} ))
+            last_tip_time=$SECONDS
+        fi
+        local tip="${tips[$tip_idx]}"
+
+        # Renderizado estático-dinámico sin parpadeo (usando posicionamiento de cursor ANSI)
+        printf '\033[%d;1H' "$dynamic_row"
+
+        center_text "\033[1;37mInstalando Arch Linux\033[0m" "$tty_cols"
+        printf '\r\033[2K\n'
+
+        center_text "\033[38;5;242m${current_phase}\033[0m" "$tty_cols"
+        printf '\r\033[2K\n'
+
+        local bar_w=36
+        local filled=$(( last_pct * bar_w / 100 ))
+        local empty=$(( bar_w - filled ))
+        local bar_str=""
+        for ((i=0; i<filled; i++)); do bar_str+="█"; done
+        local empty_str=""
+        for ((i=0; i<empty; i++)); do empty_str+="░"; done
+        local bar_rendered="\033[38;5;42m${bar_str}\033[38;5;238m${empty_str}\033[0m  \033[1;37m${last_pct}%\033[0m"
+        center_text "$bar_rendered" "$tty_cols"
+        printf '\r\033[2K\n'
+
+        center_text "\033[2mTip:\033[0m \033[38;5;42m${tip}\033[0m" "$tty_cols"
+        printf '\r\033[2K\n'
+        printf '\033[J'
+
+        sleep 0.5
+    done
+
+    wait "$worker_pid"
+    local worker_exit=$?
+
+    # Restaurar cursor visible
+    printf '\033[?25h'
+
+    if [ "$worker_exit" -ne 0 ]; then
+        printf '\033[H\033[2J'
+        echo
+        say --foreground 1 "¡ERROR DURANTE LA INSTALACIÓN (Código de salida: $worker_exit)!"
+        say "Fase: $current_phase"
+        echo
+        say --foreground 8 "Últimas líneas del registro (/tmp/arch-install.log):"
+        echo
+        tail -n 18 "$INSTALL_LOG_FILE" 2>/dev/null | sed "s/^/${PADDING_LEFT_SPACES}/"
+        echo
+        say "Puedes revisar el registro completo con: cat /tmp/arch-install.log"
+        exit "$worker_exit"
+    fi
+
+    local elapsed=$(( SECONDS - start_epoch ))
+    local mins=$(( elapsed / 60 ))
+    local secs=$(( elapsed % 60 ))
+    local duration_str=""
+    if [ "$mins" -gt 0 ]; then
+        duration_str="${mins}m ${secs}s"
+    else
+        duration_str="${secs}s"
+    fi
+
+    # Pantalla final de finalización (Finish Screen estilo Omarchy)
+    clear_logo
+    echo
+    center_text "\033[1;32m¡Arch Linux instalado con éxito en ${duration_str}!\033[0m" "$tty_cols"
+    echo
+    center_text "\033[38;5;242mEl sistema está configurado y listo para iniciar directamente en Hyprland.\033[0m" "$tty_cols"
+    echo
+    echo
+
+    if g_confirm --affirmative "Reiniciar ahora" --negative "Salir a la consola" "¿Deseas reiniciar el equipo ahora?"; then
+        echo
+        say --foreground 6 "Reiniciando equipo..."
+        sleep 1
+        reboot
+    else
+        echo
+        say --foreground 8 "Puedes reiniciar manualmente escribiendo: reboot"
+    fi
+}
+
+run_install_with_dashboard
