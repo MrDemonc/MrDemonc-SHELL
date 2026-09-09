@@ -356,26 +356,59 @@ g_confirm() {
 }
 
 g_table() {
+    local sep="|"
+    local -a args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -s|--separator)
+                sep="$2"
+                args+=("$1" "$2")
+                shift 2
+                ;;
+            *)
+                args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    local raw
+    raw=$(cat)
+
     if command -v gum >/dev/null 2>&1; then
-        gum table "$@"
+        if ! echo "$raw" | gum table "${args[@]}"; then
+            local -a lines
+            mapfile -t lines <<< "$raw"
+            local col1_w=20 col2_w=46
+            printf "┌%s┬%s┐\n" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+            local first=1
+            for l in "${lines[@]}"; do
+                [ -z "$l" ] && continue
+                IFS="$sep" read -r c1 c2 <<< "$l"
+                printf "│ %-${col1_w}s │ %-${col2_w}s │\n" "$c1" "$c2"
+                if [ $first -eq 1 ]; then
+                    printf "├%s┼%s┤\n" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+                    first=0
+                fi
+            done
+            printf "└%s┴%s┘\n" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+        fi
     else
-        local raw
-        raw=$(cat)
         local -a lines
         mapfile -t lines <<< "$raw"
-        local col1_w=20 col2_w=34
-        printf "%s┌%s┬%s┐\n" "$PADDING_LEFT_SPACES" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+        local col1_w=20 col2_w=46
+        printf "┌%s┬%s┐\n" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
         local first=1
         for l in "${lines[@]}"; do
             [ -z "$l" ] && continue
-            IFS="," read -r c1 c2 <<< "$l"
-            printf "%s│ %-${col1_w}s │ %-${col2_w}s │\n" "$PADDING_LEFT_SPACES" "$c1" "$c2"
+            IFS="$sep" read -r c1 c2 <<< "$l"
+            printf "│ %-${col1_w}s │ %-${col2_w}s │\n" "$c1" "$c2"
             if [ $first -eq 1 ]; then
-                printf "%s├%s┼%s┤\n" "$PADDING_LEFT_SPACES" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+                printf "├%s┼%s┤\n" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
                 first=0
             fi
         done
-        printf "%s└%s┴%s┘\n" "$PADDING_LEFT_SPACES" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+        printf "└%s┴%s┘\n" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
     fi
 }
 
@@ -472,7 +505,7 @@ network_wizard() {
 
         local NET_OPTIONS=()
         if [ "$is_online" = true ]; then
-            say --foreground 2 "✔ Conexión a Internet verificada y activa."
+            say --foreground 2 "Conexión a Internet verificada y activa."
             echo
             NET_OPTIONS=(
                 "Continuar al siguiente paso"
@@ -691,17 +724,17 @@ user_form_wizard() {
 
         # Tabla de resumen estilo Omarchy
         step "Resumen de la configuración de usuario"
-        local table_data="Campo,Valor
-Usuario,$SYS_USER
-Contraseña,$(printf "%${#MASTER_PASS}s" | tr ' ' '*')
-Hostname,$SYS_HOSTNAME
-Zona Horaria,$SYS_TIMEZONE
-Idioma,$SYS_LOCALE
-Teclado,$KEYMAP
-Nombre Git,${GIT_USER_NAME:-[Omitido]}
-Correo Git,${GIT_USER_EMAIL:-[Omitido]}"
+        local table_data="Campo|Valor
+Usuario|$SYS_USER
+Contraseña|$(printf "%${#MASTER_PASS}s" | tr ' ' '*')
+Hostname|$SYS_HOSTNAME
+Zona Horaria|$SYS_TIMEZONE
+Idioma|$SYS_LOCALE
+Teclado|$KEYMAP
+Nombre Git|${GIT_USER_NAME:-[Omitido]}
+Correo Git|${GIT_USER_EMAIL:-[Omitido]}"
 
-        echo "$table_data" | g_table -s "," -p | sed "s/^/${PADDING_LEFT_SPACES}/"
+        echo "$table_data" | g_table -s "|" -p | sed "s/^/${PADDING_LEFT_SPACES}/" || true
         echo
 
         if g_confirm --affirmative "Sí, continuar" --negative "No, modificar" "¿Los datos de usuario son correctos?"; then
@@ -766,19 +799,19 @@ install_confirm() {
     say "Se creará una partición EFI y una partición Linux cifrada con LUKS2 (BTRFS)."
     echo
 
-    local table_summary="Parámetro,Configuración
-Disco,$TARGET_DISK
-Cifrado,LUKS2 (Argon2id Automático)
-Sistema de Archivos,BTRFS (@, @home, @snapshots, @var_log, @pkg)
-Usuario,$SYS_USER (Sudo activo)
-Hostname,$SYS_HOSTNAME
-Zona Horaria,$SYS_TIMEZONE
-Idioma / Teclado,$SYS_LOCALE / $KEYMAP"
+    local table_summary="Parámetro|Configuración
+Disco|$TARGET_DISK
+Cifrado|LUKS2 (Argon2id Automático)
+Sistema de Archivos|BTRFS (@, @home, @snapshots, @var_log, @pkg)
+Usuario|$SYS_USER (Sudo activo)
+Hostname|$SYS_HOSTNAME
+Zona Horaria|$SYS_TIMEZONE
+Idioma / Teclado|$SYS_LOCALE / $KEYMAP"
 
-    echo "$table_summary" | g_table -s "," -p | sed "s/^/${PADDING_LEFT_SPACES}/"
+    echo "$table_summary" | g_table -s "|" -p | sed "s/^/${PADDING_LEFT_SPACES}/" || true
     echo
 
-    if ! g_confirm --affirmative "🚀 INSTALAR" --negative "✖ CANCELAR" "¿Comenzar la instalación del sistema ahora?"; then
+    if ! g_confirm --affirmative "INSTALAR" --negative "CANCELAR" "¿Comenzar la instalación del sistema ahora?"; then
         say --foreground 8 "Instalación cancelada por el usuario. No se modificó ningún disco."
         exit 0
     fi
@@ -823,12 +856,14 @@ cryptsetup close cryptroot 2>/dev/null || true
 sgdisk --zap-all "$TARGET_DISK" >/dev/null 2>&1 || true
 wipefs -a "$TARGET_DISK" >/dev/null 2>&1 || true
 partprobe "$TARGET_DISK" 2>/dev/null || true
+udevadm settle 2>/dev/null || true
 sleep 1
 
 # Partición 1: EFI 1024MB | Partición 2: LUKS2 Linux
 sgdisk -n 1:0:+1024M -t 1:ef00 -c 1:"EFI System Partition" "$TARGET_DISK"
 sgdisk -n 2:0:0 -t 2:8300 -c 2:"Linux LUKS Btrfs" "$TARGET_DISK"
 partprobe "$TARGET_DISK" 2>/dev/null || true
+udevadm settle 2>/dev/null || true
 sleep 1
 
 if [[ "$TARGET_DISK" =~ [0-9]$ ]]; then
@@ -1017,8 +1052,14 @@ GETTY_CONF
 su - "$SYS_USER" -c 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' || true
 
 USER_ZSHRC="/home/$SYS_USER/.zshrc"
-if [ -f "\$USER_ZSHRC" ]; then
+touch "\$USER_ZSHRC"
+if ! grep -q "plugins=" "\$USER_ZSHRC" 2>/dev/null; then
+    echo "plugins=(git zsh-autosuggestions zsh-syntax-highlighting)" >> "\$USER_ZSHRC"
+else
     sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "\$USER_ZSHRC" 2>/dev/null || true
+fi
+
+if ! grep -q "exec Hyprland" "\$USER_ZSHRC" 2>/dev/null; then
     cat << 'AUTO_HYPR' >> "\$USER_ZSHRC"
 
 # Auto-start Hyprland en tty1
@@ -1030,9 +1071,9 @@ fi
 
 # Configuración Starship
 mkdir -p "/home/$SYS_USER/.config"
-cat << 'STARSHIP_INIT' >> "\$USER_ZSHRC"
-eval "\$(starship init zsh)"
-STARSHIP_INIT
+if ! grep -q "starship init zsh" "\$USER_ZSHRC" 2>/dev/null; then
+    echo 'eval "$(starship init zsh)"' >> "\$USER_ZSHRC"
+fi
 
 CHROOT_SCRIPT
 
