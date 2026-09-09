@@ -20,8 +20,9 @@ sudo pacman -S --needed \
     pipewire wireplumber libpulse playerctl \
     networkmanager bluez bluez-utils \
     upower brightnessctl xdg-utils libnotify \
-    grim slurp wl-clipboard \
-    kitty dolphin ttf-jetbrains-mono-nerd python
+    grim slurp wl-clipboard wtype \
+    kitty dolphin ttf-jetbrains-mono-nerd \
+    zsh starship python curl git
 ```
 
 ---
@@ -67,16 +68,22 @@ paru -S --needed quickshell
 ### 5. Capturas de Pantalla y Portapapeles
 * **`grim`**: Utilidad Wayland para tomar capturas de pantalla de la pantalla completa.
 * **`slurp`**: Permite seleccionar una región de pantalla interactiva con el ratón.
-* **`wl-clipboard`**: Herramientas `wl-copy` y `wl-paste` para copiar y pegar texto o imágenes en el portapapeles.
+* **`wl-clipboard`**: Herramientas `wl-copy` y `wl-paste` para interactuar con el portapapeles en Wayland.
+* **`wtype`**: Inyector de pulsaciones de teclado virtual para Wayland, utilizado para los atajos globales de copiar, cortar y pegar (`SUPER + C / X / V`).
 
 ### 6. Terminal y Gestor de Archivos
 * **`kitty`**: Emulador de terminal GPU rápido, estilizado y configurado con la paleta de colores Catppuccin Mocha de la shell.
 * **`dolphin`**: Explorador de archivos gráfico (o tu gestor de archivos preferido como Nautilus o Thunar).
 
-### 7. Tipografía e Iconos
+### 7. Shell Interactiva y Prompt
+* **`zsh`**: Intérprete de comandos interactivo moderno.
+* **`oh-my-zsh`**: Framework para administración de plugins y configuración de Zsh.
+* **`starship`**: Prompt personalizable y ultrarrápido configurado con el tema y glifos de MrDemonc (`starship/starship.toml`).
+
+### 8. Tipografía e Iconos
 * **`ttf-jetbrains-mono-nerd`**: Fuente principal de la shell que incluye los glifos e iconos Nerd Fonts (`󰄛`, `󰕾`, `󰂯`, `󰤨`, `󰁹`, etc.) para la barra y popouts.
 
-### 8. Runtime de Scripts
+### 9. Runtime de Scripts
 * **`python`**: Intérprete para los servicios de monitoreo de la barra (red, audio, batería, bluetooth y selector dinámico de temas).
 
 ---

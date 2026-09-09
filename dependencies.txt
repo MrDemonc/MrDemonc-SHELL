@@ -42,5 +42,10 @@ dolphin
 # --- Tipografías con Iconos Nerd Fonts ---
 ttf-jetbrains-mono-nerd
 
+# --- Shell Avanzada & Prompt ---
+zsh
+starship
+
 # --- Intérprete para Backend de Servicios ---
 python
+

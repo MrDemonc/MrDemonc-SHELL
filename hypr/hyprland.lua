@@ -65,6 +65,7 @@ end)
 
 hl.env("XCURSOR_SIZE", "24")
 hl.env("HYPRCURSOR_SIZE", "24")
+hl.env("SHELL", "/usr/bin/zsh")
 hl.env("PATH", binDir .. ":" .. (os.getenv("PATH") or "/usr/local/bin:/usr/bin"))
 
 

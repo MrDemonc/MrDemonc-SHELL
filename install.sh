@@ -23,15 +23,6 @@ HYPR_CONFIG_DIR="$USER_HOME/.config/hypr"
 KITTY_CONFIG_DIR="$USER_HOME/.config/kitty"
 WALLPAPER_DIR="$USER_HOME/Pictures/Wallpapers"
 
-# Opciones por argumentos CLI
-REMOVE_GNOME_OPT=""
-for arg in "$@"; do
-    case "$arg" in
-        --remove-gnome) REMOVE_GNOME_OPT="yes" ;;
-        --keep-gnome)   REMOVE_GNOME_OPT="no" ;;
-    esac
-done
-
 echo -e "${CYAN}${BOLD}"
 echo "=================================================================="
 echo "        INSTALADOR DE QUICKSHELL + HYPRLAND (MrDemonc-SHELL)      "
@@ -44,7 +35,7 @@ echo ""
 # ------------------------------------------------------------------------------
 # 1. Verificación del Sistema Operativo y Gestor de Paquetes
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[1/9] Verificando dependencias del sistema...${NC}"
+echo -e "${YELLOW}[1/10] Verificando dependencias del sistema...${NC}"
 
 PACKAGES=(
     hyprland
@@ -68,6 +59,10 @@ PACKAGES=(
     kitty
     dolphin
     ttf-jetbrains-mono-nerd
+    zsh
+    starship
+    curl
+    git
     python
 )
 
@@ -101,7 +96,7 @@ fi
 # ------------------------------------------------------------------------------
 # 2. Creación de Directorios Necesarios
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[2/9] Creando estructura de directorios del usuario...${NC}"
+echo -e "${YELLOW}[2/10] Creando estructura de directorios del usuario...${NC}"
 mkdir -p "$BIN_DIR"
 mkdir -p "$HYPR_CONFIG_DIR"
 mkdir -p "$KITTY_CONFIG_DIR"
@@ -113,7 +108,7 @@ echo -e "${GREEN}[OK] Directorios listos.${NC}"
 # ------------------------------------------------------------------------------
 # 3. Permisos de Ejecución en Scripts
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[3/9] Configurando permisos de ejecución en scripts...${NC}"
+echo -e "${YELLOW}[3/10] Configurando permisos de ejecución en scripts...${NC}"
 chmod +x "$REPO_DIR"/scripts/*.sh 2>/dev/null || true
 chmod +x "$REPO_DIR"/scripts/*.py 2>/dev/null || true
 echo -e "${GREEN}[OK] Scripts ejecutables configurados.${NC}"
@@ -121,7 +116,7 @@ echo -e "${GREEN}[OK] Scripts ejecutables configurados.${NC}"
 # ------------------------------------------------------------------------------
 # 4. Instalación de Comandos CLI en ~/.local/bin
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[4/9] Instalando utilidades CLI en $BIN_DIR...${NC}"
+echo -e "${YELLOW}[4/10] Instalando utilidades CLI en $BIN_DIR...${NC}"
 
 # Helper para crear wrappers portables
 create_cli_wrapper() {
@@ -194,7 +189,7 @@ done
 # ------------------------------------------------------------------------------
 # 5. Configuración de Hyprland Modular y Pantalla de Bloqueo
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[5/9] Desplegando configuración modular de Hyprland, Hyprlock e Hypridle...${NC}"
+echo -e "${YELLOW}[5/10] Desplegando configuración modular de Hyprland, Hyprlock e Hypridle...${NC}"
 
 # Respaldar configuración previa si no se ha respaldado
 if [ -f "$HYPR_CONFIG_DIR/hyprland.lua" ] && [ ! -f "$HYPR_CONFIG_DIR/hyprland.lua.bak" ]; then
@@ -223,7 +218,7 @@ fi
 # ------------------------------------------------------------------------------
 # 6. Configuración de Kitty y Sistema
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[6/9] Configurando Kitty, MIME de archivos y Servicios...${NC}"
+echo -e "${YELLOW}[6/10] Configurando Kitty, MIME de archivos y Servicios...${NC}"
 
 if [ -f "$REPO_DIR/kitty/kitty.conf" ]; then
     cp -f "$REPO_DIR/kitty/kitty.conf" "$KITTY_CONFIG_DIR/kitty.conf"
@@ -242,9 +237,111 @@ if command -v systemctl >/dev/null 2>&1; then
 fi
 
 # ------------------------------------------------------------------------------
-# 7. Inicialización del Tema y Arranque
+# 7. Configuración de Shell Zsh, Oh My Zsh y Prompt Starship
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[7/9] Inicializando tema y sincronización...${NC}"
+echo -e "${YELLOW}[7/10] Configurando Zsh, Oh My Zsh y Starship...${NC}"
+
+# 1. Instalar configuración de Starship
+mkdir -p "$USER_HOME/.config"
+STARSHIP_SRC=""
+if [ -f "$REPO_DIR/starship/starship.toml" ]; then
+    STARSHIP_SRC="$REPO_DIR/starship/starship.toml"
+elif [ -f "$USER_HOME/Descargas/starship.toml" ]; then
+    STARSHIP_SRC="$USER_HOME/Descargas/starship.toml"
+fi
+
+if [ -n "$STARSHIP_SRC" ]; then
+    cp -f "$STARSHIP_SRC" "$USER_HOME/.config/starship.toml"
+    echo -e "  -> Configuración de Starship instalada en ~/.config/starship.toml"
+fi
+
+# 2. Instalar Oh My Zsh de forma no interactiva (unattended)
+if [ ! -d "$USER_HOME/.oh-my-zsh" ]; then
+    if command -v curl >/dev/null 2>&1; then
+        echo -e "  Instalando Oh My Zsh..."
+        RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || {
+            echo -e "${YELLOW}[AVISO] No se pudo descargar Oh My Zsh automáticamente o zsh aún no está en el PATH.${NC}"
+        }
+        echo -e "${GREEN}[OK] Oh My Zsh instalado con éxito.${NC}"
+    else
+        echo -e "${YELLOW}[AVISO] curl no está instalado; omitiendo instalación de Oh My Zsh.${NC}"
+    fi
+else
+    echo -e "${GREEN}[OK] Oh My Zsh ya está instalado (~/.oh-my-zsh).${NC}"
+fi
+
+# 3. Descargar plugins populares de Oh My Zsh (autosuggestions & syntax-highlighting)
+ZSH_CUSTOM="${ZSH_CUSTOM:-$USER_HOME/.oh-my-zsh/custom}"
+if [ -d "$USER_HOME/.oh-my-zsh" ]; then
+    mkdir -p "$ZSH_CUSTOM/plugins"
+    if [ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
+        echo -e "  Descargando plugin zsh-autosuggestions..."
+        git clone --depth 1 https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions" 2>/dev/null || true
+    fi
+    if [ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then
+        echo -e "  Descargando plugin zsh-syntax-highlighting..."
+        git clone --depth 1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" 2>/dev/null || true
+    fi
+fi
+
+# 4. Configurar ~/.zshrc con Starship, PATH y plugins
+ZSHRC="$USER_HOME/.zshrc"
+if [ ! -f "$ZSHRC" ] && [ -f "$USER_HOME/.oh-my-zsh/templates/zshrc.zsh-template" ]; then
+    cp "$USER_HOME/.oh-my-zsh/templates/zshrc.zsh-template" "$ZSHRC"
+fi
+
+if [ -f "$ZSHRC" ]; then
+    # Habilitar plugins si existen
+    if grep -q '^plugins=' "$ZSHRC"; then
+        sed -i 's/^plugins=(.*)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "$ZSHRC"
+    fi
+
+    # Asegurar ~/.local/bin en PATH
+    if ! grep -q '\.local/bin' "$ZSHRC"; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$ZSHRC"
+    fi
+
+    # Activar Starship Prompt
+    if ! grep -q 'starship init zsh' "$ZSHRC"; then
+        echo '' >> "$ZSHRC"
+        echo '# Inicialización de Starship Prompt' >> "$ZSHRC"
+        echo 'eval "$(starship init zsh)"' >> "$ZSHRC"
+    fi
+    echo -e "${GREEN}[OK] ~/.zshrc configurado con Oh My Zsh y Starship.${NC}"
+fi
+
+# 5. Configurar Seamless Login en ~/.zprofile para inicio automático en tty1 con zsh
+ZPROFILE="$USER_HOME/.zprofile"
+if ! grep -q 'exec Hyprland' "$ZPROFILE" 2>/dev/null; then
+    cat << 'HOOK' >> "$ZPROFILE"
+
+# Auto-start Hyprland en tty1 (Seamless Login estilo Omarchy)
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    exec Hyprland
+fi
+HOOK
+    echo -e "${GREEN}[OK] Hook de arranque de Hyprland añadido a ~/.zprofile.${NC}"
+else
+    echo -e "${GREEN}[OK] Hook de arranque de Hyprland ya presente en ~/.zprofile.${NC}"
+fi
+
+# 6. Cambiar la shell predeterminada a ZSH si está disponible
+if command -v zsh >/dev/null 2>&1; then
+    ZSH_PATH="$(command -v zsh)"
+    CURRENT_SHELL="$(getent passwd "$CURRENT_USER" | cut -d: -f7)"
+    if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+        echo -e "  Configurando Zsh como shell predeterminada para $CURRENT_USER..."
+        sudo chsh -s "$ZSH_PATH" "$CURRENT_USER" 2>/dev/null || chsh -s "$ZSH_PATH" 2>/dev/null || true
+        echo -e "${GREEN}[OK] Shell por defecto cambiada a $ZSH_PATH.${NC}"
+    else
+        echo -e "${GREEN}[OK] Zsh ya es la shell por defecto ($CURRENT_SHELL).${NC}"
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 8. Inicialización del Tema y Arranque
+# ------------------------------------------------------------------------------
+echo -e "${YELLOW}[8/10] Inicializando tema y sincronización...${NC}"
 
 # Inicializar con Catppuccin Mocha
 if [ -f "$REPO_DIR/scripts/theme_manager.py" ]; then
@@ -253,9 +350,9 @@ if [ -f "$REPO_DIR/scripts/theme_manager.py" ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 8. Configuración de Seamless Login (Estilo Omarchy)
+# 9. Configuración de Seamless Login (Estilo Omarchy)
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[8/9] Configurando Seamless Login (estilo Omarchy)...${NC}"
+echo -e "${YELLOW}[9/10] Configurando Seamless Login (estilo Omarchy)...${NC}"
 
 # 1. Configurar Autologin en tty1 con systemd agetty
 if [ -d "/etc/systemd/system" ]; then
@@ -298,38 +395,35 @@ if command -v systemctl >/dev/null 2>&1; then
 fi
 
 # ------------------------------------------------------------------------------
-# 9. Limpieza Opcional de GNOME Desktop y GDM
+# 10. Desinstalación Automática de GNOME Desktop y GDM
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[9/9] Verificando presencia de GNOME Desktop y GDM...${NC}"
+echo -e "${YELLOW}[10/10] Desinstalando GNOME Desktop y GDM del sistema...${NC}"
 
-HAS_GNOME=false
-if pacman -Q gdm >/dev/null 2>&1 || pacman -Q gnome-shell >/dev/null 2>&1; then
-    HAS_GNOME=true
+# 1. Deshabilitar y detener servicio GDM
+if command -v systemctl >/dev/null 2>&1; then
+    if systemctl is-enabled gdm.service >/dev/null 2>&1 || systemctl is-active gdm.service >/dev/null 2>&1; then
+        echo -e "  Deshabilitando y deteniendo gdm.service..."
+        sudo systemctl disable gdm.service 2>/dev/null || true
+        sudo systemctl stop gdm.service 2>/dev/null || true
+    fi
+    sudo systemctl daemon-reload 2>/dev/null || true
 fi
 
-if [ "$HAS_GNOME" = true ]; then
-    DO_REMOVE=""
-    if [ "$REMOVE_GNOME_OPT" == "yes" ]; then
-        DO_REMOVE="s"
-    elif [ "$REMOVE_GNOME_OPT" == "no" ]; then
-        DO_REMOVE="n"
-    else
-        echo ""
-        echo -e "${CYAN}${BOLD}Se ha detectado GNOME Desktop / GDM instalado en el sistema.${NC}"
-        echo -e "¿Deseas desinstalar GNOME Desktop y GDM para liberar espacio y dejar el sistema limpio? [s/N]: "
-        read -r -p "  Respuesta: " DO_REMOVE
+# 2. Desinstalar paquetes de GDM y GNOME Desktop
+GNOME_PKGS=()
+for pkg in gdm gnome-shell mutter gnome-session gnome-settings-daemon gnome-control-center gnome-keyring gnome-terminal; do
+    if pacman -Q "$pkg" >/dev/null 2>&1; then
+        GNOME_PKGS+=("$pkg")
     fi
+done
 
-    if [[ "$DO_REMOVE" =~ ^[sSyY]$ ]]; then
-        echo -e "  Desinstalando GDM y GNOME Desktop..."
-        sudo pacman -R --noconfirm gdm gnome-shell mutter gnome-session gnome-settings-daemon 2>/dev/null || \
-        sudo pacman -R --noconfirm gdm gnome-shell 2>/dev/null || true
-        echo -e "${GREEN}[OK] GNOME Desktop y GDM desinstalados con éxito.${NC}"
-    else
-        echo -e "  GNOME Desktop conservado (GDM continuará deshabilitado del inicio).${NC}"
-    fi
+if [ ${#GNOME_PKGS[@]} -gt 0 ]; then
+    echo -e "  Eliminando paquetes de GNOME y GDM (${GNOME_PKGS[*]})..."
+    sudo pacman -R --noconfirm "${GNOME_PKGS[@]}" 2>/dev/null || \
+    sudo pacman -Rdd --noconfirm "${GNOME_PKGS[@]}" 2>/dev/null || true
+    echo -e "${GREEN}[OK] GNOME Desktop y GDM desinstalados con éxito.${NC}"
 else
-    echo -e "${GREEN}[OK] No se detectó GNOME Desktop en el sistema.${NC}"
+    echo -e "${GREEN}[OK] GNOME Desktop y GDM no están presentes en el sistema.${NC}"
 fi
 
 # Recargar Hyprland si está en ejecución
@@ -355,15 +449,17 @@ echo -e "${GREEN}${BOLD}========================================================
 echo -e "${GREEN}${BOLD}             ¡INSTALACIÓN COMPLETADA CON ÉXITO!                   ${NC}"
 echo -e "${GREEN}${BOLD}==================================================================${NC}"
 echo ""
-echo -e "  • ${BOLD}SUPER + Enter${NC}          : Abrir terminal Kitty (transparencia 93%)"
-echo -e "  • ${BOLD}SUPER + W${NC}              : Cerrar ventana activa"
-echo -e "  • ${BOLD}SUPER + T${NC}              : Alternar ventana flotante (Float)"
-echo -e "  • ${BOLD}SUPER + L${NC}              : Bloquear pantalla (Hyprlock adaptable a temas)"
-echo -e "  • ${BOLD}SUPER + Espacio${NC}        : Lanzador y buscador de aplicaciones"
-echo -e "  • ${BOLD}SUPER + Shift + W${NC}      : Selector de fondos de pantalla"
-echo -e "  • ${BOLD}SUPER + Shift + T${NC}      : Selector de temas de color"
-echo -e "  • ${BOLD}SUPER + Shift + Flechas${NC}: Mover ventanas de posición"
-echo -e "  • ${BOLD}SUPER + E${NC}              : Explorador de archivos (Dolphin)"
+echo -e "  • ${BOLD}SUPER + Enter${NC}          : Abrir terminal Kitty (transparencia 93%)
+  • ${BOLD}SUPER + C / X / V${NC}      : Copiar, Cortar y Pegar nativo en Wayland
+  • ${BOLD}SUPER + W${NC}              : Cerrar ventana activa
+  • ${BOLD}SUPER + T${NC}              : Alternar ventana flotante (Float)
+  • ${BOLD}SUPER + L${NC}              : Bloquear pantalla (Hyprlock adaptable a temas)
+  • ${BOLD}SUPER + Espacio${NC}        : Lanzador y buscador de aplicaciones
+  • ${BOLD}SUPER + Shift + W${NC}      : Selector de fondos de pantalla
+  • ${BOLD}SUPER + Shift + T${NC}      : Selector de temas de color
+  • ${BOLD}SUPER + Shift + Flechas${NC}: Mover ventanas de posición
+  • ${BOLD}SUPER + E${NC}              : Explorador de archivos (Dolphin)
+  • ${BOLD}Zsh + Starship Prompt${NC}  : Shell interactiva con Oh My Zsh y diseño Demonc"
 echo ""
 echo -e "  • ${CYAN}Seamless Login${NC}       : Arrancará directamente a Hyprland sin pantalla de GDM."
 echo -e "  • ${CYAN}Bloqueo por Inactividad${NC}: 'hypridle' atenuará a los 5m y bloqueará a los 10m."
