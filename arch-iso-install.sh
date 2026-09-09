@@ -312,7 +312,15 @@ g_input() {
 
 g_confirm() {
     if command -v gum >/dev/null 2>&1; then
-        gum confirm "$@"
+        local has_default=0
+        for arg in "$@"; do
+            [[ "$arg" == --default* ]] && has_default=1
+        done
+        if [ "$has_default" -eq 0 ]; then
+            gum confirm --default=true "$@"
+        else
+            gum confirm "$@"
+        fi
     else
         local affirmative="Sí" negative="No" question="¿Confirmar?"
         while [[ $# -gt 0 ]]; do
@@ -810,13 +818,14 @@ disk_wizard
 # 9. PANTALLA FINAL: Botón [ 🚀 INSTALAR ] estilo Omarchy
 # ------------------------------------------------------------------------------
 install_confirm() {
-    clear_logo
-    echo
-    say --foreground 1 "¡ADVERTENCIA: SE FORMATEARÁ POR COMPLETO EL DISCO $TARGET_DISK!"
-    say "Se creará una partición EFI y una partición Linux cifrada con LUKS2 (BTRFS)."
-    echo
+    while true; do
+        clear_logo
+        echo
+        say --foreground 1 "¡ADVERTENCIA: SE FORMATEARÁ POR COMPLETO EL DISCO $TARGET_DISK!"
+        say "Se creará una partición EFI y una partición Linux cifrada con LUKS2 (BTRFS)."
+        echo
 
-    local table_summary="Parámetro|Configuración
+        local table_summary="Parámetro|Configuración
 Disco|$TARGET_DISK
 Cifrado|LUKS2 (Argon2id Automático)
 Sistema de Archivos|BTRFS (@, @home, @snapshots, @var_log, @pkg)
@@ -825,13 +834,29 @@ Hostname|$SYS_HOSTNAME
 Zona Horaria|$SYS_TIMEZONE
 Idioma / Teclado|$SYS_LOCALE / $KEYMAP"
 
-    echo "$table_summary" | g_table -s "|" -p | sed "s/^/${PADDING_LEFT_SPACES}/" || true
-    echo
+        echo "$table_summary" | g_table -s "|" -p | sed "s/^/${PADDING_LEFT_SPACES}/" || true
+        echo
 
-    if ! g_confirm --affirmative "INSTALAR" --negative "CANCELAR" "¿Comenzar la instalación del sistema ahora?"; then
-        say --foreground 8 "Instalación cancelada por el usuario. No se modificó ningún disco."
-        exit 0
-    fi
+        local action
+        action=$(g_choose --header "¿Comenzar la instalación del sistema ahora?" \
+            "🚀 INSTALAR (Formatear e iniciar instalación)" \
+            "⚙️  Modificar configuración" \
+            "❌ Salir a la consola")
+
+        case "$action" in
+            *"INSTALAR"*)
+                return 0
+                ;;
+            *"Modificar"*)
+                user_form_wizard
+                disk_wizard
+                ;;
+            *"Salir"*)
+                say --foreground 8 "Instalación cancelada por el usuario. No se modificó ningún disco."
+                exit 0
+                ;;
+        esac
+    done
 }
 install_confirm
 
@@ -867,28 +892,49 @@ perform_installation_worker() {
     exec >> "$INSTALL_LOG_FILE" 2>&1
 
     set_phase "Preparando particiones en el almacenamiento" 5
-    echo "==> Limpiando montajes previos y contenedores abiertos..."
-    swapoff -a 2>/dev/null || true
-    fuser -km /mnt 2>/dev/null || true
-    umount -R /mnt 2>/dev/null || true
+    echo "==> Limpiando montajes previos y contenedores abiertos en $TARGET_DISK..."
+    findmnt -R /mnt >/dev/null 2>&1 && umount -R /mnt 2>/dev/null || true
+    while read -r dev; do
+        [[ -b "$dev" ]] || continue
+        swapoff "$dev" 2>/dev/null || true
+        while read -r target; do
+            [[ -n "$target" ]] && umount "$target" 2>/dev/null || true
+        done < <(findmnt -rn -S "$dev" -o TARGET 2>/dev/null || true)
+    done < <(lsblk -rnpo PATH "$TARGET_DISK" 2>/dev/null || true)
+
+    while read -r dev type; do
+        [[ "$type" == "disk" || "$type" == "part" || "$type" == "crypt" ]] || continue
+        while read -r vg; do
+            [[ -n "$vg" ]] && vgchange -an "$vg" 2>/dev/null || true
+        done < <(pvs --noheadings -o vg_name "$dev" 2>/dev/null | awk '{$1=$1; print}' | sort -u || true)
+    done < <(lsblk -rnpo PATH,TYPE "$TARGET_DISK" 2>/dev/null || true)
+
+    while read -r dev type; do
+        [[ "$type" == "crypt" ]] && cryptsetup close "$dev" 2>/dev/null || true
+    done < <(lsblk -rnpo PATH,TYPE "$TARGET_DISK" 2>/dev/null || true)
+
     cryptsetup close cryptroot 2>/dev/null || true
+    blockdev --flushbufs "$TARGET_DISK" 2>/dev/null || true
+    partprobe "$TARGET_DISK" 2>/dev/null || true
+    udevadm settle 2>/dev/null || true
 
     echo "==> Eliminando firmas de disco previas en $TARGET_DISK..."
     wipefs -af "$TARGET_DISK" >/dev/null 2>&1 || true
-    sgdisk --zap-all "$TARGET_DISK" >/dev/null 2>&1 || true
+    parted --script "$TARGET_DISK" mklabel gpt
     partprobe "$TARGET_DISK" 2>/dev/null || true
     udevadm settle 2>/dev/null || true
     sleep 1
 
     echo "==> Creando tabla de particiones GPT..."
-    # Partición 1: EFI 1024MB | Partición 2: LUKS2 Linux
-    sgdisk -n 1:0:+1024M -t 1:ef00 -c 1:"EFI System Partition" "$TARGET_DISK"
-    sgdisk -n 2:0:0 -t 2:8300 -c 2:"Linux LUKS Btrfs" "$TARGET_DISK"
+    # Partición 1: EFI 1024MB | Partición 2: LUKS2 Linux (100% restante)
+    parted --script "$TARGET_DISK" mkpart "EFI" fat32 1MiB 1025MiB
+    parted --script "$TARGET_DISK" set 1 esp on
+    parted --script "$TARGET_DISK" mkpart "cryptroot" 1025MiB 100%
     partprobe "$TARGET_DISK" 2>/dev/null || true
     udevadm settle 2>/dev/null || true
     sleep 1
 
-    if [[ "$TARGET_DISK" =~ [0-9]$ ]]; then
+    if [[ "$TARGET_DISK" == *nvme* || "$TARGET_DISK" == *mmcblk* || "$TARGET_DISK" =~ [0-9]$ ]]; then
         PART_EFI="${TARGET_DISK}p1"
         PART_ROOT="${TARGET_DISK}p2"
     else
@@ -897,23 +943,38 @@ perform_installation_worker() {
     fi
 
     echo "==> Esperando nodos de partición $PART_EFI y $PART_ROOT..."
-    for i in {1..10}; do
+    for i in {1..15}; do
         [ -b "$PART_EFI" ] && [ -b "$PART_ROOT" ] && break
-        sleep 1
+        partprobe "$TARGET_DISK" 2>/dev/null || true
+        udevadm settle 2>/dev/null || true
+        sleep 0.5
     done
+
+    if [ ! -b "$PART_EFI" ] || [ ! -b "$PART_ROOT" ]; then
+        echo "ERROR: No se detectaron las particiones creadas ($PART_EFI, $PART_ROOT)" >&2
+        exit 1
+    fi
 
     set_phase "Formateando partición EFI y configurando LUKS2" 15
     echo "==> Formateando partición EFI ($PART_EFI)..."
+    wipefs -af "$PART_EFI" >/dev/null 2>&1 || true
     mkfs.fat -F 32 -n EFI "$PART_EFI"
 
-    echo "==> Cifrando partición raíz con LUKS2 (Argon2id)..."
-    echo -n "$MASTER_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --pbkdf-memory 524288 --pbkdf-parallel 2 --batch-mode "$PART_ROOT" -
+    echo "==> Cifrando partición raíz con LUKS2..."
+    wipefs -af "$PART_ROOT" >/dev/null 2>&1 || true
+    echo -n "$MASTER_PASS" | cryptsetup luksFormat --type luks2 --iter-time 2000 --batch-mode "$PART_ROOT" -
     echo -n "$MASTER_PASS" | cryptsetup open "$PART_ROOT" cryptroot -
 
-    for i in {1..10}; do
+    for i in {1..15}; do
         [ -b "/dev/mapper/cryptroot" ] && break
-        sleep 1
+        udevadm settle 2>/dev/null || true
+        sleep 0.5
     done
+
+    if [ ! -b "/dev/mapper/cryptroot" ]; then
+        echo "ERROR: No se pudo abrir el contenedor LUKS /dev/mapper/cryptroot" >&2
+        exit 1
+    fi
 
     set_phase "Creando sistema de archivos y subvolúmenes Btrfs" 25
     ROOT_DEV="/dev/mapper/cryptroot"
@@ -1340,8 +1401,10 @@ run_install_with_dashboard() {
         sleep 0.15
     done
 
+    set +e
     wait "$worker_pid"
     local worker_exit=$?
+    set -e
 
     # Restaurar cursor visible
     printf '\033[?25h'
@@ -1365,12 +1428,15 @@ run_install_with_dashboard() {
             echo -e "${PADDING_LEFT_SPACES}\033[38;5;244m  → ${line}\033[0m"
         done
         echo
-        say "Revisa el registro completo o presiona Enter para salir:"
+        say "Opciones de recuperación:"
         echo
 
         while true; do
             local choice
-            choice=$(g_choose --header "Opciones de recuperación:" "Ver registro completo (visor less)" "Salir a la consola de Arch Linux")
+            choice=$(g_choose --header "Opciones de recuperación:" \
+                "Ver registro completo (visor less)" \
+                "Reintentar instalación" \
+                "Salir a la consola de Arch Linux")
             case "$choice" in
                 *"Ver registro"*)
                     if command -v less >/dev/null 2>&1; then
@@ -1386,8 +1452,13 @@ run_install_with_dashboard() {
                     say "Fase en la que ocurrió el fallo: $current_phase"
                     echo
                     ;;
+                *"Reintentar"*)
+                    run_install_with_dashboard
+                    return $?
+                    ;;
                 *)
-                    exit "$worker_exit"
+                    say --foreground 8 "Saliendo a la consola de recuperación..."
+                    return "$worker_exit"
                     ;;
             esac
         done
@@ -1423,4 +1494,4 @@ run_install_with_dashboard() {
     fi
 }
 
-run_install_with_dashboard
+run_install_with_dashboard || true
