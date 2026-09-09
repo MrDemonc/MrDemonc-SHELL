@@ -59,9 +59,13 @@
 
 4. ATAJOS GENERALES DE HYPRLAND CONFIGURADOS
 -----------------------------------------------------
-• SUPER + ENTER             : Abrir terminal (Kitty con transparencia)
+• SUPER + ENTER             : Abrir terminal (Kitty con Zsh y Starship)
+• SUPER + C                 : Copiar (Portapapeles nativo Wayland)
+• SUPER + X                 : Cortar (Portapapeles nativo Wayland)
+• SUPER + V                 : Pegar (Portapapeles nativo Wayland)
 • SUPER + W                 : Cerrar ventana activa
 • SUPER + T                 : Alternar ventana flotante (Float toggle)
+• SUPER + L                 : Bloquear pantalla (Hyprlock adaptable a temas)
 • SUPER + SHIFT + W         : Selector de Wallpapers
 • SUPER + SHIFT + T         : Selector de Temas
 • SUPER + Espacio           : Lanzador de aplicaciones
@@ -113,5 +117,26 @@
 -----------------------------------------------------
 • Reiniciar servicio Quickshell:
     killall -9 quickshell; quickshell -p ~/Documentos/MrDemonc-SHELL &
+
+
+8. INSTALACIÓN Y COMPILACIÓN DE ISO (ESTILO OMARCHY)
+-----------------------------------------------------
+• Compilar imagen ISO booteable oficial con mkarchiso:
+    ./build-iso.sh
+
+• Grabar ISO generada en pendrive USB:
+    sudo dd bs=4M if=out/mrdemonc-shell-*.iso of=/dev/sdX status=progress oflag=sync
+
+• Ejecutar instalador directamente desde ISO oficial de Arch Linux:
+    curl -fsSL https://raw.githubusercontent.com/MrDemonc/MrDemonc-SHELL/main/arch-iso-install.sh | bash
+
+• Características del instalador:
+    - Asistente de conexión Wi-Fi (redes visibles y redes ocultas con WPA2/WPA3).
+    - Selección de Idioma (Español / Inglés) y Teclado (Latam, ES, US).
+    - Configuración de Hostname y Git (usuario y correo).
+    - Particionado con Btrfs (@, @home, @snapshots, @var_log, @pkg).
+    - Cifrado automático completo con LUKS2 (Argon2id).
+    - Contraseña Maestra Unificada (LUKS + Root + Usuario).
+    - Seamless Login directo a Hyprland en tty1 (sin GDM).
 
 =====================================================

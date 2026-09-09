@@ -4,9 +4,61 @@ Esta guía detalla la configuración y resolución de problemas para **Quickshel
 
 ---
 
-## ⚡ Instalación Rápida Automatizada (`install.sh`)
+## 💿 Creación e Instalación desde Arch ISO (Estilo Omarchy)
 
-Puedes instalar todo el entorno (dependencias de Arch Linux, binarios CLI, configuración modular de Hyprland, tipografía, Kitty y temas dinámicos) con un solo comando:
+Puedes generar tu propia **imagen ISO booteable oficial** de **MrDemonc-SHELL** para llevarla en un USB, o utilizar la ISO oficial estándar de Arch Linux.
+
+### Método 1: Compilar tu propia ISO Booteable (`build-iso.sh`)
+El proyecto incluye un perfil nativo de `archiso` para empaquetar la ISO completa con bienvenida y asistente de red autoejecutable:
+
+1. **Compilar la imagen ISO:**
+   ```bash
+   cd ~/Documentos/MrDemonc-SHELL
+   ./build-iso.sh
+   ```
+   *El script instalará `archiso` si es necesario y creará la imagen `.iso` en la carpeta `out/`.*
+
+2. **Grabar en un pendrive USB:**
+   ```bash
+   sudo dd bs=4M if=out/mrdemonc-shell-*.iso of=/dev/sdX status=progress oflag=sync
+   ```
+   *(También puedes copiar el archivo `.iso` directamente a un USB configurado con **Ventoy**, o usar **BalenaEtcher** o **Rufus**).*
+
+3. **Al arrancar la ISO en tu equipo (Live Boot):**
+   - Inicia sesión como `root` automáticamente sin pedir contraseña en el medio de instalación.
+   - Muestra de inmediato la pantalla de **Bienvenida ASCII de MrDemonc-SHELL**.
+   - Abre el **Asistente de Conexión a Internet**:
+     - 📡 Escanear y conectar a redes Wi-Fi visibles.
+     - 🔒 Conectar a **redes Wi-Fi ocultas (Hidden SSID)** con autenticación WPA2/WPA3.
+     - 🌐 Conexión Ethernet por cable (DHCP automático).
+     - ⌨️ Consola interactiva manual `iwctl`.
+   - **Selección de Idioma del Sistema (Locales):** Español (España, Latinoamérica, Perú, Argentina, Chile, Colombia) o Inglés.
+   - **Distribución de Teclado:** Latinoamericano (`la-latin1` / `latam`), Español (`es`) o US (`us`), sincronizado tanto para la consola de desbloqueo como para Hyprland.
+   - **Nombre de Equipo (Hostname)** y **Configuración de Git** (`user.name`, `user.email`, `init.defaultBranch main`).
+   - **Cifrado Automático con LUKS2 (Argon2id):** Cifrado de disco completo automático estilo Omarchy (sin pasos manuales ni omitibles).
+   - **Contraseña Maestra Unificada:** Una única contraseña protege el contenedor cifrado al encender el PC, el superusuario `root` y tu usuario personal con permisos `sudo`.
+   - **Sistema de Archivos BTRFS:** Crea subvolúmenes optimizados (`@`, `@home`, `@snapshots`, `@var_log`, `@pkg`) con compresión `zstd` y soporte de snapshots.
+   - **Seamless Login:** Sin GDM ni display managers pesados; arranque directo desde tty1 a Hyprland tras ingresar la contraseña de cifrado en el arranque.
+
+---
+
+### Método 2: Desde una ISO estándar de Arch Linux (`arch-iso-install.sh`)
+Si ya tienes un USB con la ISO oficial estándar de Arch Linux:
+
+1. Arranca tu PC con la **ISO oficial de Arch Linux** en modo UEFI.
+2. Ejecuta en la terminal el instalador en un solo comando:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/MrDemonc/MrDemonc-SHELL/main/arch-iso-install.sh | bash
+   ```
+3. El instalador ejecutará la bienvenida, el asistente de conexión Wi-Fi (redes visibles y ocultas), selección de idioma y teclado, configuración Git, particionado Btrfs sobre LUKS2 y la contraseña maestra unificada.
+4. Al terminar, retira el pendrive y reinicia con `reboot`.
+
+
+---
+
+## ⚡ Instalación en un Sistema Arch Existente (`install.sh`)
+
+Si ya tienes Arch Linux instalado y funcionando, ejecuta:
 
 ```bash
 cd ~/Documentos/MrDemonc-SHELL

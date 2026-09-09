@@ -1,0 +1,41 @@
+# --- Sistema Base & Kernel ---
+base
+base-devel
+linux
+linux-firmware
+linux-headers
+arch-install-scripts
+
+# --- Redes & Wi-Fi ---
+networkmanager
+iwd
+wireless_tools
+wpa_supplicant
+dialog
+iproute2
+curl
+wget
+
+# --- Almacenamiento & Cifrado ---
+cryptsetup
+dosfstools
+e2fsprogs
+btrfs-progs
+parted
+gptfdisk
+util-linux
+
+# --- Gestor de Arranque UEFI ---
+efibootmgr
+systemd-boot-pacman-hook
+
+# --- Utilidades & Shells ---
+git
+zsh
+starship
+nano
+neovim
+pciutils
+usbutils
+rfkill
+which
