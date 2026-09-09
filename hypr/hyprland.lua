@@ -53,6 +53,7 @@ local menu        = binDir .. "/shell-apps"
 -- Or execute your favorite apps at launch like this:
 hl.on("hyprland.start", function () 
     hl.exec_cmd("quickshell -p " .. userHome .. "/Documentos/MrDemonc-SHELL")
+    hl.exec_cmd("hypridle")
 end)
 
 

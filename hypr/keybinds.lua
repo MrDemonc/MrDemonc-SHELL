@@ -36,6 +36,9 @@ hl.bind(mainMod .. " + T", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))
 
+-- Bloquear pantalla (SUPER + L)
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("command -v hyprlock >/dev/null 2>&1 && hyprlock || notify-send 'MrDemonc-SHELL' 'hyprlock no está instalado. Ejecuta: sudo pacman -S hyprlock' -u normal -t 4000"))
+
 -- Apagado / Salir
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'"))
 

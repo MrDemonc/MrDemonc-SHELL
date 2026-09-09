@@ -394,6 +394,54 @@ return {{
     except Exception:
         pass
 
+def sync_hyprlock_theme(theme_data):
+    try:
+        def hex_to_rgb(hex_str, default=(200, 200, 200)):
+            if not hex_str or not isinstance(hex_str, str):
+                return default
+            h = hex_str.lstrip('#')
+            if len(h) < 6:
+                return default
+            try:
+                return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            except ValueError:
+                return default
+
+        bg_r, bg_g, bg_b = hex_to_rgb(theme_data.get("bg", "#1e1e2e"))
+        surf_r, surf_g, surf_b = hex_to_rgb(theme_data.get("bgSurface", "#181825"))
+        pri_r, pri_g, pri_b = hex_to_rgb(theme_data.get("primary", "#89b4fa"))
+        txt_r, txt_g, txt_b = hex_to_rgb(theme_data.get("text", "#cdd6f4"))
+        sub_r, sub_g, sub_b = hex_to_rgb(theme_data.get("subtext", "#a6adc8"))
+        ovr_r, ovr_g, ovr_b = hex_to_rgb(theme_data.get("overlay", "#6c7086"))
+        suc_r, suc_g, suc_b = hex_to_rgb(theme_data.get("success", "#a6e3a1"))
+        dan_r, dan_g, dan_b = hex_to_rgb(theme_data.get("danger", "#f38ba8"))
+        war_r, war_g, war_b = hex_to_rgb(theme_data.get("warning", "#f9e2af"))
+
+        content = f"""# Generado automáticamente por Quickshell Theme Manager
+$bg = rgba({bg_r}, {bg_g}, {bg_b}, 1.0)
+$surface = rgba({surf_r}, {surf_g}, {surf_b}, 0.85)
+$surface_alpha = rgba({surf_r}, {surf_g}, {surf_b}, 0.70)
+$primary = rgba({pri_r}, {pri_g}, {pri_b}, 1.0)
+$primary_dim = rgba({pri_r}, {pri_g}, {pri_b}, 0.70)
+$text = rgba({txt_r}, {txt_g}, {txt_b}, 1.0)
+$subtext = rgba({sub_r}, {sub_g}, {sub_b}, 1.0)
+$overlay = rgba({ovr_r}, {ovr_g}, {ovr_b}, 1.0)
+$success = rgba({suc_r}, {suc_g}, {suc_b}, 1.0)
+$danger = rgba({dan_r}, {dan_g}, {dan_b}, 1.0)
+$warning = rgba({war_r}, {war_g}, {war_b}, 1.0)
+"""
+        hypr_dir = os.path.expanduser("~/.config/hypr")
+        os.makedirs(hypr_dir, exist_ok=True)
+        with open(os.path.join(hypr_dir, "hyprlock_colors.conf"), "w", encoding="utf-8") as f:
+            f.write(content)
+
+        repo_hypr = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "hypr")
+        if os.path.isdir(repo_hypr):
+            with open(os.path.join(repo_hypr, "hyprlock_colors.conf"), "w", encoding="utf-8") as f:
+                f.write(content)
+    except Exception:
+        pass
+
 def set_theme(name):
     ensure_dirs()
     all_themes = get_all_themes()
@@ -416,6 +464,7 @@ def set_theme(name):
     theme_obj["id"] = name
     sync_terminal_theme(theme_obj)
     sync_hyprland_theme(theme_obj)
+    sync_hyprlock_theme(theme_obj)
     return True
 
 def main():
@@ -458,6 +507,7 @@ def main():
             return
     
     current_th = get_theme()
+    sync_hyprlock_theme(current_th)
     print(json.dumps(current_th))
 
 if __name__ == '__main__':
