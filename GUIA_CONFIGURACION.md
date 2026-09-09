@@ -25,20 +25,20 @@ El proyecto incluye un perfil nativo de `archiso` para empaquetar la ISO complet
    *(También puedes copiar el archivo `.iso` directamente a un USB configurado con **Ventoy**, o usar **BalenaEtcher** o **Rufus**).*
 
 3. **Al arrancar la ISO en tu equipo (Live Boot):**
-   - Inicia sesión como `root` automáticamente sin pedir contraseña en el medio de instalación.
-   - Muestra de inmediato la pantalla de **Bienvenida ASCII de MrDemonc-SHELL**.
-   - Abre el **Asistente de Conexión a Internet**:
+   - **Arranque Silencioso (Quiet Boot):** No muestra la cascada de texto verbose del kernel; arranca limpiamente con parámetros optimizados (`quiet loglevel=3 splash`).
+   - **Pantalla de Carga (Splash Screen):** Muestra un splash animado con el logo de bloques sólidos **ARCH**.
+   - **Interfaz TUI Moderna:** Abre una interfaz estilizada con marcos redondeados (`╭─╮`), insignias visuales y barra de progreso por pasos (`[1/7]...[7/7]`), sin depender de barras diagonales `/` o `\`.
+   - **Asistente de Red e Internet:**
      - 📡 Escanear y conectar a redes Wi-Fi visibles.
-     - 🔒 Conectar a **redes Wi-Fi ocultas (Hidden SSID)** con autenticación WPA2/WPA3.
-     - 🌐 Conexión Ethernet por cable (DHCP automático).
+     - 🔒 Conectar a **redes Wi-Fi ocultas (Hidden SSID)**.
+     - 🌐 Conexión Ethernet cableada (DHCP automático).
      - ⌨️ Consola interactiva manual `iwctl`.
-   - **Selección de Idioma del Sistema (Locales):** Español (España, Latinoamérica, Perú, Argentina, Chile, Colombia) o Inglés.
-   - **Distribución de Teclado:** Latinoamericano (`la-latin1` / `latam`), Español (`es`) o US (`us`), sincronizado tanto para la consola de desbloqueo como para Hyprland.
-   - **Nombre de Equipo (Hostname)** y **Configuración de Git** (`user.name`, `user.email`, `init.defaultBranch main`).
-   - **Cifrado Automático con LUKS2 (Argon2id):** Cifrado de disco completo automático estilo Omarchy (sin pasos manuales ni omitibles).
-   - **Contraseña Maestra Unificada:** Una única contraseña protege el contenedor cifrado al encender el PC, el superusuario `root` y tu usuario personal con permisos `sudo`.
-   - **Sistema de Archivos BTRFS:** Crea subvolúmenes optimizados (`@`, `@home`, `@snapshots`, `@var_log`, `@pkg`) con compresión `zstd` y soporte de snapshots.
-   - **Seamless Login:** Sin GDM ni display managers pesados; arranque directo desde tty1 a Hyprland tras ingresar la contraseña de cifrado en el arranque.
+   - **Selección de Idioma (Locales):** 7 opciones regionales (España, Latinoamérica, Perú, Argentina, Chile, Colombia, US).
+   - **Distribución de Teclado:** Latinoamericano, Español o US, sincronizado para la consola de descifrado y para Hyprland.
+   - **Nombre de Equipo & Git:** Hostname del sistema y configuración de Git (`user.name`, `user.email`).
+   - **Almacenamiento & Cifrado LUKS2 Automático:** Cifrado obligatorio con Argon2id y sistema BTRFS con subvolúmenes (`@`, `@home`, `@snapshots`, `@var_log`, `@pkg`).
+   - **Contraseña Maestra Unificada:** Una única clave para el descifrado al encender el equipo, la cuenta root y tu usuario personal con sudo.
+   - **Seamless Login a Hyprland:** Arranque directo en tty1 sin gestores pesados (GDM se desinstala).
 
 ---
 

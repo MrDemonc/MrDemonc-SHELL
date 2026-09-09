@@ -1,0 +1,42 @@
+format = """
+$os$username$directory$git_branch$git_status$character"""
+
+[os]
+disabled = false
+format = "[$symbol](bold blue) "
+
+[os.symbols]
+Arch = "󰣇"
+
+[directory]
+style = "white"
+home_symbol = "~"
+
+[git_branch]
+symbol = " "
+style = "bold blue"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+format = "[$all_status$ahead_behind]($style) "
+style = "yellow"
+
+modified = "● "
+staged = "✓ "
+untracked = "+ "
+deleted = "✕ "
+renamed = "➜ "
+conflicted = "‼ "
+ahead = "↑${count}"
+behind = "↓${count}"
+diverged = "↕"
+stashed = "≡ "
+
+[username]
+disabled = false
+show_always = true
+format = "[Demonc](bold white) "
+
+[character]
+success_symbol = "[❯](bold blue) "
+error_symbol = "[❯](bold red) "

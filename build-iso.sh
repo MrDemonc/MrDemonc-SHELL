@@ -44,11 +44,20 @@ if [ ! -d "$ISO_DIR/syslinux" ] || [ ! -d "$ISO_DIR/efiboot" ]; then
     fi
 fi
 
-# Actualizar el script instalador dentro de la ISO
-echo -e "${YELLOW}[2/4] Sincronizando instalador y bienvenida en el perfil de la ISO...${NC}"
+# Actualizar el script instalador y empaquetar MrDemonc-SHELL dentro de la ISO
+echo -e "${YELLOW}[2/4] Sincronizando instalador y empaquetando MrDemonc-SHELL en la ISO...${NC}"
 mkdir -p "$ISO_DIR/airootfs/usr/local/bin"
 cp -f "$REPO_DIR/arch-iso-install.sh" "$ISO_DIR/airootfs/usr/local/bin/mrdemonc-installer"
 chmod +x "$ISO_DIR/airootfs/usr/local/bin/mrdemonc-installer"
+
+mkdir -p "$ISO_DIR/airootfs/usr/share/mrdemonc-shell"
+rm -rf "$ISO_DIR/airootfs/usr/share/mrdemonc-shell"/*
+for item in components hypr kitty scripts starship install.sh shell.qml COMANDOS.txt DEPENDENCIAS.md; do
+    if [ -e "$REPO_DIR/$item" ]; then
+        cp -a "$REPO_DIR/$item" "$ISO_DIR/airootfs/usr/share/mrdemonc-shell/"
+    fi
+done
+
 
 
 # Limpiar trabajo previo
