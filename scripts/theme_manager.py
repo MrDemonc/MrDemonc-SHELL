@@ -260,8 +260,8 @@ def get_theme(name=None):
 
 def sync_terminal_theme(theme_data):
     try:
-        omarchy_theme_dir = os.path.expanduser("~/.local/state/omarchy/current/theme")
-        os.makedirs(omarchy_theme_dir, exist_ok=True)
+        mrdemonc_theme_dir = os.path.expanduser("~/.local/state/mrdemonc/current/theme")
+        os.makedirs(mrdemonc_theme_dir, exist_ok=True)
 
         is_dark = theme_data.get("isDark", True)
         bg = theme_data.get("bg", "#1e1e2e")
@@ -315,7 +315,7 @@ color13 {pink}
 color14 {cyan}
 color15 {subtext if is_dark else fg}
 """
-        kitty_path = os.path.join(omarchy_theme_dir, "kitty.conf")
+        kitty_path = os.path.join(mrdemonc_theme_dir, "kitty.conf")
         with open(kitty_path, "w", encoding="utf-8") as f:
             f.write(kitty_content)
 
@@ -348,13 +348,14 @@ bright5={pink.lstrip('#')}
 bright6={cyan.lstrip('#')}
 bright7={(subtext if is_dark else fg).lstrip('#')}
 """
-        foot_path = os.path.join(omarchy_theme_dir, "foot.ini")
+        foot_path = os.path.join(mrdemonc_theme_dir, "foot.ini")
         with open(foot_path, "w", encoding="utf-8") as f:
             f.write(foot_content)
 
-        # Guardar nombre de tema activo en omarchy
-        name_file = os.path.expanduser("~/.local/state/omarchy/current/theme.name")
-        with open(name_file, "w", encoding="utf-8") as f:
+        # Guardar nombre de tema activo
+        name_f = os.path.expanduser("~/.local/state/mrdemonc/current/theme.name")
+        os.makedirs(os.path.dirname(name_f), exist_ok=True)
+        with open(name_f, "w", encoding="utf-8") as f:
             f.write(theme_data.get("id", "custom") + "\n")
 
         # Notificar a las instancias abiertas de Kitty para recargar colores en vivo

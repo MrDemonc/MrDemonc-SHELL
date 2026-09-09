@@ -4,7 +4,7 @@ Esta guía detalla la configuración y resolución de problemas para **Quickshel
 
 ---
 
-## 💿 Creación e Instalación desde Arch ISO (Estilo Omarchy)
+## 💿 Creación e Instalación desde Arch ISO (MrDemonc-SHELL)
 
 Puedes generar tu propia **imagen ISO booteable oficial** de **MrDemonc-SHELL** para llevarla en un USB, o utilizar la ISO oficial estándar de Arch Linux.
 

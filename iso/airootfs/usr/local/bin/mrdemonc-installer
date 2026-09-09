@@ -1,128 +1,460 @@
 #!/usr/bin/env bash
 # ==============================================================================
 #  ARCH LINUX: Instalador Automatizado (Live ISO)
+#  Diseño de interfaz TUI inspirado en Omarchy (Charm gum, Tokyo Night, Box TUI)
 # ==============================================================================
-#  Características:
-#    • Instalación directa sin pantallas de bienvenida ni pausas artificiales
-#    • Toda la configuración se aplica durante la instalación (0 pasos post-reinicio)
-#    • Asistente de red Wi-Fi (redes visibles y OCULTAS)
-#    • Selección de idioma del sistema (Locales) y distribución de teclado
-#    • Configuración de Hostname y perfil de Git
-#    • Cifrado automático de disco completo con LUKS2 (Argon2id)
-#    • Contraseña maestra unificada (Cifrado LUKS + Root + Usuario sudo)
-#    • Sistema de archivos BTRFS con subvolúmenes (@, @home, @snapshots, etc.)
-#    • Gestor de arranque UEFI rápido (systemd-boot)
-#    • Seamless Login directo a Hyprland en tty1 (sin gestor GDM)
-#    • Shell Zsh + Oh My Zsh + Starship prompt personalizado
-#    • Despliegue completo de MrDemonc-SHELL (Hyprland + Quickshell)
-# ==============================================================================
-
 set -eo pipefail
 
 # ------------------------------------------------------------------------------
-# 1. Colores y Estilos
+# 1. Configuración de Terminal, Paleta Tokyo Night y Logo
 # ------------------------------------------------------------------------------
+set_tokyo_night_colors() {
+    # Paleta Tokyo Night para Linux Virtual Console (VT)
+    echo -en "\e]P01a1b26"; echo -en "\e]P1f7768e"; echo -en "\e]P29ece6a"
+    echo -en "\e]P3e0af68"; echo -en "\e]P47aa2f7"; echo -en "\e]P5bb9af7"
+    echo -en "\e]P67dcfff"; echo -en "\e]P7a9b1d6"; echo -en "\e]P8414868"
+    echo -en "\e]P9f7768e"; echo -en "\e]PA9ece6a"; echo -en "\e]PBe0af68"
+    echo -en "\e]PC7aa2f7"; echo -en "\e]PDbb9af7"; echo -en "\e]PE7dcfff"
+    echo -en "\e]PFc0caf5"
+    echo -en "\033[0m"
+}
+set_tokyo_night_colors 2>/dev/null || true
+
 ARCH_BLUE="\033[38;5;39m"
-BLUE="\033[38;5;33m"
 GREEN="\033[38;5;42m"
 RED="\033[38;5;196m"
 YELLOW="\033[38;5;220m"
-MAGENTA="\033[38;5;177m"
-WHITE="\033[38;5;255m"
+PURPLE="\033[38;5;141m"
 GRAY="\033[38;5;242m"
 DARK_GRAY="\033[38;5;238m"
 BOLD="\033[1m"
 DIM="\033[2m"
 NC="\033[0m"
 
-badge_ok()   { echo -e "  ${GREEN}${BOLD}✔ [OK]${NC} $1"; }
-badge_info() { echo -e "  ${ARCH_BLUE}${BOLD}ℹ [INFO]${NC} $1"; }
-badge_warn() { echo -e "  ${YELLOW}${BOLD}▲ [AVISO]${NC} $1"; }
-badge_err()  { echo -e "  ${RED}${BOLD}✖ [ERROR]${NC} $1"; }
-badge_sec()  { echo -e "  ${MAGENTA}${BOLD}🔒 [LUKS2]${NC} $1"; }
-badge_fs()   { echo -e "  ${BLUE}${BOLD}💿 [BTRFS]${NC} $1"; }
+# Variables de estilo para gum
+export GUM_CONFIRM_PROMPT_FOREGROUND="6"
+export GUM_CONFIRM_SELECTED_FOREGROUND="0"
+export GUM_CONFIRM_SELECTED_BACKGROUND="2"
+export GUM_CONFIRM_UNSELECTED_FOREGROUND="7"
+export GUM_CONFIRM_UNSELECTED_BACKGROUND="0"
 
-draw_header() {
-    local current_step="$1"
+# Logo ARCH en tipografía de bloques (49 columnas)
+LOGO_TEXT=$(cat << "EOF"
+  ▄███████▄    ▄████████▄     ▄███████▄   ▄█   █▄
+ ███     ███   ███    ███    ███     ▀▀   ███ ███
+ ███     ███   ███    ███    ███          ███ ███
+ ███████████   █████████▀    ███          ███████
+ ███     ███   ███  ███      ███          ███ ███
+ ███     ███   ███   ███     ███     ▄▄   ███ ███
+ ███     ███   ███    ███     ▀███████▀   ███ ███
+EOF
+)
+LOGO_WIDTH=49
+LOGO_HEIGHT=7
 
-    clear
-    echo -e "${ARCH_BLUE}${BOLD}  ARCH LINUX INSTALLER  ${GRAY}•  Btrfs + LUKS2 + Hyprland + MrDemonc${NC}"
-    echo -e "${DARK_GRAY}  ────────────────────────────────────────────────────────────────────────────${NC}"
+# Medición dinámica del ancho del terminal y cálculo de padding para centrado
+measure_terminal() {
+    TERM_WIDTH=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
+    (( TERM_WIDTH > 0 )) || TERM_WIDTH=${COLUMNS:-80}
 
-    # Barra de progreso (Stepper)
-    local steps=("Red" "Idioma" "Teclado" "Host & Git" "Disco & LUKS" "Instalar" "Finalizar")
-    local s_line="  "
-    for i in "${!steps[@]}"; do
-        local num=$((i + 1))
-        local name="${steps[$i]}"
-        if [ "$num" -eq "$current_step" ]; then
-            s_line="${s_line}${ARCH_BLUE}${BOLD}◆ [${num}. ${name}]${NC} "
-        elif [ "$num" -lt "$current_step" ]; then
-            s_line="${s_line}${GREEN}✔ ${name}${NC} "
+    PADDING_LEFT=$(((TERM_WIDTH - LOGO_WIDTH) / 2))
+    (( PADDING_LEFT < 0 )) && PADDING_LEFT=0
+    PADDING_LEFT_SPACES=$(printf "%*s" "$PADDING_LEFT" "")
+
+    PADDING="0 0 0 $PADDING_LEFT"
+    export GUM_CHOOSE_PADDING="$PADDING"
+    export GUM_FILTER_PADDING="$PADDING"
+    export GUM_INPUT_PADDING="$PADDING"
+    export GUM_SPIN_PADDING="$PADDING"
+    export GUM_TABLE_PADDING="$PADDING"
+    export GUM_CONFIRM_PADDING="$PADDING"
+}
+
+# ------------------------------------------------------------------------------
+# 2. Capa de Compatibilidad / Wrappers para gum (con Fallback nativo ANSI)
+# ------------------------------------------------------------------------------
+g_style() {
+    if command -v gum >/dev/null 2>&1; then
+        gum style "$@"
+    else
+        local fg="" pad=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --foreground) fg="$2"; shift 2 ;;
+                --padding) pad="$2"; shift 2 ;;
+                *) break ;;
+            esac
+        done
+        local color="\033[0m"
+        case "$fg" in
+            1) color="\033[38;5;196m" ;;
+            2) color="\033[38;5;42m" ;;
+            6) color="\033[38;5;39m" ;;
+            8) color="\033[38;5;242m" ;;
+        esac
+        while IFS= read -r line; do
+            echo -e "${PADDING_LEFT_SPACES}${color}${line}${NC}"
+        done <<< "$*"
+    fi
+}
+
+clear_logo() {
+    measure_terminal
+    printf "\033[H\033[2J"
+    if command -v gum >/dev/null 2>&1; then
+        gum style --foreground 2 --padding "1 0 0 $PADDING_LEFT" "$LOGO_TEXT"
+    else
+        echo ""
+        while IFS= read -r line; do
+            echo -e "${PADDING_LEFT_SPACES}${GREEN}${line}${NC}"
+        done <<< "$LOGO_TEXT"
+        echo ""
+    fi
+}
+
+say() {
+    if command -v gum >/dev/null 2>&1; then
+        gum style --padding "0 0 0 $PADDING_LEFT" "$@"
+    else
+        local fg=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --foreground) fg="$2"; shift 2 ;;
+                *) break ;;
+            esac
+        done
+        local color="\033[0m"
+        case "$fg" in
+            1) color="\033[38;5;196m" ;;
+            2) color="\033[38;5;42m" ;;
+            6) color="\033[38;5;39m" ;;
+            8) color="\033[38;5;242m" ;;
+        esac
+        echo -e "${PADDING_LEFT_SPACES}${color}$*${NC}"
+    fi
+}
+
+step() {
+    clear_logo
+    echo
+    say "$1"
+    echo
+}
+
+# Selector interactivo compatible con gum y fallback con flechas
+g_choose() {
+    if command -v gum >/dev/null 2>&1; then
+        gum choose "$@"
+    else
+        local header="" selected_default="" height=8
+        local -a items=()
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --header) header="$2"; shift 2 ;;
+                --selected) selected_default="$2"; shift 2 ;;
+                --height) height="$2"; shift 2 ;;
+                *) items+=("$1"); shift ;;
+            esac
+        done
+        if [ ${#items[@]} -eq 0 ]; then
+            mapfile -t items
+        fi
+
+        local selected=0
+        local num_opts=${#items[@]}
+        local max_visible=$height
+        local window_start=0
+
+        for i in "${!items[@]}"; do
+            if [[ -n "$selected_default" && "${items[$i]}" == "$selected_default"* ]]; then
+                selected=$i
+                break
+            fi
+        done
+
+        tput civis 2>/dev/null || echo -ne "\033[?25l"
+
+        while true; do
+            if [ "$num_opts" -gt "$max_visible" ]; then
+                if [ "$selected" -ge $((window_start + max_visible)) ]; then
+                    window_start=$((selected - max_visible + 1))
+                elif [ "$selected" -lt "$window_start" ]; then
+                    window_start=$selected
+                fi
+            fi
+
+            [ -n "$header" ] && echo -e "${PADDING_LEFT_SPACES}${BOLD}${header}${NC}\n"
+
+            if [ "$num_opts" -gt "$max_visible" ]; then
+                if [ "$window_start" -gt 0 ]; then
+                    echo -e "${PADDING_LEFT_SPACES}  ${ARCH_BLUE}▲ (${window_start} más arriba)${NC}"
+                else
+                    echo -e "${PADDING_LEFT_SPACES}  ${DARK_GRAY}•${NC}"
+                fi
+
+                for ((i=window_start; i<window_start+max_visible && i<num_opts; i++)); do
+                    if [ "$i" -eq "$selected" ]; then
+                        echo -e "${PADDING_LEFT_SPACES}${GREEN}${BOLD}> ${items[$i]}${NC}"
+                    else
+                        echo -e "${PADDING_LEFT_SPACES}  ${GRAY}${items[$i]}${NC}"
+                    fi
+                done
+
+                local rem=$((num_opts - (window_start + max_visible)))
+                if [ "$rem" -gt 0 ]; then
+                    echo -e "${PADDING_LEFT_SPACES}  ${ARCH_BLUE}▼ (${rem} más abajo)${NC}"
+                else
+                    echo -e "${PADDING_LEFT_SPACES}  ${DARK_GRAY}•${NC}"
+                fi
+            else
+                for i in "${!items[@]}"; do
+                    if [ "$i" -eq "$selected" ]; then
+                        echo -e "${PADDING_LEFT_SPACES}${GREEN}${BOLD}> ${items[$i]}${NC}"
+                    else
+                        echo -e "${PADDING_LEFT_SPACES}  ${GRAY}${items[$i]}${NC}"
+                    fi
+                done
+            fi
+
+            local key="" key2=""
+            if [ -e /dev/tty ] && [ -r /dev/tty ]; then
+                IFS= read -rsn1 key < /dev/tty || break
+                if [[ "$key" == $'\x1b' ]]; then
+                    read -rsn2 -t 0.1 key2 < /dev/tty || true
+                fi
+            else
+                IFS= read -rsn1 key || break
+                if [[ "$key" == $'\x1b' ]]; then
+                    read -rsn2 -t 0.1 key2 || true
+                fi
+            fi
+
+            if [[ "$key" == $'\x1b' ]]; then
+                if [[ "$key2" == "[A" ]]; then
+                    ((selected--))
+                    [ $selected -lt 0 ] && selected=$((num_opts - 1))
+                elif [[ "$key2" == "[B" ]]; then
+                    ((selected++))
+                    [ $selected -ge $num_opts ] && selected=0
+                fi
+            elif [[ "$key" == "" ]]; then
+                break
+            fi
+
+            local lines_to_clear
+            if [ "$num_opts" -gt "$max_visible" ]; then
+                lines_to_clear=$((max_visible + 4))
+            else
+                lines_to_clear=$((num_opts + 2))
+            fi
+            [ -n "$header" ] && ((lines_to_clear += 2))
+
+            for ((l=0; l<lines_to_clear; l++)); do
+                echo -ne "\033[1A\033[2K"
+            done
+        done
+
+        tput cnorm 2>/dev/null || echo -ne "\033[?25h"
+        echo "${items[$selected]}"
+    fi
+}
+
+g_filter() {
+    if command -v gum >/dev/null 2>&1; then
+        gum filter "$@"
+    else
+        g_choose "$@"
+    fi
+}
+
+g_input() {
+    if command -v gum >/dev/null 2>&1; then
+        gum input "$@"
+    else
+        local prompt="> " is_pw=0 placeholder=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --prompt) prompt="$2"; shift 2 ;;
+                --prompt.foreground=*) shift ;;
+                --password) is_pw=1; shift ;;
+                --placeholder) placeholder="$2"; shift 2 ;;
+                *) shift ;;
+            esac
+        done
+        local val=""
+        echo -ne "${PADDING_LEFT_SPACES}\033[38;5;141m${prompt}\033[0m"
+        if [ $is_pw -eq 1 ]; then
+            read -s -r val </dev/tty || read -s -r val || true
+            echo ""
         else
-            s_line="${s_line}${GRAY}${num}. ${name}${NC} "
+            read -r val </dev/tty || read -r val || true
         fi
-        if [ "$num" -lt "${#steps[@]}" ]; then
-            s_line="${s_line}${DARK_GRAY}──${NC} "
-        fi
-    done
-    echo -e "$s_line"
-    echo -e "${DARK_GRAY}  ────────────────────────────────────────────────────────────────────────────${NC}\n"
+        echo "$val"
+    fi
 }
 
-show_boot_splash() {
-    clear
-    echo -e "${ARCH_BLUE}"
-    cat << "SPLASH"
+g_confirm() {
+    if command -v gum >/dev/null 2>&1; then
+        gum confirm "$@"
+    else
+        local affirmative="Sí" negative="No" question="¿Confirmar?"
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --affirmative) affirmative="$2"; shift 2 ;;
+                --negative) negative="$2"; shift 2 ;;
+                *) question="$1"; shift ;;
+            esac
+        done
 
-                ╭────────────────────────────────────────╮
-                │                                        │
-                │    █████╗ ██████╗  ██████╗██╗  ██╗     │
-                │   ██╔══██╗██╔══██╗██╔════╝██║  ██║     │
-                │   ███████║██████╔╝██║     ███████║     │
-                │   ██╔══██║██╔══██╗██║     ██╔══██║     │
-                │   ██║  ██║██║  ██║╚██████╗██║  ██║     │
-                │   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝     │
-                │                                        │
-                │              ARCH LINUX                │
-                │                                        │
-                │         Cargando instalador...         │
-                │                                        │
-                ╰────────────────────────────────────────╯
+        local selected=0
+        local key="" key2=""
 
-SPLASH
-    echo -e "${NC}"
-    echo -ne "                  ["
-    for i in {1..20}; do
-        echo -ne "${ARCH_BLUE}█${NC}"
-        sleep 0.02
-    done
-    echo -e "]\n"
-    sleep 0.4
+        tput civis 2>/dev/null || echo -ne "\033[?25l"
+
+        while true; do
+            echo -e "${PADDING_LEFT_SPACES}${BOLD}$question${NC}\n"
+            if [ "$selected" -eq 0 ]; then
+                echo -e "${PADDING_LEFT_SPACES}  ${GREEN}${BOLD}▶ [ $affirmative ] ◀${NC}       ${GRAY}  [ $negative ]  ${NC}"
+            else
+                echo -e "${PADDING_LEFT_SPACES}    ${GRAY}[ $affirmative ]  ${NC}     ${RED}${BOLD}▶ [ $negative ] ◀${NC}"
+            fi
+
+            if [ -e /dev/tty ] && [ -r /dev/tty ]; then
+                IFS= read -rsn1 key < /dev/tty || break
+                if [[ "$key" == $'\x1b' ]]; then
+                    read -rsn2 -t 0.1 key2 < /dev/tty || true
+                else
+                    key2=""
+                fi
+            else
+                IFS= read -rsn1 key || break
+                if [[ "$key" == $'\x1b' ]]; then
+                    read -rsn2 -t 0.1 key2 || true
+                else
+                    key2=""
+                fi
+            fi
+
+            if [[ "$key" == $'\x1b' ]]; then
+                if [[ "$key2" == "[D" || "$key2" == "[A" ]]; then
+                    selected=0
+                elif [[ "$key2" == "[C" || "$key2" == "[B" ]]; then
+                    selected=1
+                fi
+            elif [[ "$key" == $'\t' ]]; then
+                selected=$((1 - selected))
+            elif [[ "$key" == "" ]]; then
+                break
+            fi
+
+            echo -ne "\033[1A\033[2K\033[1A\033[2K\033[1A\033[2K"
+        done
+
+        tput cnorm 2>/dev/null || echo -ne "\033[?25h"
+        return "$selected"
+    fi
 }
 
-# Ejecutar pantalla de carga visual (Splash)
-show_boot_splash
+g_table() {
+    if command -v gum >/dev/null 2>&1; then
+        gum table "$@"
+    else
+        local raw
+        raw=$(cat)
+        local -a lines
+        mapfile -t lines <<< "$raw"
+        local col1_w=20 col2_w=34
+        printf "%s┌%s┬%s┐\n" "$PADDING_LEFT_SPACES" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+        local first=1
+        for l in "${lines[@]}"; do
+            [ -z "$l" ] && continue
+            IFS="," read -r c1 c2 <<< "$l"
+            printf "%s│ %-${col1_w}s │ %-${col2_w}s │\n" "$PADDING_LEFT_SPACES" "$c1" "$c2"
+            if [ $first -eq 1 ]; then
+                printf "%s├%s┼%s┤\n" "$PADDING_LEFT_SPACES" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+                first=0
+            fi
+        done
+        printf "%s└%s┴%s┘\n" "$PADDING_LEFT_SPACES" "$(printf "─%.0s" $(seq 1 $((col1_w + 2))))" "$(printf "─%.0s" $(seq 1 $((col2_w + 2))))"
+    fi
+}
+
+g_spin() {
+    if command -v gum >/dev/null 2>&1; then
+        gum spin "$@"
+    else
+        local title=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --title) title="$2"; shift 2 ;;
+                --spinner) shift 2 ;;
+                --) shift; break ;;
+                *) break ;;
+            esac
+        done
+        echo -e "${PADDING_LEFT_SPACES}\033[38;5;39m• ${title}\033[0m"
+        "$@"
+    fi
+}
 
 # ------------------------------------------------------------------------------
-# 2. Verificaciones Previas (Modo UEFI y Permisos)
+# 3. Pantalla de Bienvenida (Greeter estilo Omarchy)
 # ------------------------------------------------------------------------------
+greeter() {
+    measure_terminal
+    local rows=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
+    [[ $rows =~ ^[0-9]+$ ]] || rows=${LINES:-24}
+    local content_h=$((LOGO_HEIGHT + 4))
+    local top=$(((rows - content_h) / 2))
+    (( top < 0 )) && top=0
+
+    printf '\033[?25l\033[H\033[2J'
+    for ((i=0; i<top; i++)); do echo ""; done
+
+    if command -v gum >/dev/null 2>&1; then
+        gum style --foreground 2 --padding "0 0 0 $PADDING_LEFT" "$LOGO_TEXT"
+    else
+        while IFS= read -r line; do
+            echo -e "${PADDING_LEFT_SPACES}${GREEN}${line}${NC}"
+        done <<< "$LOGO_TEXT"
+    fi
+    echo ""
+
+    local tagline="Arch Linux + Hyprland + MrDemonc-SHELL"
+    local tpad=$(((TERM_WIDTH - ${#tagline}) / 2))
+    (( tpad < 0 )) && tpad=0
+    printf "%*s\033[1;37m%s\033[0m\n\n" "$tpad" "" "$tagline"
+
+    local hint="Presiona [Enter] para iniciar la instalación"
+    local hpad=$(((TERM_WIDTH - ${#hint}) / 2))
+    (( hpad < 0 )) && hpad=0
+    printf "%*s\033[2m%s\033[0m\n" "$hpad" "" "$hint"
+
+    IFS= read -r _ </dev/tty || IFS= read -r _ || true
+    printf '\033[0m\033[H\033[2J\033[?25h'
+}
+
+# ------------------------------------------------------------------------------
+# 4. Verificaciones Previas (Root y Modo UEFI)
+# ------------------------------------------------------------------------------
+greeter
+
 if [ "$(id -u)" -ne 0 ]; then
-    badge_err "Este instalador debe ejecutarse como root desde la ISO de Arch Linux."
+    echo -e "${RED}[ERROR] Este instalador debe ejecutarse como root desde la ISO de Arch Linux.${NC}"
     exit 1
 fi
 
 if [ ! -d "/sys/firmware/efi/efivars" ]; then
-    badge_err "El sistema no arrancó en modo UEFI. Por favor configura tu BIOS en modo UEFI."
+    echo -e "${RED}[ERROR] El sistema no arrancó en modo UEFI. Configura tu BIOS en modo UEFI.${NC}"
     exit 1
 fi
 
 timedatectl set-ntp true 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
-# PASO 1: Asistente de Conectividad a Internet (Wi-Fi, Redes Ocultas, Ethernet)
+# 5. ASISTENTE: Conexión a Internet y Redes
 # ------------------------------------------------------------------------------
-configure_network_wizard() {
+network_wizard() {
     if command -v systemctl >/dev/null 2>&1; then
         systemctl start NetworkManager 2>/dev/null || true
         systemctl start iwd 2>/dev/null || true
@@ -131,311 +463,371 @@ configure_network_wizard() {
     nmcli radio wifi on 2>/dev/null || true
 
     while true; do
-        draw_header 1
-        local net_status="${RED}● DESCONECTADO (Se requiere internet para pacstrap)${NC}"
+        step "Configuración de red e Internet..."
+
         local is_online=false
         if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 || ping -c 1 -W 2 archlinux.org >/dev/null 2>&1; then
-            net_status="${GREEN}● CONECTADO A INTERNET${NC}"
             is_online=true
         fi
 
-        echo -e "${ARCH_BLUE}╭─ Paso 1/7: Conexión a Internet y Redes ──────────────────────────────────────╮${NC}"
-        echo -e "│                                                                              │"
-        echo -e "│  Estado de red:  $net_status"
-        echo -e "│                                                                              │"
-        echo -e "│  ${BOLD}Opciones de conexión disponibles:${NC}                                           │"
-        echo -e "│    ${ARCH_BLUE}${BOLD}[1]${NC}  📡 Escanear y conectar a una red Wi-Fi visible                       │"
-        echo -e "│    ${ARCH_BLUE}${BOLD}[2]${NC}  🔒 Conectar a red Wi-Fi ${MAGENTA}${BOLD}OCULTA${NC} (Hidden SSID)                         │"
-        echo -e "│    ${ARCH_BLUE}${BOLD}[3]${NC}  🌐 Probar conexión por cable Ethernet (DHCP)                         │"
-        echo -e "│    ${ARCH_BLUE}${BOLD}[4]${NC}  ⌨️   Abrir consola manual iwctl                                        │"
-        echo -e "│    ${ARCH_BLUE}${BOLD}[5]${NC}  ⏩ Continuar al siguiente paso                                        │"
-        echo -e "│                                                                              │"
-        echo -e "${ARCH_BLUE}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-
+        local NET_OPTIONS=()
         if [ "$is_online" = true ]; then
-            echo ""
-            badge_ok "¡Conexión a Internet activa y verificada!"
-            echo ""
-            read -r -p "  ¿Avanzar al siguiente paso? [S/n] (o escribe 'r' para reconfigurar): " NET_CHOICE
-            if [[ ! "$NET_CHOICE" =~ ^[nN]$ ]] && [[ ! "$NET_CHOICE" =~ ^[rR]$ ]]; then
-                return 0
-            fi
+            say --foreground 2 "✔ Conexión a Internet verificada y activa."
+            echo
+            NET_OPTIONS=(
+                "Continuar al siguiente paso"
+                "Escanear y conectar a otra red Wi-Fi"
+                "Conectar a una red Wi-Fi OCULTA (Hidden SSID)"
+                "Probar conexión por cable Ethernet (DHCP)"
+                "Abrir consola manual iwctl"
+            )
+        else
+            say --foreground 1 "● Desconectado (se recomienda Internet para descargar actualizaciones)"
+            echo
+            NET_OPTIONS=(
+                "Escanear y conectar a una red Wi-Fi visible"
+                "Conectar a una red Wi-Fi OCULTA (Hidden SSID)"
+                "Probar conexión por cable Ethernet (DHCP)"
+                "Abrir consola manual iwctl"
+                "Continuar sin conexión (Instalación offline)"
+            )
         fi
 
-        read -r -p "  ❯ Selecciona una opción [1-5]: " NET_OPT
+        local sel
+        sel=$(printf '%s\n' "${NET_OPTIONS[@]}" | g_choose --height 6 --header "Opciones de conexión disponibles:")
 
-        case "$NET_OPT" in
-            1)
-                echo ""
-                badge_info "Escaneando redes Wi-Fi cercanas..."
-                if command -v nmcli >/dev/null 2>&1; then
-                    nmcli dev wifi rescan 2>/dev/null || true
-                    sleep 1
-                    echo ""
-                    nmcli --colors yes -f IN-USE,SSID,SIGNAL,BARS,SECURITY device wifi list 2>/dev/null || true
-                    echo ""
-                    read -r -p "  Introduce el nombre (SSID) de tu red Wi-Fi: " WIFI_SSID
-                    if [ -n "$WIFI_SSID" ]; then
-                        read -s -r -p "  Introduce la contraseña de '$WIFI_SSID': " WIFI_PASS
-                        echo ""
-                        badge_info "Conectando a $WIFI_SSID..."
-                        if [ -n "$WIFI_PASS" ]; then
-                            nmcli dev wifi connect "$WIFI_SSID" password "$WIFI_PASS" || badge_err "Falló la conexión a $WIFI_SSID."
-                        else
-                            nmcli dev wifi connect "$WIFI_SSID" || true
-                        fi
+        if [[ "$sel" =~ ^Continuar ]]; then
+            return 0
+        elif [[ "$sel" =~ ^Escanear ]]; then
+            step "Escaneando redes Wi-Fi cercanas..."
+            if command -v nmcli >/dev/null 2>&1; then
+                nmcli dev wifi rescan 2>/dev/null || true
+                g_spin --spinner "pulse" --title "Buscando puntos de acceso inalámbricos..." -- sleep 2
+                mapfile -t FOUND_SSIDS < <(nmcli -t -f SSID dev wifi list 2>/dev/null | grep -v '^$' | awk '!seen[$0]++' | head -n 12)
+                
+                local wifi_choice=""
+                if [ ${#FOUND_SSIDS[@]} -gt 0 ]; then
+                    wifi_choice=$(printf '%s\n' "${FOUND_SSIDS[@]}" "Escribir SSID manualmente" | \
+                        g_choose --height 8 --header "Selecciona tu red Wi-Fi:")
+                    if [ "$wifi_choice" == "Escribir SSID manualmente" ]; then
+                        wifi_choice=$(g_input --placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
                     fi
-                elif command -v iwctl >/dev/null 2>&1; then
-                    WLAN_DEV=$(iwctl device list 2>/dev/null | awk '/station/ {print $2}' | head -n 1)
-                    WLAN_DEV="${WLAN_DEV:-wlan0}"
-                    badge_info "Escaneando con iwctl en $WLAN_DEV..."
-                    iwctl station "$WLAN_DEV" scan 2>/dev/null || true
-                    sleep 1
-                    iwctl station "$WLAN_DEV" get-networks 2>/dev/null || true
-                    echo ""
-                    read -r -p "  Introduce el nombre (SSID) de la red: " WIFI_SSID
-                    if [ -n "$WIFI_SSID" ]; then
-                        iwctl station "$WLAN_DEV" connect "$WIFI_SSID" || true
-                    fi
+                else
+                    wifi_choice=$(g_input --placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
                 fi
-                sleep 2
-                ;;
 
-            2)
-                echo ""
-                echo -e "  ${MAGENTA}${BOLD}=== CONECTAR A RED WI-FI OCULTA ===${NC}"
-                read -r -p "  Introduce el nombre exacto de la red oculta (SSID): " HIDDEN_SSID
-                if [ -z "$HIDDEN_SSID" ]; then
-                    badge_warn "El nombre SSID no puede estar vacío."
-                    sleep 1
-                    continue
-                fi
-                read -s -r -p "  Introduce la contraseña (deja vacío si es abierta): " HIDDEN_PASS
-                echo ""
-                badge_info "Conectando a red oculta $HIDDEN_SSID..."
-                if command -v nmcli >/dev/null 2>&1; then
-                    if [ -n "$HIDDEN_PASS" ]; then
-                        nmcli dev wifi connect "$HIDDEN_SSID" password "$HIDDEN_PASS" hidden yes || {
-                            badge_warn "Reintentando escaneo de SSID específico..."
-                            nmcli dev wifi rescan ssid "$HIDDEN_SSID" 2>/dev/null || true
-                            sleep 1
-                            nmcli dev wifi connect "$HIDDEN_SSID" password "$HIDDEN_PASS" hidden yes || true
-                        }
+                if [ -n "$wifi_choice" ]; then
+                    local wifi_pass
+                    wifi_pass=$(g_input --placeholder "Contraseña (dejar vacío si es abierta)" --password --prompt.foreground="#845DF9" --prompt "Contraseña> ")
+                    step "Conectando a $wifi_choice..."
+                    if [ -n "$wifi_pass" ]; then
+                        nmcli dev wifi connect "$wifi_choice" password "$wifi_pass" || say --foreground 1 "Falló la conexión."
                     else
-                        nmcli dev wifi connect "$HIDDEN_SSID" hidden yes || true
+                        nmcli dev wifi connect "$wifi_choice" || true
                     fi
-                elif command -v iwctl >/dev/null 2>&1; then
-                    WLAN_DEV=$(iwctl device list 2>/dev/null | awk '/station/ {print $2}' | head -n 1)
-                    WLAN_DEV="${WLAN_DEV:-wlan0}"
-                    if [ -n "$HIDDEN_PASS" ]; then
-                        iwctl --passphrase "$HIDDEN_PASS" station "$WLAN_DEV" connect-hidden "$HIDDEN_SSID" || true
+                    sleep 2
+                fi
+            elif command -v iwctl >/dev/null 2>&1; then
+                local wlan_dev
+                wlan_dev=$(iwctl device list 2>/dev/null | awk '/station/ {print $2}' | head -n 1)
+                wlan_dev="${wlan_dev:-wlan0}"
+                iwctl station "$wlan_dev" scan 2>/dev/null || true
+                sleep 1
+                local wifi_choice
+                wifi_choice=$(g_input --placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
+                if [ -n "$wifi_choice" ]; then
+                    iwctl station "$wlan_dev" connect "$wifi_choice" || true
+                fi
+                sleep 2
+            fi
+        elif [[ "$sel" =~ OCULTA ]]; then
+            step "Conectar a red Wi-Fi OCULTA..."
+            local hidden_ssid hidden_pass
+            hidden_ssid=$(g_input --placeholder "Nombre exacto de la red oculta" --prompt.foreground="#845DF9" --prompt "SSID> ")
+            if [ -n "$hidden_ssid" ]; then
+                hidden_pass=$(g_input --placeholder "Contraseña" --password --prompt.foreground="#845DF9" --prompt "Contraseña> ")
+                step "Conectando a red oculta $hidden_ssid..."
+                if command -v nmcli >/dev/null 2>&1; then
+                    if [ -n "$hidden_pass" ]; then
+                        nmcli dev wifi connect "$hidden_ssid" password "$hidden_pass" hidden yes || true
                     else
-                        iwctl station "$WLAN_DEV" connect-hidden "$HIDDEN_SSID" || true
+                        nmcli dev wifi connect "$hidden_ssid" hidden yes || true
                     fi
                 fi
                 sleep 2
-                ;;
-
-            3)
-                badge_info "Solicitando IP por DHCP en interfaces de red..."
-                dhcpcd 2>/dev/null || true
-                sleep 2
-                ;;
-
-            4)
-                echo ""
-                badge_info "Abriendo consola iwctl. Escribe 'exit' cuando termines."
-                iwctl || true
-                ;;
-
-            5)
-                return 0
-                ;;
-        esac
+            fi
+        elif [[ "$sel" =~ Ethernet ]]; then
+            g_spin --spinner "pulse" --title "Solicitando dirección IP vía DHCP..." -- dhcpcd 2>/dev/null || true
+            sleep 2
+        elif [[ "$sel" =~ iwctl ]]; then
+            clear
+            iwctl || true
+        fi
     done
 }
-
-configure_network_wizard
-
-# ------------------------------------------------------------------------------
-# PASO 2: Selección de Idioma del Sistema (Locales)
-# ------------------------------------------------------------------------------
-draw_header 2
-echo -e "${ARCH_BLUE}╭─ Paso 2/7: Idioma del Sistema (Locales) ─────────────────────────────────────╮${NC}"
-echo -e "│                                                                              │"
-echo -e "│  Selecciona el idioma principal de tu sistema Arch Linux:                    │"
-echo -e "│                                                                              │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[1]${NC}  🇪🇸  Español (España)         [es_ES.UTF-8]  (Predeterminado)        │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[2]${NC}  🇲🇽  Español (Latinoamérica)  [es_MX.UTF-8]                          │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[3]${NC}  🇵🇪  Español (Perú)           [es_PE.UTF-8]                          │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[4]${NC}  🇦🇷  Español (Argentina)      [es_AR.UTF-8]                          │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[5]${NC}  🇨🇱  Español (Chile)          [es_CL.UTF-8]                          │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[6]${NC}  🇨🇴  Español (Colombia)       [es_CO.UTF-8]                          │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[7]${NC}  🇺🇸  English (United States)  [en_US.UTF-8]                          │"
-echo -e "│                                                                              │"
-echo -e "${ARCH_BLUE}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-echo ""
-read -r -p "  ❯ Selecciona una opción [1-7] (Enter para Español España): " LANG_OPT
-
-case "$LANG_OPT" in
-    2) SYS_LOCALE="es_MX.UTF-8" ;;
-    3) SYS_LOCALE="es_PE.UTF-8" ;;
-    4) SYS_LOCALE="es_AR.UTF-8" ;;
-    5) SYS_LOCALE="es_CL.UTF-8" ;;
-    6) SYS_LOCALE="es_CO.UTF-8" ;;
-    7) SYS_LOCALE="en_US.UTF-8" ;;
-    *) SYS_LOCALE="es_ES.UTF-8" ;;
-esac
-badge_ok "Idioma configurado: ${BOLD}$SYS_LOCALE${NC}"
-sleep 1
+network_wizard
 
 # ------------------------------------------------------------------------------
-# PASO 3: Distribución de Teclado (Consola y Hyprland)
+# 6. ASISTENTE: Teclado e Idioma
 # ------------------------------------------------------------------------------
-draw_header 3
-echo -e "${ARCH_BLUE}╭─ Paso 3/7: Distribución de Teclado ──────────────────────────────────────────╮${NC}"
-echo -e "│                                                                              │"
-echo -e "│  Configura el mapa de teclas para la consola tty y para Hyprland:            │"
-echo -e "│                                                                              │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[1]${NC}  ⌨️   Latinoamericano (la-latin1 / latam)  (Predeterminado)            │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[2]${NC}  🇪🇸  Español España (es)                                              │"
-echo -e "│    ${ARCH_BLUE}${BOLD}[3]${NC}  🇺🇸  Inglés / US (us)                                                 │"
-echo -e "│                                                                              │"
-echo -e "${ARCH_BLUE}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-echo ""
-read -r -p "  ❯ Selecciona una opción [1-3] (Enter para Latinoamericano): " KB_OPT
+keyboard_wizard() {
+    step "Configuración del teclado..."
 
-case "$KB_OPT" in
-    2)
-        KEYMAP="es"
-        HYPR_KB="es"
-        ;;
-    3)
-        KEYMAP="us"
-        HYPR_KB="us"
-        ;;
-    *)
-        KEYMAP="la-latin1"
-        HYPR_KB="latam"
-        ;;
-esac
-loadkeys "$KEYMAP" 2>/dev/null || true
-badge_ok "Teclado activo: ${BOLD}$KEYMAP${NC} (Hyprland: ${BOLD}$HYPR_KB${NC})"
-sleep 1
+    local KB_CHOICES=(
+        "Latinoamericano (la-latin1)"
+        "Español España (es)"
+        "Inglés / US (us)"
+    )
+
+    local kb_selected
+    kb_selected=$(printf '%s\n' "${KB_CHOICES[@]}" | g_choose --height 5 --selected "Latinoamericano (la-latin1)" --header "Selecciona la distribución de teclado:")
+
+    case "$kb_selected" in
+        *"Español España"*)
+            KEYMAP="es"
+            HYPR_KB="es"
+            ;;
+        *"Inglés / US"*)
+            KEYMAP="us"
+            HYPR_KB="us"
+            ;;
+        *)
+            KEYMAP="la-latin1"
+            HYPR_KB="latam"
+            ;;
+    esac
+
+    loadkeys "$KEYMAP" 2>/dev/null || true
+}
+keyboard_wizard
+
+locale_wizard() {
+    step "Configuración del idioma del sistema..."
+
+    local LOCALE_CHOICES=(
+        "Español (España) [es_ES.UTF-8]"
+        "Español (Latinoamérica) [es_MX.UTF-8]"
+        "Español (Perú) [es_PE.UTF-8]"
+        "Español (Argentina) [es_AR.UTF-8]"
+        "Español (Chile) [es_CL.UTF-8]"
+        "Español (Colombia) [es_CO.UTF-8]"
+        "English (United States) [en_US.UTF-8]"
+    )
+
+    local loc_selected
+    loc_selected=$(printf '%s\n' "${LOCALE_CHOICES[@]}" | g_choose --height 7 --selected "Español (España) [es_ES.UTF-8]" --header "Selecciona el idioma principal:")
+
+    case "$loc_selected" in
+        *"es_MX"*) SYS_LOCALE="es_MX.UTF-8" ;;
+        *"es_PE"*) SYS_LOCALE="es_PE.UTF-8" ;;
+        *"es_AR"*) SYS_LOCALE="es_AR.UTF-8" ;;
+        *"es_CL"*) SYS_LOCALE="es_CL.UTF-8" ;;
+        *"es_CO"*) SYS_LOCALE="es_CO.UTF-8" ;;
+        *"en_US"*) SYS_LOCALE="en_US.UTF-8" ;;
+        *)         SYS_LOCALE="es_ES.UTF-8" ;;
+    esac
+}
+locale_wizard
 
 # ------------------------------------------------------------------------------
-# PASO 4: Identidad del Equipo y Git
+# 7. ASISTENTE: Cuenta de Usuario, Clave Maestra, Hostname y Git
 # ------------------------------------------------------------------------------
-draw_header 4
-echo -e "${ARCH_BLUE}╭─ Paso 4/7: Identidad del Equipo y Perfil Git ────────────────────────────────╮${NC}"
-echo -e "│                                                                              │"
-echo -e "│  Asigna el nombre de tu máquina (Hostname) y tu perfil global de Git:        │"
-echo -e "│                                                                              │"
-echo -e "${ARCH_BLUE}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-echo ""
-read -r -p "  ❯ Nombre del equipo / Hostname [archlinux]: " SYS_HOSTNAME
-SYS_HOSTNAME="${SYS_HOSTNAME:-archlinux}"
+user_form_wizard() {
+    local TIMEZONES=(
+        "America/Lima"
+        "America/Santiago"
+        "America/Bogota"
+        "America/Argentina/Buenos_Aires"
+        "America/Mexico_City"
+        "America/Caracas"
+        "America/La_Paz"
+        "America/Montevideo"
+        "America/Guayaquil"
+        "America/Asuncion"
+        "America/Panama"
+        "America/Costa_Rica"
+        "America/Guatemala"
+        "America/Madrid"
+        "America/New_York"
+        "America/Chicago"
+        "America/Los_Angeles"
+        "UTC"
+    )
 
-echo ""
-read -r -p "  ❯ Nombre de usuario para Git (ej: MrDemonc): " GIT_USER_NAME
-read -r -p "  ❯ Correo de usuario para Git (ej: usuario@correo.com): " GIT_USER_EMAIL
-badge_ok "Identidad: Hostname=${BOLD}$SYS_HOSTNAME${NC}, Git=${BOLD}${GIT_USER_NAME:-N/A}${NC}"
-sleep 1
+    while true; do
+        step "Configuración de la cuenta de usuario..."
+        say "Crea tu usuario personal. La contraseña maestra servirá para LUKS2, root y sudo."
+        echo
+
+        SYS_USER=""
+        while [[ -z "$SYS_USER" || ! "$SYS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; do
+            SYS_USER=$(g_input --placeholder "Solo minúsculas y números (ej: usuario)" --prompt.foreground="#845DF9" --prompt "Usuario> ")
+            if [[ -z "$SYS_USER" || ! "$SYS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+                say --foreground 1 "El usuario debe contener únicamente letras minúsculas y números."
+            fi
+        done
+
+        while true; do
+            MASTER_PASS=$(g_input --placeholder "Contraseña maestra unificada" --password --prompt.foreground="#845DF9" --prompt "Contraseña Maestra> ")
+            local pass_confirm
+            pass_confirm=$(g_input --placeholder "Confirma la contraseña maestra" --password --prompt.foreground="#845DF9" --prompt "Confirmar> ")
+            if [[ -n "$MASTER_PASS" && "$MASTER_PASS" == "$pass_confirm" ]]; then
+                break
+            else
+                say --foreground 1 "Las contraseñas no coinciden o están vacías. Inténtalo de nuevo."
+                echo
+            fi
+        done
+
+        SYS_HOSTNAME=$(g_input --placeholder "Nombre de la máquina (o Enter para 'archlinux')" --prompt.foreground="#845DF9" --prompt "Hostname> ")
+        SYS_HOSTNAME="${SYS_HOSTNAME:-archlinux}"
+
+        GIT_USER_NAME=$(g_input --placeholder "Nombre completo para Git (Enter para omitir)" --prompt.foreground="#845DF9" --prompt "Nombre Git> ")
+        GIT_USER_EMAIL=$(g_input --placeholder "Correo electrónico para Git (Enter para omitir)" --prompt.foreground="#845DF9" --prompt "Correo Git> ")
+
+        echo
+        SYS_TIMEZONE=$(printf '%s\n' "${TIMEZONES[@]}" | g_choose --height 8 --selected "America/Lima" --header "Selecciona tu Zona Horaria:")
+        SYS_TIMEZONE="${SYS_TIMEZONE:-America/Lima}"
+
+        # Tabla de resumen estilo Omarchy
+        step "Resumen de la configuración de usuario"
+        local table_data="Campo,Valor
+Usuario,$SYS_USER
+Contraseña,$(printf "%${#MASTER_PASS}s" | tr ' ' '*')
+Hostname,$SYS_HOSTNAME
+Zona Horaria,$SYS_TIMEZONE
+Idioma,$SYS_LOCALE
+Teclado,$KEYMAP
+Nombre Git,${GIT_USER_NAME:-[Omitido]}
+Correo Git,${GIT_USER_EMAIL:-[Omitido]}"
+
+        echo "$table_data" | g_table -s "," -p | sed "s/^/${PADDING_LEFT_SPACES}/"
+        echo
+
+        if g_confirm --affirmative "Sí, continuar" --negative "No, modificar" "¿Los datos de usuario son correctos?"; then
+            break
+        fi
+    done
+}
+user_form_wizard
 
 # ------------------------------------------------------------------------------
-# PASO 5: Almacenamiento, Cifrado LUKS2 Automático y Contraseña Maestra
+# 8. ASISTENTE: Disco Objetivo de Instalación
 # ------------------------------------------------------------------------------
-draw_header 5
-echo -e "${ARCH_BLUE}╭─ Paso 5/7: Almacenamiento, BTRFS y Contraseña Maestra ───────────────────────╮${NC}"
-echo -e "│                                                                              │"
-echo -e "│  ${MAGENTA}${BOLD}🔒 Cifrado de Disco:${NC}  Automático con LUKS2 (Argon2id)                      │"
-echo -e "│  ${BLUE}${BOLD}💿 Sistema de Archivos:${NC} BTRFS con subvolúmenes (@, @home, @snapshots)     │"
-echo -e "│                                                                              │"
-echo -e "│  ${BOLD}Discos de almacenamiento detectados:${NC}                                       │"
-echo -e "${ARCH_BLUE}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-echo ""
-lsblk -d -p -n -l -o NAME,SIZE,MODEL,TYPE | grep -E "disk" || lsblk
-echo ""
-read -r -p "  ❯ Introduce el disco objetivo (ej: /dev/sda o /dev/nvme0n1): " TARGET_DISK
+disk_wizard() {
+    step "Selección de unidad de almacenamiento..."
 
-if [ ! -b "$TARGET_DISK" ]; then
-    badge_err "El dispositivo '$TARGET_DISK' no es un disco válido."
-    exit 1
-fi
-
-echo ""
-echo -e "  ${RED}${BOLD}¡ADVERTENCIA! Todos los datos en $TARGET_DISK serán eliminados permanentemente.${NC}"
-read -r -p "  Escribe 'SI' (en mayúsculas) para confirmar el formateo: " CONFIRM_DISCO
-if [ "$CONFIRM_DISCO" != "SI" ]; then
-    badge_warn "Instalación cancelada por el usuario."
-    exit 0
-fi
-
-echo ""
-echo -e "${ARCH_BLUE}╭─ Contraseña Maestra Unificada ───────────────────────────────────────────────╮${NC}"
-echo -e "│                                                                              │"
-echo -e "│  La ${BOLD}Contraseña Maestra${NC} que definas se aplicará automáticamente a:             │"
-echo -e "│    1. 🔒 Desbloqueo del disco cifrado al encender la PC                      │"
-echo -e "│    2. 🔑 Superusuario root                                                   │"
-echo -e "│    3. 👤 Tu cuenta de usuario personal y comandos sudo                       │"
-echo -e "│                                                                              │"
-echo -e "${ARCH_BLUE}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-echo ""
-read -r -p "  ❯ Nombre de tu usuario personal [demonc]: " SYS_USER
-SYS_USER="${SYS_USER:-demonc}"
-
-while true; do
-    read -s -r -p "  ❯ Introduce la Contraseña Maestra: " P1
-    echo ""
-    read -s -r -p "  ❯ Confirma la Contraseña Maestra: " P2
-    echo ""
-    if [ -n "$P1" ] && [ "$P1" == "$P2" ]; then
-        MASTER_PASS="$P1"
-        break
-    else
-        badge_err "Las contraseñas no coinciden o están vacías. Inténtalo de nuevo."
+    mapfile -t RAW_DISKS < <(lsblk -d -p -n -l -o NAME,SIZE,MODEL,TYPE 2>/dev/null | grep -E "disk" | grep -v -E "zram|loop|airoot")
+    if [ ${#RAW_DISKS[@]} -eq 0 ]; then
+        say --foreground 1 "No se detectaron discos de almacenamiento disponibles."
+        exit 1
     fi
-done
-badge_ok "Clave Maestra configurada para Cifrado LUKS, Root y $SYS_USER."
 
-echo ""
-read -r -p "  ❯ Zona horaria [America/Lima]: " SYS_TIMEZONE
-SYS_TIMEZONE="${SYS_TIMEZONE:-America/Lima}"
+    local bootmnt_dev bootmnt_parent=""
+    bootmnt_dev=$(findmnt -n -o SOURCE /run/archiso/bootmnt 2>/dev/null || true)
+    if [ -n "$bootmnt_dev" ]; then
+        bootmnt_parent=$(lsblk -n -o PKNAME "$bootmnt_dev" 2>/dev/null || true)
+        [ -n "$bootmnt_parent" ] && bootmnt_parent="/dev/$bootmnt_parent"
+    fi
+
+    local DISK_OPTIONS=()
+    for d_line in "${RAW_DISKS[@]}"; do
+        local d_name d_size d_model label
+        d_name=$(echo "$d_line" | awk '{print $1}')
+        d_size=$(echo "$d_line" | awk '{print $2}')
+        d_model=$(echo "$d_line" | awk '{$1=$2=""; print $0}' | sed 's/disk//g' | xargs)
+        label="$d_name ($d_size${d_model:+ - $d_model})"
+        if [ -n "$bootmnt_parent" ] && [ "$d_name" == "$bootmnt_parent" ]; then
+            label="$label [USB Live]"
+        fi
+        DISK_OPTIONS+=("$label")
+    done
+
+    local disk_selected
+    disk_selected=$(printf '%s\n' "${DISK_OPTIONS[@]}" | g_choose --height 6 --header "Selecciona el disco para la instalación:")
+    TARGET_DISK=$(echo "$disk_selected" | awk '{print $1}')
+
+    if [ -n "$bootmnt_parent" ] && [ "$TARGET_DISK" == "$bootmnt_parent" ]; then
+        say --foreground 1 "El disco elegido parece ser el medio USB de instalación."
+        if ! g_confirm --affirmative "Continuar" --negative "Cancelar" "¿Deseas formatear este dispositivo de todas formas?"; then
+            exit 1
+        fi
+    fi
+}
+disk_wizard
 
 # ------------------------------------------------------------------------------
-# PASO 6: Despliegue Automatizado del Sistema (100% Configurado, 0 pasos post-reinicio)
+# 9. PANTALLA FINAL: Botón [ 🚀 INSTALAR ] estilo Omarchy
 # ------------------------------------------------------------------------------
-draw_header 6
-echo -e "${ARCH_BLUE}╭─ Paso 6/7: Despliegue Automatizado del Sistema ──────────────────────────────╮${NC}"
-echo -e "│                                                                              │"
-echo -e "│  [1/6]  ● Particionando disco y preparando contenedor cifrado LUKS2...       │"
-echo -e "│  [2/6]  ○ Creando subvolúmenes BTRFS (@, @home, @snapshots, etc.)           │"
-echo -e "│  [3/6]  ○ Instalando sistema base, Hyprland y Quickshell con pacstrap        │"
-echo -e "│  [4/6]  ○ Configurando Chroot, systemd-boot y Seamless Login                 │"
-echo -e "│  [5/6]  ○ Desplegando MrDemonc-SHELL, módulos de Hyprland y atajos           │"
-echo -e "│  [6/6]  ○ Configurando Zsh, Oh My Zsh, Starship y permisos finales           │"
-echo -e "│                                                                              │"
-echo -e "${ARCH_BLUE}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-echo ""
+install_confirm() {
+    clear_logo
+    echo
+    say --foreground 1 "¡ADVERTENCIA: SE FORMATEARÁ POR COMPLETO EL DISCO $TARGET_DISK!"
+    say "Se creará una partición EFI y una partición Linux cifrada con LUKS2 (BTRFS)."
+    echo
 
-# Desmontar puntos de montaje previos si existen
+    local table_summary="Parámetro,Configuración
+Disco,$TARGET_DISK
+Cifrado,LUKS2 (Argon2id Automático)
+Sistema de Archivos,BTRFS (@, @home, @snapshots, @var_log, @pkg)
+Usuario,$SYS_USER (Sudo activo)
+Hostname,$SYS_HOSTNAME
+Zona Horaria,$SYS_TIMEZONE
+Idioma / Teclado,$SYS_LOCALE / $KEYMAP"
+
+    echo "$table_summary" | g_table -s "," -p | sed "s/^/${PADDING_LEFT_SPACES}/"
+    echo
+
+    if ! g_confirm --affirmative "🚀 INSTALAR" --negative "✖ CANCELAR" "¿Comenzar la instalación del sistema ahora?"; then
+        say --foreground 8 "Instalación cancelada por el usuario. No se modificó ningún disco."
+        exit 0
+    fi
+}
+install_confirm
+
+# ------------------------------------------------------------------------------
+# 10. Dashboard de Progreso de Instalación
+# ------------------------------------------------------------------------------
+show_progress() {
+    local phase="$1"
+    local percent="$2"
+    local tip="$3"
+
+    clear_logo
+    echo
+    say --foreground 6 "$phase"
+    echo
+
+    local bar_w=36
+    local filled=$((percent * bar_w / 100))
+    local empty=$((bar_w - filled))
+    local bar=""
+    for ((i=0; i<filled; i++)); do bar+="█"; done
+    for ((i=0; i<empty; i++)); do bar+="░"; done
+
+    echo -e "${PADDING_LEFT_SPACES}[\033[38;5;42m$bar\033[0m] \033[1;37m${percent}%\033[0m"
+    echo
+    say --foreground 8 "💡 $tip"
+    echo
+}
+
+# ------------------------------------------------------------------------------
+# 11. EJECUCIÓN DE LA INSTALACIÓN (Disco, BTRFS, Pacstrap, Chroot, MrDemonc-SHELL)
+# ------------------------------------------------------------------------------
+show_progress "[1/6] Particionando almacenamiento en $TARGET_DISK..." 10 "Super + Space abre el lanzador de aplicaciones"
+
 swapoff -a 2>/dev/null || true
 umount -R /mnt 2>/dev/null || true
 cryptsetup close cryptroot 2>/dev/null || true
 
-# Limpieza total de tablas de particiones
-badge_info "Limpiando firmas previas en $TARGET_DISK..."
 sgdisk --zap-all "$TARGET_DISK" >/dev/null 2>&1 || true
 wipefs -a "$TARGET_DISK" >/dev/null 2>&1 || true
 partprobe "$TARGET_DISK" 2>/dev/null || true
 sleep 1
 
-# Partición 1: EFI (ESP) de 1024MB
-badge_info "Creando particiones GPT (ESP 1GB + Linux LUKS)..."
+# Partición 1: EFI 1024MB | Partición 2: LUKS2 Linux
 sgdisk -n 1:0:+1024M -t 1:ef00 -c 1:"EFI System Partition" "$TARGET_DISK"
-# Partición 2: Cifrada Linux (Resto del disco)
 sgdisk -n 2:0:0 -t 2:8300 -c 2:"Linux LUKS Btrfs" "$TARGET_DISK"
-
 partprobe "$TARGET_DISK" 2>/dev/null || true
 sleep 1
 
@@ -447,22 +839,17 @@ else
     PART_ROOT="${TARGET_DISK}2"
 fi
 
-badge_info "Formateando partición EFI en $PART_EFI (FAT32)..."
 mkfs.fat -F 32 -n EFI "$PART_EFI" >/dev/null
 
-badge_sec "Cifrando partición $PART_ROOT con LUKS2 (Argon2id)..."
+show_progress "[2/6] Cifrando partición con LUKS2 y formateando BTRFS..." 25 "Super + Return abre la terminal Kitty"
+
 echo -n "$MASTER_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode "$PART_ROOT" -
-badge_sec "Desbloqueando contenedor cryptroot..."
 echo -n "$MASTER_PASS" | cryptsetup open "$PART_ROOT" cryptroot -
 
 ROOT_DEV="/dev/mapper/cryptroot"
-
-# Subvolúmenes Btrfs
-badge_fs "Formateando contenedor en BTRFS..."
 mkfs.btrfs -f -L ARCHROOT "$ROOT_DEV" >/dev/null
 
 mount "$ROOT_DEV" /mnt
-badge_fs "Creando subvolúmenes: @, @home, @snapshots, @var_log, @pkg..."
 btrfs subvolume create /mnt/@ >/dev/null
 btrfs subvolume create /mnt/@home >/dev/null
 btrfs subvolume create /mnt/@snapshots >/dev/null
@@ -479,19 +866,13 @@ mount -o "$BTRFS_MOUNT_OPTS,subvol=@var_log" "$ROOT_DEV" /mnt/var/log
 mount -o "$BTRFS_MOUNT_OPTS,subvol=@pkg" "$ROOT_DEV" /mnt/var/cache/pacman/pkg
 mount "$PART_EFI" /mnt/boot
 
-badge_ok "Sistema de archivos BTRFS y subvolúmenes montados."
-
-# Detección de microcódigo CPU
 UCODE_PKG=""
 if grep -q "AuthenticAMD" /proc/cpuinfo; then
     UCODE_PKG="amd-ucode"
-    badge_info "CPU AMD detectado (instalando $UCODE_PKG)..."
 elif grep -q "GenuineIntel" /proc/cpuinfo; then
     UCODE_PKG="intel-ucode"
-    badge_info "CPU Intel detectado (instalando $UCODE_PKG)..."
 fi
 
-# Lista completa de paquetes (Incluye entorno Hyprland, Quickshell y utilidades)
 BASE_PACKAGES=(
     base
     base-devel
@@ -540,46 +921,35 @@ BASE_PACKAGES=(
     efibootmgr
     e2fsprogs
 )
+[ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
-if [ -n "$UCODE_PKG" ]; then
-    BASE_PACKAGES+=("$UCODE_PKG")
-fi
+show_progress "[3/6] Instalando paquetes base con pacstrap..." 50 "Super + 1..9 cambia de espacio de trabajo en Hyprland"
 
-echo ""
-badge_info "Instalando sistema base, Hyprland y Quickshell con pacstrap..."
 pacstrap -K /mnt "${BASE_PACKAGES[@]}"
-
-badge_info "Generando /etc/fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
-badge_ok "Sistema base y fstab listos."
 
-# Configuración del Sistema en Chroot
+show_progress "[4/6] Configurando sistema interno, initramfs y systemd-boot..." 75 "Seamless Login: Inicio de sesión instantáneo en tty1"
+
 ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
 BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
 MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block encrypt btrfs filesystems fsck"
 
 UCODE_LINE=""
-if [ -n "$UCODE_PKG" ]; then
-    UCODE_LINE="initrd  /$UCODE_PKG.img"
-fi
+[ -n "$UCODE_PKG" ] && UCODE_LINE="initrd  /$UCODE_PKG.img"
 
-badge_info "Configurando sistema interno en chroot..."
 cat << CHROOT_SCRIPT > /mnt/tmp/setup_chroot.sh
 #!/usr/bin/env bash
 set -e
 
-# Zona horaria y reloj
 ln -sf /usr/share/zoneinfo/$SYS_TIMEZONE /etc/localtime
 hwclock --systohc
 
-# Locales e Idioma
 sed -i "s/#$SYS_LOCALE UTF-8/$SYS_LOCALE UTF-8/" /etc/locale.gen
 sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen 2>/dev/null || true
 locale-gen
 echo "LANG=$SYS_LOCALE" > /etc/locale.conf
 echo "KEYMAP=$KEYMAP" > /etc/vconsole.conf
 
-# Hostname y Red
 echo "$SYS_HOSTNAME" > /etc/hostname
 cat << HOSTS > /etc/hosts
 127.0.0.1   localhost
@@ -587,16 +957,13 @@ cat << HOSTS > /etc/hosts
 127.0.1.1   $SYS_HOSTNAME.localdomain $SYS_HOSTNAME
 HOSTS
 
-# Contraseña Maestra para Root y Usuario
 echo "root:$MASTER_PASS" | chpasswd
 useradd -m -g users -G wheel,video,audio,storage,optical,network -s /usr/bin/zsh "$SYS_USER"
 echo "$SYS_USER:$MASTER_PASS" | chpasswd
 
-# Sudoers
 echo "%wheel ALL=(ALL:ALL) ALL" > /etc/sudoers.d/wheel
 chmod 440 /etc/sudoers.d/wheel
 
-# Configurar Git del usuario
 if [ -n "$GIT_USER_NAME" ]; then
     su - "$SYS_USER" -c "git config --global user.name '$GIT_USER_NAME'"
 fi
@@ -605,92 +972,98 @@ if [ -n "$GIT_USER_EMAIL" ]; then
 fi
 su - "$SYS_USER" -c "git config --global init.defaultBranch main" 2>/dev/null || true
 
-# mkinitcpio para LUKS y BTRFS
-sed -i "s/^HOOKS=(.*)/HOOKS=($MKINITCPIO_HOOKS)/" /etc/mkinitcpio.conf
+sed -i "s/^HOOKS=.*/HOOKS=($MKINITCPIO_HOOKS)/" /etc/mkinitcpio.conf
 mkinitcpio -P
 
-# systemd-boot (UEFI)
-bootctl install
+bootctl install --esp-path=/boot
 
 cat << LOADER > /boot/loader/loader.conf
-default arch.conf
-timeout 3
+default  arch.conf
+timeout  3
 console-mode max
-editor no
+editor   no
 LOADER
 
 cat << ENTRY > /boot/loader/entries/arch.conf
-title   ARCH Linux (Btrfs + LUKS)
+title   Arch Linux
 linux   /vmlinuz-linux
 $UCODE_LINE
 initrd  /initramfs-linux.img
 options $BOOT_ENTRY_OPTIONS
 ENTRY
 
-# Habilitar servicios requeridos
+cat << ENTRY_FALLBACK > /boot/loader/entries/arch-fallback.conf
+title   Arch Linux (fallback initramfs)
+linux   /vmlinuz-linux
+$UCODE_LINE
+initrd  /initramfs-linux-fallback.img
+options $BOOT_ENTRY_OPTIONS
+ENTRY_FALLBACK
+
 systemctl enable NetworkManager.service
 systemctl enable bluetooth.service 2>/dev/null || true
+systemctl enable systemd-timesyncd.service 2>/dev/null || true
 
-# Seamless Login directo en tty1
+# Seamless Login en tty1
 mkdir -p /etc/systemd/system/getty@tty1.service.d
-cat << AUTOLOGIN > /etc/systemd/system/getty@tty1.service.d/autologin.conf
+cat << GETTY_CONF > /etc/systemd/system/getty@tty1.service.d/autologin.conf
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin $SYS_USER --noclear %I \\$TERM
+ExecStart=-/sbin/agetty -o '-p -f -- \\u' --noclear --autologin $SYS_USER %I \$TERM
 Type=idle
-AUTOLOGIN
+GETTY_CONF
 
-# Hook de autoarranque a Hyprland
-for prof in /home/$SYS_USER/.zprofile /home/$SYS_USER/.bash_profile; do
-    cat << 'HOOK' >> "\\$prof"
+# Oh My Zsh
+su - "$SYS_USER" -c 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' || true
 
-# Auto-start Hyprland en tty1 (Seamless Login)
-if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+USER_ZSHRC="/home/$SYS_USER/.zshrc"
+if [ -f "\$USER_ZSHRC" ]; then
+    sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "\$USER_ZSHRC" 2>/dev/null || true
+    cat << 'AUTO_HYPR' >> "\$USER_ZSHRC"
+
+# Auto-start Hyprland en tty1
+if [ -z "\$DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
     exec Hyprland
 fi
-HOOK
-    chown $SYS_USER:users "\\$prof"
-done
+AUTO_HYPR
+fi
+
+# Configuración Starship
+mkdir -p "/home/$SYS_USER/.config"
+cat << 'STARSHIP_INIT' >> "\$USER_ZSHRC"
+eval "\$(starship init zsh)"
+STARSHIP_INIT
+
 CHROOT_SCRIPT
 
 chmod +x /mnt/tmp/setup_chroot.sh
 arch-chroot /mnt /tmp/setup_chroot.sh
 rm -f /mnt/tmp/setup_chroot.sh
-badge_ok "Configuración de chroot, bootloader y usuarios finalizada."
 
-# ------------------------------------------------------------------------------
-# Despliegue de MrDemonc-SHELL y Entorno Completo (100% Preconfigurado)
-# ------------------------------------------------------------------------------
-badge_info "Desplegando entorno gráfico MrDemonc-SHELL, módulos y configuraciones..."
+show_progress "[5/6] Desplegando MrDemonc-SHELL (Hyprland + Quickshell)..." 90 "Presiona Super + K para ver todos los atajos de teclado"
 
-USER_HOME="/mnt/home/$SYS_USER"
-DOCS_DIR="$USER_HOME/Documentos"
-DEST_REPO="$DOCS_DIR/MrDemonc-SHELL"
-mkdir -p "$DOCS_DIR"
+DEST_REPO="/mnt/home/$SYS_USER/Documentos/MrDemonc-SHELL"
+mkdir -p "/mnt/home/$SYS_USER/Documentos"
 
-# 1. Copiar repositorio local desde la ISO o clonar si es necesario
 if [ -d "/usr/share/mrdemonc-shell" ]; then
-    badge_info "Copiando MrDemonc-SHELL desde el medio de instalación..."
     cp -a /usr/share/mrdemonc-shell "$DEST_REPO"
 elif [ -d "/home/demonc-test/Documentos/MrDemonc-SHELL" ]; then
     cp -a "/home/demonc-test/Documentos/MrDemonc-SHELL" "$DEST_REPO"
 else
-    badge_info "Clonando repositorio oficial MrDemonc-SHELL..."
     git clone https://github.com/MrDemonc/MrDemonc-SHELL.git "$DEST_REPO" || true
 fi
 
-# Permisos ejecutables a scripts
 chmod +x "$DEST_REPO"/scripts/*.sh 2>/dev/null || true
 chmod +x "$DEST_REPO"/scripts/*.py 2>/dev/null || true
 
-# 2. Configurar directorios del usuario
+USER_HOME="/mnt/home/$SYS_USER"
 mkdir -p "$USER_HOME/.config/hypr"
 mkdir -p "$USER_HOME/.config/kitty"
 mkdir -p "$USER_HOME/.config/quickshell"
 mkdir -p "$USER_HOME/.local/bin"
+mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
 mkdir -p "$USER_HOME/Pictures/Wallpapers"
 
-# 3. Desplegar módulos de Hyprland
 if [ -d "$DEST_REPO/hypr" ]; then
     cp -f "$DEST_REPO/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
     cp -f "$DEST_REPO/hypr/keybinds.lua" "$USER_HOME/.config/hypr/keybinds.lua"
@@ -699,167 +1072,103 @@ if [ -d "$DEST_REPO/hypr" ]; then
     cp -f "$DEST_REPO/hypr/hyprlock_colors.conf" "$USER_HOME/.config/hypr/hyprlock_colors.conf" 2>/dev/null || true
     cp -f "$DEST_REPO/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf" 2>/dev/null || true
 
-    # Inyectar teclado seleccionado y ruta absoluta del usuario en hyprland.lua
     sed "s|userHome .. \"/Documentos/MrDemonc-SHELL\"|\"/home/$SYS_USER/Documentos/MrDemonc-SHELL\"|g" \
         "$DEST_REPO/hypr/hyprland.lua" > "$USER_HOME/.config/hypr/hyprland.lua"
     sed -i "s/kb_layout  = \".*\"/kb_layout  = \"$HYPR_KB\"/g" "$USER_HOME/.config/hypr/hyprland.lua"
-    badge_ok "Configuración modular de Hyprland desplegada (~/.config/hypr)."
 fi
 
-# 4. Desplegar utilidades CLI en ~/.local/bin
 cat << WRAP_APPS > "$USER_HOME/.local/bin/shell-apps"
 #!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_apps.sh "\\$@"
+exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_apps.sh "\$@"
 WRAP_APPS
 
 cat << WRAP_WALL > "$USER_HOME/.local/bin/shell-wallpaper"
 #!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_wallpaper.sh "\\$@"
+exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_wallpaper.sh "\$@"
 WRAP_WALL
 
-cat << WRAP_CLIP > "$USER_HOME/.local/bin/clipboard-action"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/clipboard_action.sh "\\$@"
-WRAP_CLIP
-
-cat << WRAP_THEME > "$USER_HOME/.local/bin/shell-theme"
-#!/usr/bin/env bash
-TARGET_DIR="/home/$SYS_USER/Documentos/MrDemonc-SHELL"
-if [ "\\$1" == "set" ] || [ "\\$1" == "list" ]; then
-    exec python3 "\\$TARGET_DIR/scripts/theme_manager.py" "\\$@"
-else
-    exec "\\$TARGET_DIR/scripts/toggle_theme_picker.sh" "\\$@"
-fi
-WRAP_THEME
-
-cat << WRAP_POPOUT > "$USER_HOME/.local/bin/shell-popout"
-#!/usr/bin/env bash
-TARGET="\${1:-audio}"
-STATE="\${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle"
-echo "\\$TARGET" > "\\$STATE"
-WRAP_POPOUT
-
-cat << WRAP_BAR > "$USER_HOME/.local/bin/shell-bar"
-#!/usr/bin/env bash
-TARGET_DIR="/home/$SYS_USER/Documentos/MrDemonc-SHELL"
-if [ "\\$1" == "pos" ] || [ "\\$1" == "position" ]; then
-    shift
-    exec python3 "\\$TARGET_DIR/scripts/manage_order.py" save_position "\\$@"
-elif [ "\\$1" == "get-pos" ]; then
-    exec python3 "\\$TARGET_DIR/scripts/manage_order.py" get_position
-else
-    exec python3 "\\$TARGET_DIR/scripts/manage_order.py" "\\$@"
-fi
-WRAP_BAR
-
 chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
-badge_ok "Comandos de terminal instalados en ~/.local/bin."
 
-# 5. Configurar Kitty con Zsh y fuente JetBrainsMono
-if [ -f "$DEST_REPO/kitty/kitty.conf" ]; then
+if [ -d "$DEST_REPO/kitty" ]; then
     cp -f "$DEST_REPO/kitty/kitty.conf" "$USER_HOME/.config/kitty/kitty.conf"
-    badge_ok "Configuración de terminal Kitty desplegada."
 fi
 
-# 6. Desplegar Starship Prompt
-if [ -f "$DEST_REPO/starship/starship.toml" ]; then
-    cp -f "$DEST_REPO/starship/starship.toml" "$USER_HOME/.config/starship.toml"
-    badge_ok "Tema de Starship desplegado (~/.config/starship.toml)."
+cat << QS_CONFIG > "$USER_HOME/.config/quickshell/shell.qml"
+import Quickshell
+import "/home/$SYS_USER/Documentos/MrDemonc-SHELL"
+
+ShellRoot {
+}
+QS_CONFIG
+
+cat << 'THEME_TOML' > "$USER_HOME/.local/state/mrdemonc/current/theme/colors.toml"
+accent = "#89b4fa"
+background = "#1e1e2e"
+color0 = "#45475a"
+color1 = "#f38ba8"
+color2 = "#a6e3a1"
+color3 = "#f9e2af"
+color4 = "#89b4fa"
+color5 = "#f5c2e7"
+color6 = "#89dceb"
+color7 = "#bac2de"
+color8 = "#585b70"
+color9 = "#f38ba8"
+color10 = "#a6e3a1"
+color11 = "#f9e2af"
+color12 = "#89b4fa"
+color13 = "#f5c2e7"
+color14 = "#89dceb"
+color15 = "#a6adc8"
+foreground = "#cdd6f4"
+THEME_TOML
+
+if [ -f "$DEST_REPO/scripts/theme_manager.py" ]; then
+    python3 "$DEST_REPO/scripts/theme_manager.py" apply catppuccin-mocha 2>/dev/null || true
 fi
 
-# 7. Desplegar Oh My Zsh y plugins (Totalmente autónomo)
-badge_info "Configurando entorno Zsh con Oh My Zsh y plugins..."
-if [ ! -d "$USER_HOME/.oh-my-zsh" ]; then
-    git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$USER_HOME/.oh-my-zsh" 2>/dev/null || true
-fi
+cat << STARSHIP_CONF > "$USER_HOME/.config/starship.toml"
+add_newline = false
+format = "[╭─](bold cyan)\$all[╰─❯ ](bold cyan)"
 
-# Copiar plugins de zsh instalados a nivel de sistema si existen
-mkdir -p "$USER_HOME/.oh-my-zsh/custom/plugins"
-if [ -d "/mnt/usr/share/zsh/plugins/zsh-autosuggestions" ]; then
-    cp -r /mnt/usr/share/zsh/plugins/zsh-autosuggestions "$USER_HOME/.oh-my-zsh/custom/plugins/" 2>/dev/null || true
-fi
-if [ -d "/mnt/usr/share/zsh/plugins/zsh-syntax-highlighting" ]; then
-    cp -r /mnt/usr/share/zsh/plugins/zsh-syntax-highlighting "$USER_HOME/.oh-my-zsh/custom/plugins/" 2>/dev/null || true
-fi
+[character]
+success_symbol = "[➜](bold green)"
+error_symbol = "[➜](bold red)"
 
-# Configurar ~/.zshrc completo
-cat << ZSHRC > "$USER_HOME/.zshrc"
-# ==============================================================================
-#  MrDemonc-SHELL: Zsh Configuration
-# ==============================================================================
-export ZSH="\$HOME/.oh-my-zsh"
-ZSH_THEME="robbyrussell"
+[directory]
+truncation_length = 3
+truncation_symbol = "…/"
+style = "bold cyan"
 
-# Plugins
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
+[git_branch]
+style = "bold purple"
+symbol = " "
 
-if [ -f "\$ZSH/oh-my-zsh.sh" ]; then
-    source "\$ZSH/oh-my-zsh.sh"
-fi
+[git_status]
+style = "bold red"
+STARSHIP_CONF
 
-# Cargar plugins nativos del sistema si no están en Oh My Zsh
-[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER"
 
-# Starship Prompt
-eval "\\$(starship init zsh)"
+show_progress "[6/6] Finalizando desmontaje de volúmenes..." 100 "Sistema listo para el primer arranque"
 
-# Variables de entorno
-export PATH="\$HOME/.local/bin:\$PATH"
-export SHELL="/usr/bin/zsh"
-export BROWSER="dolphin"
-
-# Alias útiles
-alias ls="ls --color=auto"
-alias ll="ls -la"
-alias grep="grep --color=auto"
-ZSHRC
-
-badge_ok "Configuración de shell Zsh terminada (~/.zshrc)."
-
-# 8. Asignar propiedad completa al usuario
-chown -R "$SYS_USER:users" "$USER_HOME"
-
-# Desmontar sistemas de archivos
-badge_info "Desmontando sistemas de archivos de forma limpia..."
+sync
 umount -R /mnt 2>/dev/null || true
 cryptsetup close cryptroot 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
-# PASO 7: Finalización y Resumen del Sistema
+# 12. PANTALLA FINAL: Instalación Exitosa y Reinicio
 # ------------------------------------------------------------------------------
-draw_header 7
-echo -e "${GREEN}${BOLD}╭──────────────────────────────────────────────────────────────────────────────╮"
-echo -e "│                                                                              │"
-echo -e "│   █████╗ ██████╗  ██████╗██╗  ██╗    ¡INSTALACIÓN COMPLETADA CON ÉXITO!      │"
-echo -e "│  ██╔══██╗██╔══██╗██╔════╝██║  ██║    EL SISTEMA ESTÁ 100% CONFIGURADO        │"
-echo -e "│  ███████║██████╔╝██║     ███████║    ───────────────────────────────────     │"
-echo -e "│  ██╔══██║██╔══██╗██║     ██╔══██║    Al encender el equipo no requerirás     │"
-echo -e "│  ██║  ██║██║  ██║╚██████╗██║  ██║    realizar ningún paso adicional.         │"
-echo -e "│  ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝                                            │"
-echo -e "│                                                                              │"
-echo -e "╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-echo ""
-echo -e "${ARCH_BLUE}╭─ Resumen del Sistema Instalado ──────────────────────────────────────────────╮${NC}"
-echo -e "│                                                                              │"
-echo -e "│  • ${BOLD}Disco:${NC}             ${WHITE}$TARGET_DISK${NC}"
-echo -e "│  • ${BOLD}Sistema Archivos:${NC}  ${BLUE}BTRFS (@, @home, @snapshots, @var_log, @pkg)${NC}"
-echo -e "│  • ${BOLD}Cifrado:${NC}           ${MAGENTA}LUKS2 (Argon2id) Automático${NC}"
-echo -e "│  • ${BOLD}Clave Maestra:${NC}     Unificada (Desbloqueo de arranque + Root + sudo)"
-echo -e "│  • ${BOLD}Arranque:${NC}          systemd-boot (UEFI) con Seamless Login a Hyprland"
-echo -e "│  • ${BOLD}Idioma & Teclado:${NC}  $SYS_LOCALE / $KEYMAP (Hyprland: $HYPR_KB)"
-echo -e "│  • ${BOLD}Equipo (Hostname):${NC} $SYS_HOSTNAME"
-if [ -n "$GIT_USER_NAME" ]; then
-echo -e "│  • ${BOLD}Git Configurado:${NC}   $GIT_USER_NAME <$GIT_USER_EMAIL>"
+clear_logo
+echo
+say --foreground 2 "¡Instalación de Arch Linux completada con éxito!"
+say "El sistema está configurado y listo para iniciar directamente en Hyprland."
+echo
+
+if g_confirm --affirmative "Reiniciar ahora" --negative "Salir a la consola" "¿Deseas reiniciar el equipo?"; then
+    say --foreground 6 "Reiniciando equipo..."
+    sleep 1
+    reboot
+else
+    say --foreground 8 "Puedes reiniciar manualmente escribiendo: reboot"
 fi
-echo -e "│  • ${BOLD}Entorno Gráfico:${NC}   Hyprland + Quickshell (MrDemonc-SHELL desplegado)"
-echo -e "│  • ${BOLD}Shell & Prompt:${NC}    Zsh + Oh My Zsh + Starship Prompt (Demonc)"
-echo -e "│  • ${BOLD}Usuario Creado:${NC}    ${ARCH_BLUE}$SYS_USER${NC}"
-echo -e "│                                                                              │"
-echo -e "${ARCH_BLUE}╰──────────────────────────────────────────────────────────────────────────────╯${NC}"
-echo ""
-echo -e "  ${BOLD}Pasos para iniciar tu nuevo sistema:${NC}"
-echo -e "    1. Retira la memoria USB de tu computadora."
-echo -e "    2. Ejecuta el comando: ${GREEN}${BOLD}reboot${NC}"
-echo -e "    3. Al encender, introduce tu Contraseña Maestra y entrarás directo a Hyprland."
-echo ""

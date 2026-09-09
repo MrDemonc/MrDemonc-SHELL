@@ -84,7 +84,7 @@ if command -v pacman >/dev/null 2>&1; then
             paru -S --needed --noconfirm quickshell || true
         else
             echo -e "${RED}[ERROR] No se encontró un helper de AUR (yay o paru) para instalar 'quickshell'.${NC}"
-            echo -e "  Por favor instala 'quickshell' manualmente desde AUR (ej: yay -S quickshell)."
+            echo -e "  Por favor instala 'quickshell' manualmente desde AUR."
         fi
     else
         echo -e "${GREEN}[OK] quickshell ya está instalado.${NC}"
@@ -101,7 +101,7 @@ mkdir -p "$BIN_DIR"
 mkdir -p "$HYPR_CONFIG_DIR"
 mkdir -p "$KITTY_CONFIG_DIR"
 mkdir -p "$USER_HOME/.config/quickshell"
-mkdir -p "$USER_HOME/.local/state/omarchy/current/theme"
+mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
 mkdir -p "$WALLPAPER_DIR"
 echo -e "${GREEN}[OK] Directorios listos.${NC}"
 
@@ -315,7 +315,7 @@ ZPROFILE="$USER_HOME/.zprofile"
 if ! grep -q 'exec Hyprland' "$ZPROFILE" 2>/dev/null; then
     cat << 'HOOK' >> "$ZPROFILE"
 
-# Auto-start Hyprland en tty1 (Seamless Login estilo Omarchy)
+# Auto-start Hyprland en tty1 (Seamless Login)
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
     exec Hyprland
 fi
@@ -350,9 +350,9 @@ if [ -f "$REPO_DIR/scripts/theme_manager.py" ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 9. Configuración de Seamless Login (Estilo Omarchy)
+# 9. Configuración de Seamless Login
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[9/10] Configurando Seamless Login (estilo Omarchy)...${NC}"
+echo -e "${YELLOW}[9/10] Configurando Seamless Login...${NC}"
 
 # 1. Configurar Autologin en tty1 con systemd agetty
 if [ -d "/etc/systemd/system" ]; then
@@ -372,7 +372,7 @@ BASH_PROFILE="$USER_HOME/.bash_profile"
 if ! grep -q 'exec Hyprland' "$BASH_PROFILE" 2>/dev/null; then
     cat << 'HOOK' >> "$BASH_PROFILE"
 
-# Auto-start Hyprland en tty1 (Seamless Login estilo Omarchy)
+# Auto-start Hyprland en tty1 (Seamless Login)
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
     exec Hyprland
 fi

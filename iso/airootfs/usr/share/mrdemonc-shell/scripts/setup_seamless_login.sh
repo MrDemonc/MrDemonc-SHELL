@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-#  MrDemonc-SHELL: Configuración de Seamless Login (Estilo Omarchy) y Lock Screen
+#  MrDemonc-SHELL: Configuración de Seamless Login y Lock Screen
 # ==============================================================================
 
 set -e
@@ -43,7 +43,7 @@ cp -f "$REPO_DIR/hypr/hyprlock_colors.conf" "$USER_HOME/.config/hypr/hyprlock_co
 chown -R "$CURRENT_USER:$CURRENT_USER" "$USER_HOME/.config/hypr"
 echo -e "${GREEN}[OK] Configuraciones desplegadas en $USER_HOME/.config/hypr/${NC}"
 
-# 3. Configurar Autologin en tty1 con systemd (Seamless Login estilo Omarchy)
+# 3. Configurar Autologin en tty1 con systemd (Seamless Login)
 echo -e "${YELLOW}[3/5] Configurando Autologin en tty1 (systemd agetty drop-in)...${NC}"
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
 sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null << AUTOLOGIN
@@ -60,7 +60,7 @@ BASH_PROFILE="$USER_HOME/.bash_profile"
 if ! grep -q 'exec Hyprland' "$BASH_PROFILE" 2>/dev/null; then
     cat << 'HOOK' >> "$BASH_PROFILE"
 
-# Auto-start Hyprland en tty1 (Seamless Login estilo Omarchy)
+# Auto-start Hyprland en tty1 (Seamless Login)
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
     exec Hyprland
 fi
@@ -88,7 +88,7 @@ echo "Al encender la máquina virtual o reiniciar:"
 echo "1. El sistema arrancará e iniciará sesión automáticamente en tty1"
 echo "   con tu usuario (${BOLD}$CURRENT_USER${NC}) sin mostrar GDM."
 echo "2. Hyprland y MrDemonc-SHELL se abrirán directamente."
-echo "3. Tu pantalla se bloqueará con Hyprlock (estilo Omarchy) usando:"
+echo "3. Tu pantalla se bloqueará con Hyprlock usando:"
 echo "   - Atajo de teclado: ${BOLD}SUPER + L${NC}"
 echo "   - Inactividad automática: ${BOLD}hypridle${NC} (a los 10 minutos)"
 echo "------------------------------------------------------------------"

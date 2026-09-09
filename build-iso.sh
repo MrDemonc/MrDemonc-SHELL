@@ -23,12 +23,12 @@ echo "        COMPILADOR DE ISO BOOTABLE: MrDemonc-SHELL                "
 echo "=================================================================="
 echo -e "${NC}"
 
-# Verificar archiso
-if ! command -v mkarchiso >/dev/null 2>&1; then
-    echo -e "${YELLOW}[1/4] 'archiso' no está instalado. Instalando con pacman...${NC}"
-    sudo pacman -S --needed --noconfirm archiso
+# Verificar archiso y gum
+if ! command -v mkarchiso >/dev/null 2>&1 || ! command -v gum >/dev/null 2>&1; then
+    echo -e "${YELLOW}[1/4] Instalando dependencias de compilación ('archiso', 'gum')...${NC}"
+    sudo pacman -S --needed --noconfirm archiso gum
 else
-    echo -e "${GREEN}[1/4] 'archiso' ya está instalado.${NC}"
+    echo -e "${GREEN}[1/4] 'archiso' y 'gum' ya están instalados.${NC}"
 fi
 
 # Verificar y sincronizar estructura del perfil si faltan directorios de boot

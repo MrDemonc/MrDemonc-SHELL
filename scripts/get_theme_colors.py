@@ -4,7 +4,7 @@ import json
 import re
 
 def parse_colors():
-    theme_path = os.path.expanduser('~/.local/state/omarchy/current/theme/colors.toml')
+    theme_path = os.path.expanduser('~/.local/state/mrdemonc/current/theme/colors.toml')
     colors = {}
     if os.path.exists(theme_path):
         try:

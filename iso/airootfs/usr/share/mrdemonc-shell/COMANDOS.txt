@@ -119,7 +119,7 @@
     killall -9 quickshell; quickshell -p ~/Documentos/MrDemonc-SHELL &
 
 
-8. INSTALACIÓN Y COMPILACIÓN DE ISO (ESTILO OMARCHY)
+8. INSTALACIÓN Y COMPILACIÓN DE ISO (MRDEMONC-SHELL)
 -----------------------------------------------------
 • Compilar imagen ISO booteable oficial con mkarchiso:
     ./build-iso.sh

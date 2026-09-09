@@ -129,6 +129,7 @@ xl2tpd
 zsh
 networkmanager
 git
+gum
 starship
 neovim
 
