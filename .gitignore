@@ -1,0 +1,57 @@
+# ==============================================================================
+#  MrDemonc-SHELL: .gitignore
+# ==============================================================================
+
+# --- Compilación de Imagen ISO (archiso / mkarchiso) ---
+out/
+work/
+*.iso
+*.img
+*.qcow2
+*.sqfs
+*.squashfs
+*.erofs
+
+# --- Paquetes y Carga de AUR / makepkg ---
+pkg/
+src/
+*.pkg.tar.*
+*.src.tar.*
+
+# --- Compilación C/C++ / CMake / Meson ---
+build/
+build-*/
+_build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+*.o
+*.a
+*.so
+
+# --- Caché de Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# --- Archivos de Registro y Logs ---
+*.log
+quickshell.log
+
+# --- Archivos Temporales y del Sistema ---
+*.tmp
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.cache/
+
+# --- Configuraciones locales de Editores e IDEs ---
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
