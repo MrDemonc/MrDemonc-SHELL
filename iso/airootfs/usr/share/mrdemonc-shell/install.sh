@@ -57,7 +57,9 @@ PACKAGES=(
     wl-clipboard
     wtype
     kitty
-    dolphin
+    nautilus
+    capitaine-cursors
+    polkit-gnome
     ttf-jetbrains-mono-nerd
     zsh
     starship
@@ -225,9 +227,9 @@ if [ -f "$REPO_DIR/kitty/kitty.conf" ]; then
     echo -e "${GREEN}[OK] Configuración de Kitty aplicada (~/.config/kitty/kitty.conf).${NC}"
 fi
 
-# Establecer Dolphin como explorador de carpetas por defecto
+# Establecer Nautilus (Files) como explorador de carpetas por defecto
 if command -v xdg-mime >/dev/null 2>&1; then
-    xdg-mime default org.kde.dolphin.desktop inode/directory 2>/dev/null || true
+    xdg-mime default org.gnome.Nautilus.desktop inode/directory 2>/dev/null || true
 fi
 
 # Habilitar servicios de red y bluetooth
@@ -291,6 +293,9 @@ if [ ! -f "$ZSHRC" ] && [ -f "$USER_HOME/.oh-my-zsh/templates/zshrc.zsh-template
 fi
 
 if [ -f "$ZSHRC" ]; then
+    # Deshabilitar tema de Oh My Zsh para dar prioridad a Starship
+    sed -i 's/^ZSH_THEME=".*"/ZSH_THEME=""/' "$ZSHRC"
+
     # Habilitar plugins si existen
     if grep -q '^plugins=' "$ZSHRC"; then
         sed -i 's/^plugins=(.*)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "$ZSHRC"
@@ -305,6 +310,7 @@ if [ -f "$ZSHRC" ]; then
     if ! grep -q 'starship init zsh' "$ZSHRC"; then
         echo '' >> "$ZSHRC"
         echo '# Inicialización de Starship Prompt' >> "$ZSHRC"
+        echo 'export STARSHIP_CONFIG="$HOME/.config/starship.toml"' >> "$ZSHRC"
         echo 'eval "$(starship init zsh)"' >> "$ZSHRC"
     fi
     echo -e "${GREEN}[OK] ~/.zshrc configurado con Oh My Zsh y Starship.${NC}"

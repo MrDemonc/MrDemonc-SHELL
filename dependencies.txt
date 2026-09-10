@@ -37,7 +37,11 @@ wtype
 
 # --- Aplicaciones Predeterminadas ---
 kitty
-dolphin
+nautilus
+
+# --- Cursor & Autenticación Polkit ---
+capitaine-cursors
+polkit-gnome
 
 # --- Tipografías con Iconos Nerd Fonts ---
 ttf-jetbrains-mono-nerd

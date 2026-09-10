@@ -39,7 +39,7 @@ hl.monitor({
 local userHome    = os.getenv("HOME") or "/home/demonc-test"
 local binDir      = userHome .. "/.local/bin"
 local terminal    = "kitty"
-local fileManager = "dolphin"
+local fileManager = "nautilus"
 local menu        = binDir .. "/shell-apps"
 
 
@@ -54,6 +54,8 @@ local menu        = binDir .. "/shell-apps"
 hl.on("hyprland.start", function () 
     hl.exec_cmd("quickshell -p " .. userHome .. "/Documentos/MrDemonc-SHELL")
     hl.exec_cmd("hypridle")
+    hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1")
+    hl.exec_cmd("hyprctl setcursor capitaine-cursors 24")
 end)
 
 
@@ -63,7 +65,9 @@ end)
 
 -- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Environment-variables/
 
+hl.env("XCURSOR_THEME", "capitaine-cursors")
 hl.env("XCURSOR_SIZE", "24")
+hl.env("HYPRCURSOR_THEME", "capitaine-cursors")
 hl.env("HYPRCURSOR_SIZE", "24")
 hl.env("SHELL", "/usr/bin/zsh")
 hl.env("PATH", binDir .. ":" .. (os.getenv("PATH") or "/usr/local/bin:/usr/bin"))

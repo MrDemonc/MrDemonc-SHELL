@@ -24,9 +24,14 @@ EOF
     # Configurar paleta Tokyo Night
     printf "\033]P01a1b26\033]P1f7768e\033]P29ece6a\033]P3e0af68\033]P47aa2f7\033]P5bb9af7\033]P67dcfff\033]P7a9b1d6\033]P8414868\033]P9f7768e\033]PA9ece6a\033]PBe0af68\033]PC7aa2f7\033]PDbb9af7\033]PE7dcfff\033]PFc0caf5\033[0m"
 
-    local cols
-    cols=$(stty size 2>/dev/null | awk '{print $2}')
+    local term_size
+    term_size=$(stty size 2>/dev/null || stty size < /dev/console 2>/dev/null || stty size < /dev/tty0 2>/dev/null || echo "24 80")
+    local lines cols
+    set -- $term_size
+    lines=${1:-24}
+    cols=${2:-80}
     [ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
+    [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
 
     local logo_pad=$(( (cols - 47) / 2 ))
     [ "$logo_pad" -lt 0 ] && logo_pad=0
@@ -37,20 +42,16 @@ EOF
         i=$((i + 1))
     done
 
-    local box_pad=$(( (cols - 60) / 2 ))
-    [ "$box_pad" -lt 0 ] && box_pad=0
-    local box_spaces=""
+    local prompt_pad=$(( (cols - 12) / 2 ))
+    [ "$prompt_pad" -lt 0 ] && prompt_pad=0
+    local prompt_spaces=""
     i=0
-    while [ "$i" -lt "$box_pad" ]; do
-        box_spaces="${box_spaces} "
+    while [ "$i" -lt "$prompt_pad" ]; do
+        prompt_spaces="${prompt_spaces} "
         i=$((i + 1))
     done
 
-    local lines
-    lines=$(stty size 2>/dev/null | awk '{print $1}')
-    [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
-    local top_pad=$(( (lines - 20) / 2 ))
-    [ "$top_pad" -lt 1 ] && top_pad=1
+    local top_pad=2
 
     while true; do
         printf "\033[H\033[2J"
@@ -70,14 +71,9 @@ EOF
         printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
         printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$logo_spaces"
         printf "%s            ███   █▀                           \n" "$logo_spaces"
-        printf "\033[0m\n"
+        printf "\033[0m\n\n"
 
-        printf "%s\033[1;37m┌────────────────────────────────────────────────────────────┐\033[0m\n" "$box_spaces"
-        printf "%s\033[1;37m│\033[0m            \033[1;36mDESBLOQUEO DE DISCO CIFRADO (LUKS2)\033[0m             \033[1;37m│\033[0m\n" "$box_spaces"
-        printf "%s\033[1;37m│\033[0m     \033[38;5;244mIntroduce tu clave maestra para iniciar el sistema\033[0m     \033[1;37m│\033[0m\n" "$box_spaces"
-        printf "%s\033[1;37m└────────────────────────────────────────────────────────────┘\033[0m\n\n" "$box_spaces"
-
-        printf "%s\033[1;35mContraseña Maestra>\033[0m " "$box_spaces"
+        printf "%s\033[1;36mContraseña:\033[0m " "$prompt_spaces"
         stty -echo 2>/dev/null || true
         local pass=""
         read -r pass
@@ -85,11 +81,11 @@ EOF
         printf "\n"
 
         if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
-            printf "\n%s\033[1;32m✔ Disco descifrado correctamente. Iniciando Arch Linux...\033[0m\n" "$box_spaces"
+            printf "\n%s\033[1;32m✔ Desbloqueado. Iniciando sistema...\033[0m\n" "$prompt_spaces"
             sleep 1
             break
         else
-            printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo...\033[0m\n" "$box_spaces"
+            printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo.\033[0m\n" "$prompt_spaces"
             sleep 2
         fi
     done

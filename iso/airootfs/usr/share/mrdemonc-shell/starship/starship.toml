@@ -1,3 +1,5 @@
+add_newline = false
+
 format = """
 $os$username$directory$git_branch$git_status$character"""
 
@@ -35,7 +37,7 @@ stashed = "≡ "
 [username]
 disabled = false
 show_always = true
-format = "[Demonc](bold white) "
+format = "[$user](bold white) "
 
 [character]
 success_symbol = "[❯](bold blue) "

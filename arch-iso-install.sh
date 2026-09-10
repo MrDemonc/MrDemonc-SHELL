@@ -131,9 +131,7 @@ g_style() {
 clear_logo() {
     measure_terminal
     printf "\033[H\033[2J"
-    local total_h=22
-    local start_row=$(( (TERM_HEIGHT - total_h) / 2 ))
-    (( start_row < 2 )) && start_row=2
+    local start_row=2
     printf "\033[%d;1H" "$start_row"
 
     echo ""
@@ -478,25 +476,17 @@ g_spin() {
 # ------------------------------------------------------------------------------
 greeter() {
     measure_terminal
-    local rows=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
-    [[ $rows =~ ^[0-9]+$ ]] || rows=${LINES:-24}
-    local content_h=$((LOGO_HEIGHT + 4))
-    local top=$(((rows - content_h) / 2))
-    (( top < 0 )) && top=0
+    local top=2
 
     printf '\033[?25l\033[H\033[2J'
     for ((i=0; i<top; i++)); do echo ""; done
 
-    if command -v gum >/dev/null 2>&1; then
-        gum style --foreground 2 --padding "0 0 0 $PADDING_LEFT" "$LOGO_TEXT"
-    else
-        while IFS= read -r line; do
-            echo -e "${PADDING_LEFT_SPACES}${GREEN}${line}${NC}"
-        done <<< "$LOGO_TEXT"
-    fi
+    while IFS= read -r line; do
+        echo -e "${LOGO_PADDING_SPACES}${GREEN}${line}${NC}"
+    done <<< "$LOGO_TEXT"
     echo ""
 
-    local tagline="Arch Linux + Hyprland + MrDemonc-SHELL"
+    local tagline="Arch Linux + Hyprland"
     local tpad=$(((TERM_WIDTH - ${#tagline}) / 2))
     (( tpad < 0 )) && tpad=0
     printf "%*s\033[1;37m%s\033[0m\n\n" "$tpad" "" "$tagline"
@@ -1046,17 +1036,16 @@ perform_installation_worker() {
         starship
         curl
         wget
-        nano
         neovim
         hyprland
         hyprlock
         hypridle
         quickshell
         kitty
-        dolphin
+        nautilus
+        capitaine-cursors
         ttf-jetbrains-mono-nerd
         noto-fonts
-        noto-fonts-cjk
         noto-fonts-emoji
         pipewire
         wireplumber
@@ -1079,7 +1068,7 @@ perform_installation_worker() {
         mesa
         xorg-xwayland
         polkit
-        polkit-kde-agent
+        polkit-gnome
         xdg-desktop-portal
         xdg-desktop-portal-hyprland
         limine
@@ -1137,26 +1126,28 @@ EOF
 
     printf "\033]P01a1b26\033]P1f7768e\033]P29ece6a\033]P3e0af68\033]P47aa2f7\033]P5bb9af7\033]P67dcfff\033]P7a9b1d6\033]P8414868\033]P9f7768e\033]PA9ece6a\033]PBe0af68\033]PC7aa2f7\033]PDbb9af7\033]PE7dcfff\033]PFc0caf5\033[0m"
 
-    local cols
-    cols=$(stty size 2>/dev/null | awk '{print $2}')
+    local term_size
+    term_size=$(stty size 2>/dev/null || stty size < /dev/console 2>/dev/null || stty size < /dev/tty0 2>/dev/null || echo "24 80")
+    local lines cols
+    set -- $term_size
+    lines=${1:-24}
+    cols=${2:-80}
     [ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
+    [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
+
     local logo_pad=$(( (cols - 47) / 2 ))
     [ "$logo_pad" -lt 0 ] && logo_pad=0
     local logo_spaces=""
     local i=0
     while [ "$i" -lt "$logo_pad" ]; do logo_spaces="${logo_spaces} "; i=$((i + 1)); done
 
-    local box_pad=$(( (cols - 60) / 2 ))
-    [ "$box_pad" -lt 0 ] && box_pad=0
-    local box_spaces=""
+    local prompt_pad=$(( (cols - 12) / 2 ))
+    [ "$prompt_pad" -lt 0 ] && prompt_pad=0
+    local prompt_spaces=""
     i=0
-    while [ "$i" -lt "$box_pad" ]; do box_spaces="${box_spaces} "; i=$((i + 1)); done
+    while [ "$i" -lt "$prompt_pad" ]; do prompt_spaces="${prompt_spaces} "; i=$((i + 1)); done
 
-    local lines
-    lines=$(stty size 2>/dev/null | awk '{print $1}')
-    [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
-    local top_pad=$(( (lines - 20) / 2 ))
-    [ "$top_pad" -lt 1 ] && top_pad=1
+    local top_pad=2
 
     while true; do
         printf "\033[H\033[2J"
@@ -1173,14 +1164,9 @@ EOF
         printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
         printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$logo_spaces"
         printf "%s            ███   █▀                           \n" "$logo_spaces"
-        printf "\033[0m\n"
+        printf "\033[0m\n\n"
 
-        printf "%s\033[1;37m┌────────────────────────────────────────────────────────────┐\033[0m\n" "$box_spaces"
-        printf "%s\033[1;37m│\033[0m            \033[1;36mDESBLOQUEO DE DISCO CIFRADO (LUKS2)\033[0m             \033[1;37m│\033[0m\n" "$box_spaces"
-        printf "%s\033[1;37m│\033[0m     \033[38;5;244mIntroduce tu clave maestra para iniciar el sistema\033[0m     \033[1;37m│\033[0m\n" "$box_spaces"
-        printf "%s\033[1;37m└────────────────────────────────────────────────────────────┘\033[0m\n\n" "$box_spaces"
-
-        printf "%s\033[1;35mContraseña Maestra>\033[0m " "$box_spaces"
+        printf "%s\033[1;36mContraseña:\033[0m " "$prompt_spaces"
         stty -echo 2>/dev/null || true
         local pass=""
         read -r pass
@@ -1188,11 +1174,11 @@ EOF
         printf "\n"
 
         if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
-            printf "\n%s\033[1;32m✔ Disco descifrado correctamente. Iniciando Arch Linux...\033[0m\n" "$box_spaces"
+            printf "\n%s\033[1;32m✔ Desbloqueado. Iniciando sistema...\033[0m\n" "$prompt_spaces"
             sleep 1
             break
         else
-            printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo...\033[0m\n" "$box_spaces"
+            printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo.\033[0m\n" "$prompt_spaces"
             sleep 2
         fi
     done
@@ -1294,8 +1280,10 @@ mkdir -p /etc/systemd/system/getty@tty1.service.d
 cat << GETTY_CONF > /etc/systemd/system/getty@tty1.service.d/autologin.conf
 [Service]
 ExecStart=
-ExecStart=-/usr/bin/agetty --noreset --noissue --autologin $SYS_USER %I 38400 linux
+ExecStart=-/usr/bin/agetty --skip-login --nonewline --noreset --noissue --autologin $SYS_USER %I 38400 linux
 Type=idle
+StandardInput=tty
+StandardOutput=tty
 GETTY_CONF
 
 CHROOT_SCRIPT
@@ -1304,8 +1292,8 @@ CHROOT_SCRIPT
     arch-chroot /mnt /root/setup_chroot.sh
     rm -f /mnt/root/setup_chroot.sh
 
-    set_phase "Desplegando entorno gráfico MrDemonc-SHELL" 88
-    echo "==> Desplegando MrDemonc-SHELL en el directorio de usuario..."
+    set_phase "Desplegando entorno gráfico y configuraciones" 88
+    echo "==> Desplegando configuraciones en el directorio de usuario..."
     DEST_REPO="/mnt/home/$SYS_USER/Documentos/MrDemonc-SHELL"
     mkdir -p "$DEST_REPO"
 
@@ -1327,6 +1315,44 @@ CHROOT_SCRIPT
     mkdir -p "$USER_HOME/.local/bin"
     mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
     mkdir -p "$USER_HOME/Pictures/Wallpapers"
+
+    # Copiar fondos de pantalla predeterminados y configurar wallpaper activo
+    if [ -d "$DEST_REPO/wallpapers" ]; then
+        cp -f "$DEST_REPO"/wallpapers/* "$USER_HOME/Pictures/Wallpapers/" 2>/dev/null || true
+    elif [ -d "/home/demonc-test/Pictures/Wallpapers" ]; then
+        cp -f /home/demonc-test/Pictures/Wallpapers/* "$USER_HOME/Pictures/Wallpapers/" 2>/dev/null || true
+    fi
+
+    cat << WALL_JSON > "$USER_HOME/.config/quickshell/current_wallpaper.json"
+{
+  "path": "/home/$SYS_USER/Pictures/Wallpapers/wall0.png"
+}
+WALL_JSON
+
+    # Configurar diseño de cursor (Capitaine) en entorno de usuario
+    mkdir -p "$USER_HOME/.icons/default" "$USER_HOME/.config/gtk-3.0" "$USER_HOME/.config/gtk-4.0"
+    cat << CURSOR_THEME > "$USER_HOME/.icons/default/index.theme"
+[Icon Theme]
+Name=Default
+Comment=Default Cursor Theme
+Inherits=capitaine-cursors
+CURSOR_THEME
+
+    cat << GTK3_CONF > "$USER_HOME/.config/gtk-3.0/settings.ini"
+[Settings]
+gtk-cursor-theme-name=capitaine-cursors
+gtk-cursor-theme-size=24
+gtk-theme-name=Adwaita-dark
+gtk-application-prefer-dark-theme=true
+GTK3_CONF
+
+    cat << GTK4_CONF > "$USER_HOME/.config/gtk-4.0/settings.ini"
+[Settings]
+gtk-cursor-theme-name=capitaine-cursors
+gtk-cursor-theme-size=24
+gtk-theme-name=Adwaita-dark
+gtk-application-prefer-dark-theme=true
+GTK4_CONF
 
     if [ -d "$DEST_REPO/hypr" ]; then
         cp -f "$DEST_REPO/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
@@ -1391,26 +1417,12 @@ THEME_TOML
         arch-chroot /mnt su - "$SYS_USER" -c "python3 ~/Documentos/MrDemonc-SHELL/scripts/theme_manager.py apply catppuccin-mocha" 2>/dev/null || true
     fi
 
-    cat << STARSHIP_CONF > "$USER_HOME/.config/starship.toml"
-add_newline = false
-format = "[╭─](bold cyan)\$all[╰─❯ ](bold cyan)"
-
-[character]
-success_symbol = "[➜](bold green)"
-error_symbol = "[➜](bold red)"
-
-[directory]
-truncation_length = 3
-truncation_symbol = "…/"
-style = "bold cyan"
-
-[git_branch]
-style = "bold purple"
-symbol = " "
-
-[git_status]
-style = "bold red"
-STARSHIP_CONF
+    mkdir -p "$USER_HOME/.config"
+    if [ -f "$DEST_REPO/starship/starship.toml" ]; then
+        cp -f "$DEST_REPO/starship/starship.toml" "$USER_HOME/.config/starship.toml"
+    elif [ -f "/usr/share/mrdemonc-shell/starship/starship.toml" ]; then
+        cp -f /usr/share/mrdemonc-shell/starship/starship.toml "$USER_HOME/.config/starship.toml"
+    fi
 
     echo "==> Configurando perfiles de inicio y shells para $SYS_USER..."
 
@@ -1425,19 +1437,67 @@ export GDK_BACKEND="wayland,x11"
 export MOZ_ENABLE_WAYLAND=1
 export _JAVA_AWT_WM_NONREPARENTING=1
 
+# Configuración de Cursor
+export XCURSOR_THEME=capitaine-cursors
+export XCURSOR_SIZE=24
+export HYPRCURSOR_THEME=capitaine-cursors
+export HYPRCURSOR_SIZE=24
+
 # Compatibilidad con máquinas virtuales y aceleración por software (QEMU / KVM / VirtualBox)
 export WLR_NO_HARDWARE_CURSORS=1
 export WLR_RENDERER_ALLOW_SOFTWARE=1
 
-# Auto-start Hyprland en tty1 (Seamless Login estilo Omarchy)
+# Auto-start Hyprland en tty1 con barra de carga que enmascara la terminal
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-    exec Hyprland
+    printf '\033[?25l\033[H\033[2J'
+    cols=$(tput cols 2>/dev/null || echo 80)
+    [ "$cols" -le 0 ] && cols=80
+    logo_pad=$(( (cols - 47) / 2 ))
+    [ "$logo_pad" -lt 0 ] && logo_pad=0
+    lspaces=$(printf "%*s" "$logo_pad" "")
+
+    printf '\033[2;1H\033[38;5;42m'
+    printf "%s ▄███████    ▄███████     ▄███████    ▄█   █▄  \n" "$lspaces"
+    printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$lspaces"
+    printf "%s███   ███   ███   ███    ███   █▀    ███   ███ \n" "$lspaces"
+    printf "%s███▄▄▄███   ███▄▄▄██▀    ███         ███▄▄▄███▄\n" "$lspaces"
+    printf "%s███▀▀▀███   ███▀▀▀▀      ███         ███▀▀▀███ \n" "$lspaces"
+    printf "%s███   ███   █████████    ███   █▄    ███   ███ \n" "$lspaces"
+    printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$lspaces"
+    printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$lspaces"
+    printf "%s            ███   █▀                           \n" "$lspaces"
+    printf '\033[0m\n'
+
+    msg="Iniciando entorno de escritorio Hyprland..."
+    msg_pad=$(( (cols - ${#msg}) / 2 ))
+    [ "$msg_pad" -lt 0 ] && msg_pad=0
+    printf "%*s\033[1;37m%s\033[0m\n\n" "$msg_pad" "" "$msg"
+
+    bar_w=36
+    bpad=$(( (cols - bar_w - 6) / 2 ))
+    [ "$bpad" -lt 0 ] && bpad=0
+    bspaces=$(printf "%*s" "$bpad" "")
+
+    for p in 20 45 70 90 100; do
+        filled=$(( p * bar_w / 100 ))
+        empty=$(( bar_w - filled ))
+        fstr=""
+        for ((j=0; j<filled; j++)); do fstr="${fstr}━"; done
+        estr=""
+        for ((j=0; j<empty; j++)); do estr="${estr}─"; done
+        printf "\r%s\033[38;5;39m%s\033[38;5;238m%s\033[0m %3d%%" "$bspaces" "$fstr" "$estr" "$p"
+        sleep 0.12
+    done
+    printf "\n"
+
+    mkdir -p "$HOME/.local/state"
+    exec Hyprland > "$HOME/.local/state/hyprland.log" 2>&1
 fi
 ZPROF
 
     # ~/.zshrc: Configuración interactiva, historial, plugins y Starship
     cat << 'ZSHRC' > "$USER_HOME/.zshrc"
-# MrDemonc-SHELL Zsh Configuration
+# Arch Linux Zsh Configuration
 export PATH="$HOME/.local/bin:$PATH"
 
 # Deshabilitar aviso zsh-newuser-install
@@ -1460,6 +1520,7 @@ alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
 
 # Inicializar Starship Prompt
+export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 if command -v starship >/dev/null 2>&1; then
     eval "$(starship init zsh)"
 fi
@@ -1478,11 +1539,57 @@ export QT_QPA_PLATFORM="wayland;xcb"
 export GDK_BACKEND="wayland,x11"
 export MOZ_ENABLE_WAYLAND=1
 export _JAVA_AWT_WM_NONREPARENTING=1
+export XCURSOR_THEME=capitaine-cursors
+export XCURSOR_SIZE=24
+export HYPRCURSOR_THEME=capitaine-cursors
+export HYPRCURSOR_SIZE=24
 export WLR_NO_HARDWARE_CURSORS=1
 export WLR_RENDERER_ALLOW_SOFTWARE=1
 
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-    exec Hyprland
+    printf '\033[?25l\033[H\033[2J'
+    cols=$(tput cols 2>/dev/null || echo 80)
+    [ "$cols" -le 0 ] && cols=80
+    logo_pad=$(( (cols - 47) / 2 ))
+    [ "$logo_pad" -lt 0 ] && logo_pad=0
+    lspaces=$(printf "%*s" "$logo_pad" "")
+
+    printf '\033[2;1H\033[38;5;42m'
+    printf "%s ▄███████    ▄███████     ▄███████    ▄█   █▄  \n" "$lspaces"
+    printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$lspaces"
+    printf "%s███   ███   ███   ███    ███   █▀    ███   ███ \n" "$lspaces"
+    printf "%s███▄▄▄███   ███▄▄▄██▀    ███         ███▄▄▄███▄\n" "$lspaces"
+    printf "%s███▀▀▀███   ███▀▀▀▀      ███         ███▀▀▀███ \n" "$lspaces"
+    printf "%s███   ███   █████████    ███   █▄    ███   ███ \n" "$lspaces"
+    printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$lspaces"
+    printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$lspaces"
+    printf "%s            ███   █▀                           \n" "$lspaces"
+    printf '\033[0m\n'
+
+    msg="Iniciando entorno de escritorio Hyprland..."
+    msg_pad=$(( (cols - ${#msg}) / 2 ))
+    [ "$msg_pad" -lt 0 ] && msg_pad=0
+    printf "%*s\033[1;37m%s\033[0m\n\n" "$msg_pad" "" "$msg"
+
+    bar_w=36
+    bpad=$(( (cols - bar_w - 6) / 2 ))
+    [ "$bpad" -lt 0 ] && bpad=0
+    bspaces=$(printf "%*s" "$bpad" "")
+
+    for p in 20 45 70 90 100; do
+        filled=$(( p * bar_w / 100 ))
+        empty=$(( bar_w - filled ))
+        fstr=""
+        for ((j=0; j<filled; j++)); do fstr="${fstr}━"; done
+        estr=""
+        for ((j=0; j<empty; j++)); do estr="${estr}─"; done
+        printf "\r%s\033[38;5;39m%s\033[38;5;238m%s\033[0m %3d%%" "$bspaces" "$fstr" "$estr" "$p"
+        sleep 0.12
+    done
+    printf "\n"
+
+    mkdir -p "$HOME/.local/state"
+    exec Hyprland > "$HOME/.local/state/hyprland.log" 2>&1
 fi
 
 [[ -f ~/.bashrc ]] && . ~/.bashrc
@@ -1495,19 +1602,24 @@ alias ll='ls -la --color=auto'
 alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
 
+export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 if command -v starship >/dev/null 2>&1; then
     eval "$(starship init bash)"
 fi
 BASHRC
 
+    # Establecer Nautilus como explorador por defecto
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default org.gnome.Nautilus.desktop inode/directory" 2>/dev/null || true
+
     # Propagar a /etc/skel para futuros usuarios creados en el sistema
-    mkdir -p /mnt/etc/skel
+    mkdir -p /mnt/etc/skel/.config
     cp -f "$USER_HOME/.zprofile" /mnt/etc/skel/
     cp -f "$USER_HOME/.zshrc" /mnt/etc/skel/
     cp -f "$USER_HOME/.zshenv" /mnt/etc/skel/
     cp -f "$USER_HOME/.zlogin" /mnt/etc/skel/
     cp -f "$USER_HOME/.bash_profile" /mnt/etc/skel/
     cp -f "$USER_HOME/.bashrc" /mnt/etc/skel/
+    cp -f "$USER_HOME/.config/starship.toml" /mnt/etc/skel/.config/ 2>/dev/null || true
 
     # Corregir rutas hardcodeadas en configs hacia el usuario actual
     sed -i "s|/home/demonc-test|/home/$SYS_USER|g" "$USER_HOME/.config/hypr/"*.lua 2>/dev/null || true

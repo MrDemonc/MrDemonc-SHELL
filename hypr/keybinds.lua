@@ -6,7 +6,7 @@
 local userHome    = os.getenv("HOME") or "/home/demonc-test"
 local binDir      = userHome .. "/.local/bin"
 local terminal    = "kitty"
-local fileManager = "dolphin"
+local fileManager = "nautilus"
 local mainMod     = "SUPER"
 
 -------------------------------------------------------------
