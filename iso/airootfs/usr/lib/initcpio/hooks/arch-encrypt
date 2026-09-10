@@ -4,8 +4,8 @@ run_hook() {
     modprobe -a -q dm-crypt >/dev/null 2>&1
 
     if [ -n "${cryptdevice}" ]; then
-        IFS=: read cryptdev cryptname cryptoptions << 'EOF'
-$cryptdevice
+        IFS=: read cryptdev cryptname cryptoptions <<EOF
+${cryptdevice}
 EOF
     else
         cryptdev="${root}"

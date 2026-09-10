@@ -58,13 +58,16 @@ CONTENT_WIDTH=74
 
 # Medición dinámica del ancho del terminal y cálculo de padding para centrado
 measure_terminal() {
-    TERM_WIDTH=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
-    if ! [[ "$TERM_WIDTH" =~ ^[0-9]+$ ]] || [ "$TERM_WIDTH" -le 0 ]; then
+    local new_ts
+    new_ts=$(stty size 2>/dev/null </dev/tty || true)
+    local new_h=$(echo "$new_ts" | awk '{print $1}')
+    local new_w=$(echo "$new_ts" | awk '{print $2}')
+    
+    if [[ "$new_w" =~ ^[0-9]+$ ]] && [[ "$new_h" =~ ^[0-9]+$ ]] && [ "$new_w" -gt 0 ] && [ "$new_h" -gt 0 ]; then
+        TERM_WIDTH=$new_w
+        TERM_HEIGHT=$new_h
+    elif [ -z "$TERM_WIDTH" ] || [ -z "$TERM_HEIGHT" ]; then
         TERM_WIDTH=$(tput cols 2>/dev/null || echo "${COLUMNS:-80}")
-    fi
-
-    TERM_HEIGHT=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
-    if ! [[ "$TERM_HEIGHT" =~ ^[0-9]+$ ]] || [ "$TERM_HEIGHT" -le 0 ]; then
         TERM_HEIGHT=$(tput lines 2>/dev/null || echo "${LINES:-24}")
     fi
 
@@ -1121,8 +1124,8 @@ INSTALL_HOOK_EOF
 run_hook() {
     modprobe -a -q dm-crypt >/dev/null 2>&1
     if [ -n "${cryptdevice}" ]; then
-        IFS=: read cryptdev cryptname cryptoptions << 'EOF'
-$cryptdevice
+        IFS=: read cryptdev cryptname cryptoptions <<EOF
+${cryptdevice}
 EOF
     else
         cryptdev="${root}"
@@ -1584,8 +1587,7 @@ run_install_with_dashboard() {
         (( log_rows < 5 )) && log_rows=5
         (( log_rows > 12 )) && log_rows=12
         local total_h=$(( LOGO_HEIGHT + 2 + 1 + 1 + 1 + 1 + log_rows ))
-        local start_row=$(( (TERM_HEIGHT - total_h) / 2 ))
-        (( start_row < 2 )) && start_row=2
+        local start_row=2
 
         if [[ "$TERM_WIDTH $TERM_HEIGHT" != "$LAST_TERM_SIZE" ]]; then
             LAST_TERM_SIZE="$TERM_WIDTH $TERM_HEIGHT"
