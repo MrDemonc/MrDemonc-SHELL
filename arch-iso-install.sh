@@ -172,7 +172,7 @@ step() {
 # Selector interactivo compatible con gum y fallback con flechas
 g_choose() {
     if command -v gum >/dev/null 2>&1; then
-        gum choose "$@"
+        gum choose --limit 1 "$@"
     else
         local header="" selected_default="" height=8
         local -a items=()
@@ -202,30 +202,42 @@ g_choose() {
 
         tput civis 2>/dev/null || echo -ne "\033[?25l"
 
+        local last_printed_lines=0
         while true; do
+            if [ "$last_printed_lines" -gt 0 ]; then
+                for ((l=0; l<last_printed_lines; l++)); do
+                    echo -ne "\033[1A\033[2K"
+                done
+            fi
+
+            local printed_lines=0
+            if [ -n "$header" ]; then
+                echo -e "${PADDING_LEFT_SPACES}${BOLD}${header}${NC}"
+                echo ""
+                ((printed_lines += 2))
+            fi
+
             if [ "$num_opts" -gt "$max_visible" ]; then
                 if [ "$selected" -ge $((window_start + max_visible)) ]; then
                     window_start=$((selected - max_visible + 1))
                 elif [ "$selected" -lt "$window_start" ]; then
                     window_start=$selected
                 fi
-            fi
 
-            [ -n "$header" ] && echo -e "${PADDING_LEFT_SPACES}${BOLD}${header}${NC}\n"
-
-            if [ "$num_opts" -gt "$max_visible" ]; then
                 if [ "$window_start" -gt 0 ]; then
                     echo -e "${PADDING_LEFT_SPACES}  ${ARCH_BLUE}▲ (${window_start} más arriba)${NC}"
                 else
                     echo -e "${PADDING_LEFT_SPACES}  ${DARK_GRAY}•${NC}"
                 fi
+                ((printed_lines++))
 
                 for ((i=window_start; i<window_start+max_visible && i<num_opts; i++)); do
                     if [ "$i" -eq "$selected" ]; then
-                        echo -e "${PADDING_LEFT_SPACES}${GREEN}${BOLD}> ${items[$i]}${NC}"
+                        echo -e "${PADDING_LEFT_SPACES}  ${GREEN}${BOLD}> ${items[$i]}${NC}"
                     else
-                        echo -e "${PADDING_LEFT_SPACES}  ${GRAY}${items[$i]}${NC}"
+                        echo -e "${PADDING_LEFT_SPACES}    ${GRAY}${items[$i]}${NC}"
                     fi
+                    ((printed_lines++))
                 done
 
                 local rem=$((num_opts - (window_start + max_visible)))
@@ -234,15 +246,19 @@ g_choose() {
                 else
                     echo -e "${PADDING_LEFT_SPACES}  ${DARK_GRAY}•${NC}"
                 fi
+                ((printed_lines++))
             else
                 for i in "${!items[@]}"; do
                     if [ "$i" -eq "$selected" ]; then
-                        echo -e "${PADDING_LEFT_SPACES}${GREEN}${BOLD}> ${items[$i]}${NC}"
+                        echo -e "${PADDING_LEFT_SPACES}  ${GREEN}${BOLD}> ${items[$i]}${NC}"
                     else
-                        echo -e "${PADDING_LEFT_SPACES}  ${GRAY}${items[$i]}${NC}"
+                        echo -e "${PADDING_LEFT_SPACES}    ${GRAY}${items[$i]}${NC}"
                     fi
+                    ((printed_lines++))
                 done
             fi
+
+            last_printed_lines=$printed_lines
 
             local key="" key2=""
             if [ -e /dev/tty ] && [ -r /dev/tty ]; then
@@ -268,18 +284,6 @@ g_choose() {
             elif [[ "$key" == "" ]]; then
                 break
             fi
-
-            local lines_to_clear
-            if [ "$num_opts" -gt "$max_visible" ]; then
-                lines_to_clear=$((max_visible + 4))
-            else
-                lines_to_clear=$((num_opts + 2))
-            fi
-            [ -n "$header" ] && ((lines_to_clear += 2))
-
-            for ((l=0; l<lines_to_clear; l++)); do
-                echo -ne "\033[1A\033[2K"
-            done
         done
 
         tput cnorm 2>/dev/null || echo -ne "\033[?25h"
@@ -850,19 +854,19 @@ Idioma / Teclado|$SYS_LOCALE / $KEYMAP"
 
         local action
         action=$(g_choose --header "¿Comenzar la instalación del sistema ahora?" \
-            "🚀 INSTALAR (Formatear e iniciar instalación)" \
-            "⚙️  Modificar configuración" \
-            "❌ Salir a la consola")
+            "[ Instalar ]   Formatear disco y comenzar instalación" \
+            "[ Modificar ]  Regresar a configurar parámetros" \
+            "[ Cancelar ]   Salir a la consola de Arch Linux")
 
         case "$action" in
-            *"INSTALAR"*)
+            *"Instalar"*)
                 return 0
                 ;;
             *"Modificar"*)
                 user_form_wizard
                 disk_wizard
                 ;;
-            *"Salir"*)
+            *"Cancelar"*)
                 say --foreground 8 "Instalación cancelada por el usuario. No se modificó ningún disco."
                 exit 0
                 ;;
@@ -872,7 +876,7 @@ Idioma / Teclado|$SYS_LOCALE / $KEYMAP"
 install_confirm
 
 # ------------------------------------------------------------------------------
-# 10. Vista de Instalación y Dashboard Dinámico (Estilo Omarchy)
+# 10. Vista de Instalación y Dashboard Dinámico
 # ------------------------------------------------------------------------------
 INSTALL_STATE_FILE="/tmp/arch-install.state"
 INSTALL_LOG_FILE="/tmp/arch-install.log"
@@ -884,18 +888,20 @@ set_phase() {
 }
 
 tips=(
-    "Super + Space abre el lanzador de aplicaciones de MrDemonc-SHELL"
-    "Super + Return abre la terminal Kitty con la paleta Tokyo Night"
-    "Super + 1..9 cambia rápidamente entre los escritorios virtuales"
-    "Super + Shift + Q cierra la ventana actualmente seleccionada"
+    "Super + Return abre la terminal Kitty con la paleta de colores activa"
+    "Super + Space abre el menú lanzador de aplicaciones del sistema"
+    "Super + W cierra de inmediato la ventana seleccionada"
     "Super + E abre el gestor de archivos Dolphin"
-    "Super + V abre el historial del gestor de portapapeles"
-    "La barra superior es totalmente interactiva y modular con Quickshell"
-    "El sistema cuenta con Btrfs, snapshots y cifrado LUKS2 para máxima seguridad"
-    "Zsh viene preconfigurado con autosugerencias, resaltado y Starship prompt"
-    "El inicio de sesión Seamless te lleva directo a Hyprland sin intermediarios"
-    "Super + K muestra la guía completa de atajos de teclado"
-    "Puedes personalizar temas y acentos de color desde ~/.config/hypr"
+    "Super + Shift + W abre el selector dinámico de fondos de pantalla"
+    "Super + Shift + T cambia rápidamente entre temas oscuros y claros"
+    "Super + L bloquea tu sesión de forma segura mediante Hyprlock"
+    "Super + T conmuta la ventana activa entre modo flotante y mosaico"
+    "Super + V abre el gestor de portapapeles nativo de Wayland"
+    "Super + 1..9 permite alternar rápidamente entre escritorios virtuales"
+    "El gestor Limine Bootloader ofrece un inicio ultraveloz, limpio y moderno"
+    "El sistema cuenta con Btrfs, subvolúmenes optimizados y cifrado seguro LUKS2"
+    "Zsh incluye autosugerencias inteligentes, sintaxis coloreada y Starship prompt"
+    "El inicio de sesión te conecta directo a Hyprland sin intermediarios"
 )
 
 perform_installation_worker() {
@@ -1073,6 +1079,7 @@ perform_installation_worker() {
         polkit-kde-agent
         xdg-desktop-portal
         xdg-desktop-portal-hyprland
+        limine
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
@@ -1082,18 +1089,18 @@ perform_installation_worker() {
     set_phase "Configurando sistema interno, usuarios e initramfs" 75
     ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
     BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
-    MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block mrdemonc-encrypt btrfs filesystems fsck"
+    MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block arch-encrypt btrfs filesystems fsck"
 
-    # Instalar hook personalizado de descifrado visual TUI (mrdemonc-encrypt)
+    # Instalar hook personalizado de descifrado visual TUI (arch-encrypt)
     mkdir -p /mnt/usr/lib/initcpio/install /mnt/usr/lib/initcpio/hooks
-    if [ -f "/usr/lib/initcpio/install/mrdemonc-encrypt" ]; then
-        cp -f /usr/lib/initcpio/install/mrdemonc-encrypt /mnt/usr/lib/initcpio/install/mrdemonc-encrypt
-        cp -f /usr/lib/initcpio/hooks/mrdemonc-encrypt /mnt/usr/lib/initcpio/hooks/mrdemonc-encrypt
-    elif [ -f "/iso/airootfs/usr/lib/initcpio/install/mrdemonc-encrypt" ]; then
-        cp -f /iso/airootfs/usr/lib/initcpio/install/mrdemonc-encrypt /mnt/usr/lib/initcpio/install/mrdemonc-encrypt
-        cp -f /iso/airootfs/usr/lib/initcpio/hooks/mrdemonc-encrypt /mnt/usr/lib/initcpio/hooks/mrdemonc-encrypt
+    if [ -f "/usr/lib/initcpio/install/arch-encrypt" ]; then
+        cp -f /usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
+        cp -f /usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
+    elif [ -f "/iso/airootfs/usr/lib/initcpio/install/arch-encrypt" ]; then
+        cp -f /iso/airootfs/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
+        cp -f /iso/airootfs/usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
     else
-        cat << 'INSTALL_HOOK_EOF' > /mnt/usr/lib/initcpio/install/mrdemonc-encrypt
+        cat << 'INSTALL_HOOK_EOF' > /mnt/usr/lib/initcpio/install/arch-encrypt
 #!/bin/bash
 build() {
     map add_module 'dm-crypt' 'dm-integrity' 'hid-generic?'
@@ -1109,7 +1116,7 @@ build() {
 help() { echo "Pantalla gráfica TUI estilizada de desbloqueo LUKS2"; }
 INSTALL_HOOK_EOF
 
-        cat << 'HOOK_RUN_EOF' > /mnt/usr/lib/initcpio/hooks/mrdemonc-encrypt
+        cat << 'HOOK_RUN_EOF' > /mnt/usr/lib/initcpio/hooks/arch-encrypt
 #!/usr/bin/ash
 run_hook() {
     modprobe -a -q dm-crypt >/dev/null 2>&1
@@ -1178,7 +1185,7 @@ EOF
         printf "\n"
 
         if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
-            printf "\n%s\033[1;32m✔ Disco descifrado correctamente. Iniciando MrDemonc-SHELL...\033[0m\n" "$box_spaces"
+            printf "\n%s\033[1;32m✔ Disco descifrado correctamente. Iniciando Arch Linux...\033[0m\n" "$box_spaces"
             sleep 1
             break
         else
@@ -1189,10 +1196,7 @@ EOF
 }
 HOOK_RUN_EOF
     fi
-    chmod +x /mnt/usr/lib/initcpio/install/mrdemonc-encrypt /mnt/usr/lib/initcpio/hooks/mrdemonc-encrypt
-
-    UCODE_LINE=""
-    [ -n "$UCODE_PKG" ] && UCODE_LINE="initrd  /$UCODE_PKG.img"
+    chmod +x /mnt/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
 
     cat << CHROOT_SCRIPT > /mnt/root/setup_chroot.sh
 #!/usr/bin/env bash
@@ -1232,32 +1236,51 @@ su - "$SYS_USER" -s /bin/bash -c "git config --global init.defaultBranch main" 2
 sed -i "s/^HOOKS=.*/HOOKS=($MKINITCPIO_HOOKS)/" /etc/mkinitcpio.conf
 mkinitcpio -P
 
-bootctl install --esp-path=/boot 2>/dev/null || bootctl install --esp-path=/boot --no-variables 2>/dev/null || true
+# Instalación y configuración de Limine Bootloader
 mkdir -p /boot/EFI/BOOT
-cp -f /boot/EFI/systemd/systemd-bootx64.efi /boot/EFI/BOOT/BOOTX64.EFI 2>/dev/null || true
+cp -f /usr/share/limine/BOOTX64.EFI /boot/EFI/BOOT/BOOTX64.EFI 2>/dev/null || true
+cp -f /usr/share/limine/BOOTIA32.EFI /boot/EFI/BOOT/BOOTIA32.EFI 2>/dev/null || true
+cp -f /usr/share/limine/limine-bios.sys /boot/limine-bios.sys 2>/dev/null || true
 
-cat << LOADER > /boot/loader/loader.conf
-default  arch.conf
-timeout  3
-console-mode max
-editor   no
-LOADER
+cat << 'LIMINE_HEAD' > /boot/limine.conf
+timeout: 3
+interface_branding: Arch Linux (Limine)
+interface_branding_color: 7aa2f7
 
-cat << ENTRY > /boot/loader/entries/arch.conf
-title   Arch Linux
-linux   /vmlinuz-linux
-$UCODE_LINE
-initrd  /initramfs-linux.img
-options $BOOT_ENTRY_OPTIONS
-ENTRY
+/Arch Linux
+    protocol: linux
+    kernel_path: boot():/vmlinuz-linux
+LIMINE_HEAD
 
-cat << ENTRY_FALLBACK > /boot/loader/entries/arch-fallback.conf
-title   Arch Linux (fallback initramfs)
-linux   /vmlinuz-linux
-$UCODE_LINE
-initrd  /initramfs-linux-fallback.img
-options $BOOT_ENTRY_OPTIONS
-ENTRY_FALLBACK
+if [ -n "$UCODE_PKG" ]; then
+    echo "    module_path: boot():/$UCODE_PKG.img" >> /boot/limine.conf
+fi
+
+cat << LIMINE_PART1 >> /boot/limine.conf
+    module_path: boot():/initramfs-linux.img
+    cmdline: $BOOT_ENTRY_OPTIONS
+
+/Arch Linux (fallback initramfs)
+    protocol: linux
+    kernel_path: boot():/vmlinuz-linux
+LIMINE_PART1
+
+if [ -n "$UCODE_PKG" ]; then
+    echo "    module_path: boot():/$UCODE_PKG.img" >> /boot/limine.conf
+fi
+
+cat << LIMINE_PART2 >> /boot/limine.conf
+    module_path: boot():/initramfs-linux-fallback.img
+    cmdline: $BOOT_ENTRY_OPTIONS
+LIMINE_PART2
+
+cp -f /boot/limine.conf /boot/EFI/BOOT/limine.conf 2>/dev/null || true
+
+# Registrar entrada en UEFI NVRAM
+efibootmgr --create --disk "$TARGET_DISK" --part 1 --label "Arch Linux" --loader '\EFI\BOOT\BOOTX64.EFI' 2>/dev/null || true
+
+# Instalación híbrida BIOS/GPT
+limine bios-install "$TARGET_DISK" 2>/dev/null || true
 
 systemctl enable NetworkManager.service
 systemctl enable bluetooth.service 2>/dev/null || true

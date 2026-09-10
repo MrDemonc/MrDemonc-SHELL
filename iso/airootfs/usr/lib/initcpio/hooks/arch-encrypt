@@ -85,7 +85,7 @@ EOF
         printf "\n"
 
         if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
-            printf "\n%s\033[1;32m✔ Disco descifrado correctamente. Iniciando MrDemonc-SHELL...\033[0m\n" "$box_spaces"
+            printf "\n%s\033[1;32m✔ Disco descifrado correctamente. Iniciando Arch Linux...\033[0m\n" "$box_spaces"
             sleep 1
             break
         else

@@ -47,8 +47,8 @@ fi
 # Actualizar el script instalador y empaquetar MrDemonc-SHELL dentro de la ISO
 echo -e "${YELLOW}[2/4] Sincronizando instalador y empaquetando MrDemonc-SHELL en la ISO...${NC}"
 mkdir -p "$ISO_DIR/airootfs/usr/local/bin"
-cp -f "$REPO_DIR/arch-iso-install.sh" "$ISO_DIR/airootfs/usr/local/bin/mrdemonc-installer"
-chmod +x "$ISO_DIR/airootfs/usr/local/bin/mrdemonc-installer"
+cp -f "$REPO_DIR/arch-iso-install.sh" "$ISO_DIR/airootfs/usr/local/bin/arch-installer"
+chmod +x "$ISO_DIR/airootfs/usr/local/bin/arch-installer"
 
 mkdir -p "$ISO_DIR/airootfs/usr/share/mrdemonc-shell"
 rm -rf "$ISO_DIR/airootfs/usr/share/mrdemonc-shell"/*
