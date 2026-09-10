@@ -1095,14 +1095,13 @@ perform_installation_worker() {
 
     set_phase "Configurando sistema interno, usuarios e initramfs" 75
 
-    # Si se seleccionó cifrado, preparar hook personalizado de desbloqueo TUI
-    if [ "$ENCRYPT_CHOICE" = "si" ]; then
-        ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
-        BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
-        MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block arch-encrypt btrfs filesystems fsck"
+    # Preparar hook personalizado de desbloqueo TUI (arch-encrypt)
+    ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
+    BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
+    MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block arch-encrypt btrfs filesystems fsck"
 
-        # Instalar hook personalizado de descifrado visual TUI (arch-encrypt)
-        mkdir -p /mnt/usr/lib/initcpio/install /mnt/usr/lib/initcpio/hooks
+    # Instalar hook personalizado de descifrado visual TUI (arch-encrypt)
+    mkdir -p /mnt/usr/lib/initcpio/install /mnt/usr/lib/initcpio/hooks
         if [ -f "/usr/lib/initcpio/install/arch-encrypt" ]; then
             cp -f /usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
             cp -f /usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
@@ -1235,7 +1234,6 @@ EOF
 HOOK_RUN_EOF
         fi
         chmod +x /mnt/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
-    fi
 
     cat << CHROOT_SCRIPT > /mnt/root/setup_chroot.sh
 #!/usr/bin/env bash
@@ -1276,10 +1274,11 @@ sed -i "s/^HOOKS=.*/HOOKS=($MKINITCPIO_HOOKS)/" /etc/mkinitcpio.conf
 mkinitcpio -P
 
 # Instalación y configuración de Limine Bootloader
-mkdir -p /boot/EFI/BOOT
+mkdir -p /boot/EFI/BOOT /boot/limine
 cp -f /usr/share/limine/BOOTX64.EFI /boot/EFI/BOOT/BOOTX64.EFI 2>/dev/null || true
 cp -f /usr/share/limine/BOOTIA32.EFI /boot/EFI/BOOT/BOOTIA32.EFI 2>/dev/null || true
 cp -f /usr/share/limine/limine-bios.sys /boot/limine-bios.sys 2>/dev/null || true
+cp -f /usr/share/limine/limine-bios.sys /boot/limine/limine-bios.sys 2>/dev/null || true
 
 cat << 'LIMINE_HEAD' > /boot/limine.conf
 timeout: 3
@@ -1288,7 +1287,7 @@ interface_branding_color: 7aa2f7
 
 /Arch Linux
     protocol: linux
-    kernel_path: boot():/vmlinuz-linux
+    path: boot():/vmlinuz-linux
 LIMINE_HEAD
 
 if [ -n "$UCODE_PKG" ]; then
@@ -1301,7 +1300,7 @@ cat << LIMINE_PART1 >> /boot/limine.conf
 
 /Arch Linux (fallback initramfs)
     protocol: linux
-    kernel_path: boot():/vmlinuz-linux
+    path: boot():/vmlinuz-linux
 LIMINE_PART1
 
 if [ -n "$UCODE_PKG" ]; then
@@ -1313,10 +1312,11 @@ cat << LIMINE_PART2 >> /boot/limine.conf
     cmdline: $BOOT_ENTRY_OPTIONS
 LIMINE_PART2
 
+cp -f /boot/limine.conf /boot/limine/limine.conf 2>/dev/null || true
 cp -f /boot/limine.conf /boot/EFI/BOOT/limine.conf 2>/dev/null || true
 
 # Registrar entrada en UEFI NVRAM
-efibootmgr --create --disk "$TARGET_DISK" --part 1 --label "Arch Linux" --loader '\EFI\BOOT\BOOTX64.EFI' 2>/dev/null || true
+efibootmgr --create --disk "$TARGET_DISK" --part 1 --label "Arch Linux" --loader /EFI/BOOT/BOOTX64.EFI --unicode 2>/dev/null || true
 
 # Instalación híbrida BIOS/GPT
 limine bios-install "$TARGET_DISK" 2>/dev/null || true
