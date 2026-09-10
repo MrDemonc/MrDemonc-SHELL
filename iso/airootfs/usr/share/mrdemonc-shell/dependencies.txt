@@ -1,0 +1,62 @@
+# ==============================================================================
+#  MrDemonc-SHELL: Lista de Dependencias Oficiales de Arch Linux (pacman)
+#
+#  Instalación rápida:
+#    sudo pacman -S --needed $(grep -vE '^\s*#|^\s*$' dependencies.txt)
+# ==============================================================================
+
+# --- Entorno de Ventanas & Compositor ---
+hyprland
+
+# --- Bloqueador de Pantalla & Gestión de Inactividad (Lock Screen) ---
+hyprlock
+hypridle
+
+# --- Servidor de Sonido & Control Multimedia ---
+pipewire
+pipewire-pulse
+pipewire-alsa
+pipewire-jack
+wireplumber
+sof-firmware
+alsa-ucm-conf
+alsa-utils
+pavucontrol
+libpulse
+playerctl
+
+# --- Conectividad de Red & Bluetooth ---
+networkmanager
+bluez
+bluez-utils
+
+# --- Control de Energía, Brillo & Integración de Escritorio ---
+upower
+brightnessctl
+xdg-utils
+libnotify
+
+# --- Captura de Pantalla & Portapapeles Wayland ---
+grim
+slurp
+wl-clipboard
+wtype
+
+# --- Aplicaciones Predeterminadas ---
+kitty
+nautilus
+
+# --- Cursor & Autenticación Polkit ---
+capitaine-cursors
+polkit-gnome
+
+# --- Tipografías con Iconos Nerd Fonts ---
+ttf-jetbrains-mono-nerd
+
+# --- Shell Avanzada & Prompt ---
+zsh
+starship
+
+# --- Intérprete para Backend de Servicios ---
+python
+

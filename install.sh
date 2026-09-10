@@ -318,12 +318,18 @@ fi
 
 # 5. Configurar Seamless Login en ~/.zprofile para inicio automático en tty1 con zsh
 ZPROFILE="$USER_HOME/.zprofile"
-if ! grep -q 'exec Hyprland' "$ZPROFILE" 2>/dev/null; then
+if ! grep -q 'start-hyprland' "$ZPROFILE" 2>/dev/null && ! grep -q 'exec Hyprland' "$ZPROFILE" 2>/dev/null; then
     cat << 'HOOK' >> "$ZPROFILE"
 
 # Auto-start Hyprland en tty1 (Seamless Login)
+export BROWSER=zen-browser
+export DEFAULT_BROWSER=zen-browser
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-    exec Hyprland
+    if command -v start-hyprland >/dev/null 2>&1; then
+        exec start-hyprland
+    else
+        exec Hyprland
+    fi
 fi
 HOOK
     echo -e "${GREEN}[OK] Hook de arranque de Hyprland añadido a ~/.zprofile.${NC}"
@@ -375,12 +381,18 @@ fi
 
 # 2. Configurar autoarranque de Hyprland en ~/.bash_profile
 BASH_PROFILE="$USER_HOME/.bash_profile"
-if ! grep -q 'exec Hyprland' "$BASH_PROFILE" 2>/dev/null; then
+if ! grep -q 'start-hyprland' "$BASH_PROFILE" 2>/dev/null && ! grep -q 'exec Hyprland' "$BASH_PROFILE" 2>/dev/null; then
     cat << 'HOOK' >> "$BASH_PROFILE"
 
 # Auto-start Hyprland en tty1 (Seamless Login)
+export BROWSER=zen-browser
+export DEFAULT_BROWSER=zen-browser
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-    exec Hyprland
+    if command -v start-hyprland >/dev/null 2>&1; then
+        exec start-hyprland
+    else
+        exec Hyprland
+    fi
 fi
 HOOK
     echo -e "${GREEN}[OK] Hook de arranque de Hyprland añadido a ~/.bash_profile.${NC}"

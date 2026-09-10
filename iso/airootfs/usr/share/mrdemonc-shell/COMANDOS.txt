@@ -53,13 +53,14 @@
 • Atajos dentro de la ventana de Wallpapers:
     ↑ / ↓ : Navegar entre imágenes disponibles
     Enter / Espacio : Aplicar fondo enfocado
-    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador (Dolphin) para añadir nuevas imágenes
+    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador de archivos (Nautilus) para añadir nuevas imágenes
     Esc : Cerrar ventana
 
 
 4. ATAJOS GENERALES DE HYPRLAND CONFIGURADOS
 -----------------------------------------------------
 • SUPER + ENTER             : Abrir terminal (Kitty con Zsh y Starship)
+• SUPER + B                 : Abrir navegador web predeterminado (Zen Browser)
 • SUPER + C                 : Copiar (Portapapeles nativo Wayland)
 • SUPER + X                 : Cortar (Portapapeles nativo Wayland)
 • SUPER + V                 : Pegar (Portapapeles nativo Wayland)
@@ -69,7 +70,7 @@
 • SUPER + SHIFT + W         : Selector de Wallpapers
 • SUPER + SHIFT + T         : Selector de Temas
 • SUPER + Espacio           : Lanzador de aplicaciones
-• SUPER + E                 : Explorador de archivos (Dolphin)
+• SUPER + E                 : Explorador de archivos (Nautilus)
 • SUPER + Flechas           : Cambiar foco entre ventanas
 • SUPER + SHIFT + Flechas   : Mover ventanas de posición en la pantalla
 

@@ -1080,6 +1080,13 @@ perform_installation_worker() {
         xdg-desktop-portal
         xdg-desktop-portal-hyprland
         limine
+        gtk3
+        libxt
+        dbus-glib
+        nss
+        ffmpeg
+        tar
+        xz
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
@@ -1087,20 +1094,23 @@ perform_installation_worker() {
     genfstab -U /mnt >> /mnt/etc/fstab
 
     set_phase "Configurando sistema interno, usuarios e initramfs" 75
-    ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
-    BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
-    MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block arch-encrypt btrfs filesystems fsck"
 
-    # Instalar hook personalizado de descifrado visual TUI (arch-encrypt)
-    mkdir -p /mnt/usr/lib/initcpio/install /mnt/usr/lib/initcpio/hooks
-    if [ -f "/usr/lib/initcpio/install/arch-encrypt" ]; then
-        cp -f /usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
-        cp -f /usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
-    elif [ -f "/iso/airootfs/usr/lib/initcpio/install/arch-encrypt" ]; then
-        cp -f /iso/airootfs/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
-        cp -f /iso/airootfs/usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
-    else
-        cat << 'INSTALL_HOOK_EOF' > /mnt/usr/lib/initcpio/install/arch-encrypt
+    # Si se seleccionó cifrado, preparar hook personalizado de desbloqueo TUI
+    if [ "$ENCRYPT_CHOICE" = "si" ]; then
+        ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
+        BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
+        MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block arch-encrypt btrfs filesystems fsck"
+
+        # Instalar hook personalizado de descifrado visual TUI (arch-encrypt)
+        mkdir -p /mnt/usr/lib/initcpio/install /mnt/usr/lib/initcpio/hooks
+        if [ -f "/usr/lib/initcpio/install/arch-encrypt" ]; then
+            cp -f /usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
+            cp -f /usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
+        elif [ -f "/iso/airootfs/usr/lib/initcpio/install/arch-encrypt" ]; then
+            cp -f /iso/airootfs/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
+            cp -f /iso/airootfs/usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
+        else
+            cat << 'INSTALL_HOOK_EOF' > /mnt/usr/lib/initcpio/install/arch-encrypt
 #!/bin/bash
 build() {
     map add_module 'dm-crypt' 'dm-integrity' 'hid-generic?'
@@ -1112,12 +1122,15 @@ build() {
     map add_udev_rule '10-dm.rules' '13-dm-disk.rules' '95-dm-notify.rules'
     add_binary '/usr/lib/libgcc_s.so.1' 2>/dev/null || true
     add_binary '/usr/lib/ossl-modules/legacy.so' 2>/dev/null || true
+    if [[ -d /usr/share/terminfo/l ]]; then
+        add_file '/usr/share/terminfo/l/linux' 2>/dev/null || true
+    fi
     add_runscript
 }
 help() { echo "Pantalla gráfica TUI estilizada de desbloqueo LUKS2"; }
 INSTALL_HOOK_EOF
 
-        cat << 'HOOK_RUN_EOF' > /mnt/usr/lib/initcpio/hooks/arch-encrypt
+            cat << 'HOOK_RUN_EOF' > /mnt/usr/lib/initcpio/hooks/arch-encrypt
 #!/usr/bin/ash
 run_hook() {
     modprobe -a -q dm-crypt >/dev/null 2>&1
@@ -1135,8 +1148,10 @@ EOF
 
     printf "\033]P01a1b26\033]P1f7768e\033]P29ece6a\033]P3e0af68\033]P47aa2f7\033]P5bb9af7\033]P67dcfff\033]P7a9b1d6\033]P8414868\033]P9f7768e\033]PA9ece6a\033]PBe0af68\033]PC7aa2f7\033]PDbb9af7\033]PE7dcfff\033]PFc0caf5\033[0m"
 
+    [ -z "$TERM" ] && export TERM=linux
+
     local term_size
-    term_size=$(stty size 2>/dev/null || stty size < /dev/console 2>/dev/null || stty size < /dev/tty0 2>/dev/null || echo "24 80")
+    term_size=$(stty -F /dev/tty0 size 2>/dev/null || stty -F /dev/tty1 size 2>/dev/null || stty size 2>/dev/null || echo "24 80")
     local lines cols
     set -- $term_size
     lines=${1:-24}
@@ -1144,22 +1159,21 @@ EOF
     [ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
     [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
 
-    local logo_pad=$(( (cols - 47) / 2 ))
+    local logo_w=47
+    local logo_pad=$(( (cols - logo_w) / 2 ))
     [ "$logo_pad" -lt 0 ] && logo_pad=0
     local logo_spaces=""
     local i=0
     while [ "$i" -lt "$logo_pad" ]; do logo_spaces="${logo_spaces} "; i=$((i + 1)); done
 
-    local prompt_pad=$(( (cols - 12) / 2 ))
+    local prompt_text="Contraseña: "
+    local prompt_w=46
+    [ "$prompt_w" -gt "$cols" ] && prompt_w=$cols
+    local prompt_pad=$(( (cols - prompt_w) / 2 ))
     [ "$prompt_pad" -lt 0 ] && prompt_pad=0
     local prompt_spaces=""
     i=0
     while [ "$i" -lt "$prompt_pad" ]; do prompt_spaces="${prompt_spaces} "; i=$((i + 1)); done
-
-    local input_w=46
-    [ "$input_w" -gt "$((cols - 6))" ] && input_w=$((cols - 6))
-    local input_pad=$(( (cols - input_w) / 2 ))
-    [ "$input_pad" -lt 0 ] && input_pad=0
 
     local top_pad=2
 
@@ -1184,16 +1198,21 @@ EOF
         if command -v gum >/dev/null 2>&1; then
             gum style --foreground 6 --bold --align center --width "$cols" "DESBLOQUEO DE DISCO CIFRADO"
             printf "\n"
-            pass=$(gum input --password --placeholder "Introduce tu clave para iniciar..." --width "$input_w" --prompt " 󰌾 " --prompt.foreground 4 --padding "0 0 0 $input_pad" 2>/dev/null)
+            pass=$(gum input --password --placeholder "Introduce tu clave para desbloquear..." --prompt "${prompt_spaces}${prompt_text}" --prompt.foreground 4)
         else
-            printf "%s\033[1;36mContraseña:\033[0m " "$prompt_spaces"
+            printf "%s\033[1;36mDESBLOQUEO DE DISCO CIFRADO\033[0m\n\n" "$logo_spaces"
+            printf "%s\033[1;36m%s\033[0m" "$prompt_spaces" "$prompt_text"
             stty -echo 2>/dev/null || true
             read -r pass
             stty echo 2>/dev/null || true
             printf "\n"
         fi
 
-        if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
+        if [ -z "$pass" ]; then
+            continue
+        fi
+
+        if printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
             if command -v gum >/dev/null 2>&1; then
                 printf "\n"
                 gum style --foreground 2 --bold --align center --width "$cols" "✔ Disco descifrado correctamente. Iniciando sistema..."
@@ -1214,8 +1233,9 @@ EOF
     done
 }
 HOOK_RUN_EOF
+        fi
+        chmod +x /mnt/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
     fi
-    chmod +x /mnt/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
 
     cat << CHROOT_SCRIPT > /mnt/root/setup_chroot.sh
 #!/usr/bin/env bash
@@ -1316,6 +1336,54 @@ Type=idle
 StandardInput=tty
 StandardOutput=tty
 GETTY_CONF
+
+# Desinstalar cualquier otro navegador para mantener el sistema minimalista y limpio
+pacman -Rns --noconfirm firefox firefox-esr chromium epiphany midori 2>/dev/null || true
+
+# Descarga e instalación de Zen Browser (zen-browser-bin)
+echo "Instalando Zen Browser..."
+mkdir -p /opt/zen-browser-bin
+if curl -sL "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz" | tar -xJ -C /opt/zen-browser-bin --strip-components=1 2>/dev/null; then
+    cat << 'ZEN_SH' > /usr/bin/zen-browser
+#!/bin/bash
+exec /opt/zen-browser-bin/zen-bin "$@"
+ZEN_SH
+    chmod +x /usr/bin/zen-browser
+    ln -sf /usr/bin/zen-browser /usr/bin/zen
+
+    cat << 'ZEN_DESK' > /usr/share/applications/zen.desktop
+[Desktop Entry]
+Version=1.0
+Name=Zen Browser
+Comment=Experience tranquility while browsing the web without sacrificing speed or privacy.
+GenericName=Web Browser
+Keywords=Internet;WWW;Browser;Web;Explorer
+Exec=/usr/bin/zen-browser %u
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+Icon=zen
+Categories=Network;WebBrowser;Internet;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
+StartupNotify=true
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=Open a New Window
+Exec=/usr/bin/zen-browser --new-window %u
+
+[Desktop Action new-private-window]
+Name=Open a New Private Window
+Exec=/usr/bin/zen-browser --private-window %u
+ZEN_DESK
+    chmod 644 /usr/share/applications/zen.desktop
+
+    for sz in 16 32 48 64 128; do
+        mkdir -p "/usr/share/icons/hicolor/${sz}x${sz}/apps"
+        ln -sf "/opt/zen-browser-bin/browser/chrome/icons/default/default${sz}.png" "/usr/share/icons/hicolor/${sz}x${sz}/apps/zen.png" 2>/dev/null || true
+    done
+    gtk-update-icon-cache -q /usr/share/icons/hicolor 2>/dev/null || true
+fi
 
 CHROOT_SCRIPT
 
@@ -1484,6 +1552,8 @@ export QT_QPA_PLATFORM="wayland;xcb"
 export GDK_BACKEND="wayland,x11"
 export MOZ_ENABLE_WAYLAND=1
 export _JAVA_AWT_WM_NONREPARENTING=1
+export BROWSER=zen-browser
+export DEFAULT_BROWSER=zen-browser
 
 # Configuración de Cursor
 export XCURSOR_THEME=capitaine-cursors
@@ -1495,51 +1565,15 @@ export HYPRCURSOR_SIZE=24
 export WLR_NO_HARDWARE_CURSORS=1
 export WLR_RENDERER_ALLOW_SOFTWARE=1
 
-# Auto-start Hyprland en tty1 con barra de carga que enmascara la terminal
+# Auto-start Hyprland en tty1 (Seamless Login directo sin advertencias)
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
     printf '\033[?25l\033[H\033[2J'
-    cols=$(tput cols 2>/dev/null || echo 80)
-    [ "$cols" -le 0 ] && cols=80
-    logo_pad=$(( (cols - 47) / 2 ))
-    [ "$logo_pad" -lt 0 ] && logo_pad=0
-    lspaces=$(printf "%*s" "$logo_pad" "")
-
-    printf '\033[2;1H\033[38;5;42m'
-    printf "%s ▄███████    ▄███████     ▄███████    ▄█   █▄  \n" "$lspaces"
-    printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$lspaces"
-    printf "%s███   ███   ███   ███    ███   █▀    ███   ███ \n" "$lspaces"
-    printf "%s███▄▄▄███   ███▄▄▄██▀    ███         ███▄▄▄███▄\n" "$lspaces"
-    printf "%s███▀▀▀███   ███▀▀▀▀      ███         ███▀▀▀███ \n" "$lspaces"
-    printf "%s███   ███   █████████    ███   █▄    ███   ███ \n" "$lspaces"
-    printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$lspaces"
-    printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$lspaces"
-    printf "%s            ███   █▀                           \n" "$lspaces"
-    printf '\033[0m\n'
-
-    msg="Iniciando entorno de escritorio Hyprland..."
-    msg_pad=$(( (cols - ${#msg}) / 2 ))
-    [ "$msg_pad" -lt 0 ] && msg_pad=0
-    printf "%*s\033[1;37m%s\033[0m\n\n" "$msg_pad" "" "$msg"
-
-    bar_w=36
-    bpad=$(( (cols - bar_w - 6) / 2 ))
-    [ "$bpad" -lt 0 ] && bpad=0
-    bspaces=$(printf "%*s" "$bpad" "")
-
-    for p in 20 45 70 90 100; do
-        filled=$(( p * bar_w / 100 ))
-        empty=$(( bar_w - filled ))
-        fstr=""
-        for ((j=0; j<filled; j++)); do fstr="${fstr}━"; done
-        estr=""
-        for ((j=0; j<empty; j++)); do estr="${estr}─"; done
-        printf "\r%s\033[38;5;39m%s\033[38;5;238m%s\033[0m %3d%%" "$bspaces" "$fstr" "$estr" "$p"
-        sleep 0.12
-    done
-    printf "\n"
-
     mkdir -p "$HOME/.local/state"
-    exec Hyprland > "$HOME/.local/state/hyprland.log" 2>&1
+    if command -v start-hyprland >/dev/null 2>&1; then
+        exec start-hyprland > "$HOME/.local/state/hyprland.log" 2>&1
+    else
+        exec Hyprland > "$HOME/.local/state/hyprland.log" 2>&1
+    fi
 fi
 ZPROF
 
@@ -1587,6 +1621,8 @@ export QT_QPA_PLATFORM="wayland;xcb"
 export GDK_BACKEND="wayland,x11"
 export MOZ_ENABLE_WAYLAND=1
 export _JAVA_AWT_WM_NONREPARENTING=1
+export BROWSER=zen-browser
+export DEFAULT_BROWSER=zen-browser
 export XCURSOR_THEME=capitaine-cursors
 export XCURSOR_SIZE=24
 export HYPRCURSOR_THEME=capitaine-cursors
@@ -1596,48 +1632,12 @@ export WLR_RENDERER_ALLOW_SOFTWARE=1
 
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
     printf '\033[?25l\033[H\033[2J'
-    cols=$(tput cols 2>/dev/null || echo 80)
-    [ "$cols" -le 0 ] && cols=80
-    logo_pad=$(( (cols - 47) / 2 ))
-    [ "$logo_pad" -lt 0 ] && logo_pad=0
-    lspaces=$(printf "%*s" "$logo_pad" "")
-
-    printf '\033[2;1H\033[38;5;42m'
-    printf "%s ▄███████    ▄███████     ▄███████    ▄█   █▄  \n" "$lspaces"
-    printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$lspaces"
-    printf "%s███   ███   ███   ███    ███   █▀    ███   ███ \n" "$lspaces"
-    printf "%s███▄▄▄███   ███▄▄▄██▀    ███         ███▄▄▄███▄\n" "$lspaces"
-    printf "%s███▀▀▀███   ███▀▀▀▀      ███         ███▀▀▀███ \n" "$lspaces"
-    printf "%s███   ███   █████████    ███   █▄    ███   ███ \n" "$lspaces"
-    printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$lspaces"
-    printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$lspaces"
-    printf "%s            ███   █▀                           \n" "$lspaces"
-    printf '\033[0m\n'
-
-    msg="Iniciando entorno de escritorio Hyprland..."
-    msg_pad=$(( (cols - ${#msg}) / 2 ))
-    [ "$msg_pad" -lt 0 ] && msg_pad=0
-    printf "%*s\033[1;37m%s\033[0m\n\n" "$msg_pad" "" "$msg"
-
-    bar_w=36
-    bpad=$(( (cols - bar_w - 6) / 2 ))
-    [ "$bpad" -lt 0 ] && bpad=0
-    bspaces=$(printf "%*s" "$bpad" "")
-
-    for p in 20 45 70 90 100; do
-        filled=$(( p * bar_w / 100 ))
-        empty=$(( bar_w - filled ))
-        fstr=""
-        for ((j=0; j<filled; j++)); do fstr="${fstr}━"; done
-        estr=""
-        for ((j=0; j<empty; j++)); do estr="${estr}─"; done
-        printf "\r%s\033[38;5;39m%s\033[38;5;238m%s\033[0m %3d%%" "$bspaces" "$fstr" "$estr" "$p"
-        sleep 0.12
-    done
-    printf "\n"
-
     mkdir -p "$HOME/.local/state"
-    exec Hyprland > "$HOME/.local/state/hyprland.log" 2>&1
+    if command -v start-hyprland >/dev/null 2>&1; then
+        exec start-hyprland > "$HOME/.local/state/hyprland.log" 2>&1
+    else
+        exec Hyprland > "$HOME/.local/state/hyprland.log" 2>&1
+    fi
 fi
 
 [[ -f ~/.bashrc ]] && . ~/.bashrc
@@ -1658,6 +1658,27 @@ BASHRC
 
     # Establecer Nautilus como explorador por defecto
     arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default org.gnome.Nautilus.desktop inode/directory" 2>/dev/null || true
+
+    # Establecer Zen Browser como navegador por defecto
+    mkdir -p "$USER_HOME/.config" "/mnt/etc/skel/.config"
+    cat << 'MIME_CONF' > "$USER_HOME/.config/mimeapps.list"
+[Default Applications]
+text/html=zen.desktop
+x-scheme-handler/http=zen.desktop
+x-scheme-handler/https=zen.desktop
+x-scheme-handler/about=zen.desktop
+x-scheme-handler/unknown=zen.desktop
+
+[Added Associations]
+text/html=zen.desktop;
+x-scheme-handler/http=zen.desktop;
+x-scheme-handler/https=zen.desktop;
+MIME_CONF
+    cp -f "$USER_HOME/.config/mimeapps.list" /mnt/etc/skel/.config/mimeapps.list 2>/dev/null || true
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-settings set default-web-browser zen.desktop 2>/dev/null || true"
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop x-scheme-handler/http 2>/dev/null || true"
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop x-scheme-handler/https 2>/dev/null || true"
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop text/html 2>/dev/null || true"
 
     # Propagar a /etc/skel para futuros usuarios creados en el sistema
     mkdir -p /mnt/etc/skel/.config /mnt/etc/skel/.local/bin

@@ -7,6 +7,7 @@ local userHome    = os.getenv("HOME") or "/home/demonc-test"
 local binDir      = userHome .. "/.local/bin"
 local terminal    = "kitty"
 local fileManager = "nautilus"
+local browser     = "zen-browser"
 local mainMod     = "SUPER"
 
 -------------------------------------------------------------
@@ -15,6 +16,9 @@ local mainMod     = "SUPER"
 
 -- Terminal (SUPER + Enter)
 hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal))
+
+-- Navegador Web Zen Browser (SUPER + B)
+hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(browser))
 
 -- Cerrar ventana activa (SUPER + W)
 hl.bind(mainMod .. " + W", hl.dsp.window.close())
