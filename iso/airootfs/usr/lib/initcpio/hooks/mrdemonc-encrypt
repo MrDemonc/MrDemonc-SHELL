@@ -1,0 +1,98 @@
+#!/usr/bin/ash
+
+run_hook() {
+    modprobe -a -q dm-crypt >/dev/null 2>&1
+
+    if [ -n "${cryptdevice}" ]; then
+        IFS=: read cryptdev cryptname cryptoptions << 'EOF'
+$cryptdevice
+EOF
+    else
+        cryptdev="${root}"
+        cryptname="cryptroot"
+    fi
+
+    if [ -b "/dev/mapper/${cryptname}" ]; then
+        return 0
+    fi
+
+    resolved=$(resolve_device "${cryptdev}")
+    if [ -z "${resolved}" ]; then
+        return 1
+    fi
+
+    # Configurar paleta Tokyo Night
+    printf "\033]P01a1b26\033]P1f7768e\033]P29ece6a\033]P3e0af68\033]P47aa2f7\033]P5bb9af7\033]P67dcfff\033]P7a9b1d6\033]P8414868\033]P9f7768e\033]PA9ece6a\033]PBe0af68\033]PC7aa2f7\033]PDbb9af7\033]PE7dcfff\033]PFc0caf5\033[0m"
+
+    local cols
+    cols=$(stty size 2>/dev/null | awk '{print $2}')
+    [ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
+
+    local logo_pad=$(( (cols - 47) / 2 ))
+    [ "$logo_pad" -lt 0 ] && logo_pad=0
+    local logo_spaces=""
+    local i=0
+    while [ "$i" -lt "$logo_pad" ]; do
+        logo_spaces="${logo_spaces} "
+        i=$((i + 1))
+    done
+
+    local box_pad=$(( (cols - 60) / 2 ))
+    [ "$box_pad" -lt 0 ] && box_pad=0
+    local box_spaces=""
+    i=0
+    while [ "$i" -lt "$box_pad" ]; do
+        box_spaces="${box_spaces} "
+        i=$((i + 1))
+    done
+
+    local lines
+    lines=$(stty size 2>/dev/null | awk '{print $1}')
+    [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
+    local top_pad=$(( (lines - 20) / 2 ))
+    [ "$top_pad" -lt 1 ] && top_pad=1
+
+    while true; do
+        printf "\033[H\033[2J"
+        i=0
+        while [ "$i" -lt "$top_pad" ]; do
+            printf "\n"
+            i=$((i + 1))
+        done
+
+        printf "\033[38;5;42m"
+        printf "%s ▄███████    ▄███████     ▄███████    ▄█   █▄  \n" "$logo_spaces"
+        printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
+        printf "%s███   ███   ███   ███    ███   █▀    ███   ███ \n" "$logo_spaces"
+        printf "%s███▄▄▄███   ███▄▄▄██▀    ███         ███▄▄▄███▄\n" "$logo_spaces"
+        printf "%s███▀▀▀███   ███▀▀▀▀      ███         ███▀▀▀███ \n" "$logo_spaces"
+        printf "%s███   ███   █████████    ███   █▄    ███   ███ \n" "$logo_spaces"
+        printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
+        printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$logo_spaces"
+        printf "%s            ███   █▀                           \n" "$logo_spaces"
+        printf "\033[0m\n"
+
+        printf "%s\033[1;37m┌────────────────────────────────────────────────────────────┐\033[0m\n" "$box_spaces"
+        printf "%s\033[1;37m│\033[0m            \033[1;36mDESBLOQUEO DE DISCO CIFRADO (LUKS2)\033[0m             \033[1;37m│\033[0m\n" "$box_spaces"
+        printf "%s\033[1;37m│\033[0m     \033[38;5;244mIntroduce tu clave maestra para iniciar el sistema\033[0m     \033[1;37m│\033[0m\n" "$box_spaces"
+        printf "%s\033[1;37m└────────────────────────────────────────────────────────────┘\033[0m\n\n" "$box_spaces"
+
+        printf "%s\033[1;35mContraseña Maestra>\033[0m " "$box_spaces"
+        stty -echo 2>/dev/null || true
+        local pass=""
+        read -r pass
+        stty echo 2>/dev/null || true
+        printf "\n"
+
+        if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
+            printf "\n%s\033[1;32m✔ Disco descifrado correctamente. Iniciando MrDemonc-SHELL...\033[0m\n" "$box_spaces"
+            sleep 1
+            break
+        else
+            printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo...\033[0m\n" "$box_spaces"
+            sleep 2
+        fi
+    done
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

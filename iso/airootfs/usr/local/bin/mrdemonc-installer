@@ -54,17 +54,27 @@ EOF
 LOGO_WIDTH=47
 LOGO_HEIGHT=9
 
+CONTENT_WIDTH=74
+
 # Medición dinámica del ancho del terminal y cálculo de padding para centrado
 measure_terminal() {
     TERM_WIDTH=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
-    (( TERM_WIDTH > 0 )) || TERM_WIDTH=${COLUMNS:-80}
+    if ! [[ "$TERM_WIDTH" =~ ^[0-9]+$ ]] || [ "$TERM_WIDTH" -le 0 ]; then
+        TERM_WIDTH=$(tput cols 2>/dev/null || echo "${COLUMNS:-80}")
+    fi
 
     TERM_HEIGHT=$(stty size 2>/dev/null </dev/tty | awk '{print $1}')
-    [[ $TERM_HEIGHT =~ ^[0-9]+$ ]] || TERM_HEIGHT=${LINES:-24}
+    if ! [[ "$TERM_HEIGHT" =~ ^[0-9]+$ ]] || [ "$TERM_HEIGHT" -le 0 ]; then
+        TERM_HEIGHT=$(tput lines 2>/dev/null || echo "${LINES:-24}")
+    fi
 
-    PADDING_LEFT=$(((TERM_WIDTH - LOGO_WIDTH) / 2))
+    PADDING_LEFT=$(((TERM_WIDTH - CONTENT_WIDTH) / 2))
     (( PADDING_LEFT < 0 )) && PADDING_LEFT=0
     PADDING_LEFT_SPACES=$(printf "%*s" "$PADDING_LEFT" "")
+
+    LOGO_PADDING=$(((TERM_WIDTH - LOGO_WIDTH) / 2))
+    (( LOGO_PADDING < 0 )) && LOGO_PADDING=0
+    LOGO_PADDING_SPACES=$(printf "%*s" "$LOGO_PADDING" "")
 
     PADDING="0 0 0 $PADDING_LEFT"
     export GUM_CHOOSE_PADDING="$PADDING"
@@ -83,7 +93,7 @@ center_text() {
     local len=${#clean}
     local pad=$(( (width - len) / 2 ))
     (( pad < 0 )) && pad=0
-    printf '%*s%b\n' "$pad" '' "$text"
+    printf '\033[2K%*s%b\n' "$pad" '' "$text"
 }
 
 # ------------------------------------------------------------------------------
@@ -117,16 +127,17 @@ g_style() {
 
 clear_logo() {
     measure_terminal
-    printf "\033[H\033[2J" # Limpiar pantalla y posicionar el cursor arriba (idéntico a Omarchy)
-    if command -v gum >/dev/null 2>&1; then
-        gum style --foreground 2 --padding "1 0 0 $PADDING_LEFT" "$LOGO_TEXT"
-    else
-        echo ""
-        while IFS= read -r line; do
-            echo -e "${PADDING_LEFT_SPACES}${GREEN}${line}${NC}"
-        done <<< "$LOGO_TEXT"
-        echo ""
-    fi
+    printf "\033[H\033[2J"
+    local total_h=22
+    local start_row=$(( (TERM_HEIGHT - total_h) / 2 ))
+    (( start_row < 2 )) && start_row=2
+    printf "\033[%d;1H" "$start_row"
+
+    echo ""
+    while IFS= read -r line; do
+        echo -e "${LOGO_PADDING_SPACES}${GREEN}${line}${NC}"
+    done <<< "$LOGO_TEXT"
+    echo ""
 }
 
 say() {
@@ -1056,6 +1067,12 @@ perform_installation_worker() {
         dosfstools
         efibootmgr
         e2fsprogs
+        mesa
+        xorg-xwayland
+        polkit
+        polkit-kde-agent
+        xdg-desktop-portal
+        xdg-desktop-portal-hyprland
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
@@ -1065,7 +1082,114 @@ perform_installation_worker() {
     set_phase "Configurando sistema interno, usuarios e initramfs" 75
     ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
     BOOT_ENTRY_OPTIONS="cryptdevice=UUID=$ROOT_UUID:cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet splash"
-    MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block encrypt btrfs filesystems fsck"
+    MKINITCPIO_HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block mrdemonc-encrypt btrfs filesystems fsck"
+
+    # Instalar hook personalizado de descifrado visual TUI (mrdemonc-encrypt)
+    mkdir -p /mnt/usr/lib/initcpio/install /mnt/usr/lib/initcpio/hooks
+    if [ -f "/usr/lib/initcpio/install/mrdemonc-encrypt" ]; then
+        cp -f /usr/lib/initcpio/install/mrdemonc-encrypt /mnt/usr/lib/initcpio/install/mrdemonc-encrypt
+        cp -f /usr/lib/initcpio/hooks/mrdemonc-encrypt /mnt/usr/lib/initcpio/hooks/mrdemonc-encrypt
+    elif [ -f "/iso/airootfs/usr/lib/initcpio/install/mrdemonc-encrypt" ]; then
+        cp -f /iso/airootfs/usr/lib/initcpio/install/mrdemonc-encrypt /mnt/usr/lib/initcpio/install/mrdemonc-encrypt
+        cp -f /iso/airootfs/usr/lib/initcpio/hooks/mrdemonc-encrypt /mnt/usr/lib/initcpio/hooks/mrdemonc-encrypt
+    else
+        cat << 'INSTALL_HOOK_EOF' > /mnt/usr/lib/initcpio/install/mrdemonc-encrypt
+#!/bin/bash
+build() {
+    map add_module 'dm-crypt' 'dm-integrity' 'hid-generic?'
+    add_all_modules '/crypto/'
+    add_binary 'cryptsetup'
+    add_binary 'dmsetup'
+    add_binary 'stty'
+    map add_udev_rule '10-dm.rules' '13-dm-disk.rules' '95-dm-notify.rules'
+    add_binary '/usr/lib/libgcc_s.so.1' 2>/dev/null || true
+    add_binary '/usr/lib/ossl-modules/legacy.so' 2>/dev/null || true
+    add_runscript
+}
+help() { echo "Pantalla gráfica TUI estilizada de desbloqueo LUKS2"; }
+INSTALL_HOOK_EOF
+
+        cat << 'HOOK_RUN_EOF' > /mnt/usr/lib/initcpio/hooks/mrdemonc-encrypt
+#!/usr/bin/ash
+run_hook() {
+    modprobe -a -q dm-crypt >/dev/null 2>&1
+    if [ -n "${cryptdevice}" ]; then
+        IFS=: read cryptdev cryptname cryptoptions << 'EOF'
+$cryptdevice
+EOF
+    else
+        cryptdev="${root}"
+        cryptname="cryptroot"
+    fi
+    [ -b "/dev/mapper/${cryptname}" ] && return 0
+    resolved=$(resolve_device "${cryptdev}")
+    [ -z "${resolved}" ] && return 1
+
+    printf "\033]P01a1b26\033]P1f7768e\033]P29ece6a\033]P3e0af68\033]P47aa2f7\033]P5bb9af7\033]P67dcfff\033]P7a9b1d6\033]P8414868\033]P9f7768e\033]PA9ece6a\033]PBe0af68\033]PC7aa2f7\033]PDbb9af7\033]PE7dcfff\033]PFc0caf5\033[0m"
+
+    local cols
+    cols=$(stty size 2>/dev/null | awk '{print $2}')
+    [ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
+    local logo_pad=$(( (cols - 47) / 2 ))
+    [ "$logo_pad" -lt 0 ] && logo_pad=0
+    local logo_spaces=""
+    local i=0
+    while [ "$i" -lt "$logo_pad" ]; do logo_spaces="${logo_spaces} "; i=$((i + 1)); done
+
+    local box_pad=$(( (cols - 60) / 2 ))
+    [ "$box_pad" -lt 0 ] && box_pad=0
+    local box_spaces=""
+    i=0
+    while [ "$i" -lt "$box_pad" ]; do box_spaces="${box_spaces} "; i=$((i + 1)); done
+
+    local lines
+    lines=$(stty size 2>/dev/null | awk '{print $1}')
+    [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
+    local top_pad=$(( (lines - 20) / 2 ))
+    [ "$top_pad" -lt 1 ] && top_pad=1
+
+    while true; do
+        printf "\033[H\033[2J"
+        i=0
+        while [ "$i" -lt "$top_pad" ]; do printf "\n"; i=$((i + 1)); done
+
+        printf "\033[38;5;42m"
+        printf "%s ▄███████    ▄███████     ▄███████    ▄█   █▄  \n" "$logo_spaces"
+        printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
+        printf "%s███   ███   ███   ███    ███   █▀    ███   ███ \n" "$logo_spaces"
+        printf "%s███▄▄▄███   ███▄▄▄██▀    ███         ███▄▄▄███▄\n" "$logo_spaces"
+        printf "%s███▀▀▀███   ███▀▀▀▀      ███         ███▀▀▀███ \n" "$logo_spaces"
+        printf "%s███   ███   █████████    ███   █▄    ███   ███ \n" "$logo_spaces"
+        printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
+        printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$logo_spaces"
+        printf "%s            ███   █▀                           \n" "$logo_spaces"
+        printf "\033[0m\n"
+
+        printf "%s\033[1;37m┌────────────────────────────────────────────────────────────┐\033[0m\n" "$box_spaces"
+        printf "%s\033[1;37m│\033[0m            \033[1;36mDESBLOQUEO DE DISCO CIFRADO (LUKS2)\033[0m             \033[1;37m│\033[0m\n" "$box_spaces"
+        printf "%s\033[1;37m│\033[0m     \033[38;5;244mIntroduce tu clave maestra para iniciar el sistema\033[0m     \033[1;37m│\033[0m\n" "$box_spaces"
+        printf "%s\033[1;37m└────────────────────────────────────────────────────────────┘\033[0m\n\n" "$box_spaces"
+
+        printf "%s\033[1;35mContraseña Maestra>\033[0m " "$box_spaces"
+        stty -echo 2>/dev/null || true
+        local pass=""
+        read -r pass
+        stty echo 2>/dev/null || true
+        printf "\n"
+
+        if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
+            printf "\n%s\033[1;32m✔ Disco descifrado correctamente. Iniciando MrDemonc-SHELL...\033[0m\n" "$box_spaces"
+            sleep 1
+            break
+        else
+            printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo...\033[0m\n" "$box_spaces"
+            sleep 2
+        fi
+    done
+}
+HOOK_RUN_EOF
+    fi
+    chmod +x /mnt/usr/lib/initcpio/install/mrdemonc-encrypt /mnt/usr/lib/initcpio/hooks/mrdemonc-encrypt
 
     UCODE_LINE=""
     [ -n "$UCODE_PKG" ] && UCODE_LINE="initrd  /$UCODE_PKG.img"
@@ -1098,12 +1222,12 @@ echo "%wheel ALL=(ALL:ALL) ALL" > /etc/sudoers.d/wheel
 chmod 440 /etc/sudoers.d/wheel
 
 if [ -n "$GIT_USER_NAME" ]; then
-    su - "$SYS_USER" -c "git config --global user.name '$GIT_USER_NAME'"
+    su - "$SYS_USER" -s /bin/bash -c "git config --global user.name '$GIT_USER_NAME'" 2>/dev/null || true
 fi
 if [ -n "$GIT_USER_EMAIL" ]; then
-    su - "$SYS_USER" -c "git config --global user.email '$GIT_USER_EMAIL'"
+    su - "$SYS_USER" -s /bin/bash -c "git config --global user.email '$GIT_USER_EMAIL'" 2>/dev/null || true
 fi
-su - "$SYS_USER" -c "git config --global init.defaultBranch main" 2>/dev/null || true
+su - "$SYS_USER" -s /bin/bash -c "git config --global init.defaultBranch main" 2>/dev/null || true
 
 sed -i "s/^HOOKS=.*/HOOKS=($MKINITCPIO_HOOKS)/" /etc/mkinitcpio.conf
 mkinitcpio -P
@@ -1139,41 +1263,14 @@ systemctl enable NetworkManager.service
 systemctl enable bluetooth.service 2>/dev/null || true
 systemctl enable systemd-timesyncd.service 2>/dev/null || true
 
-# Seamless Login en tty1
+# Seamless Login en tty1 con systemd
 mkdir -p /etc/systemd/system/getty@tty1.service.d
 cat << GETTY_CONF > /etc/systemd/system/getty@tty1.service.d/autologin.conf
 [Service]
 ExecStart=
-ExecStart=-/usr/bin/agetty --noreset --noissue --autologin $SYS_USER - \$TERM
+ExecStart=-/usr/bin/agetty --noreset --noissue --autologin $SYS_USER %I 38400 linux
 Type=idle
 GETTY_CONF
-
-# Oh My Zsh
-su - "$SYS_USER" -c 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' || true
-
-USER_ZSHRC="/home/$SYS_USER/.zshrc"
-touch "\$USER_ZSHRC"
-if ! grep -q "plugins=" "\$USER_ZSHRC" 2>/dev/null; then
-    echo "plugins=(git zsh-autosuggestions zsh-syntax-highlighting)" >> "\$USER_ZSHRC"
-else
-    sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "\$USER_ZSHRC" 2>/dev/null || true
-fi
-
-if ! grep -q "exec Hyprland" "\$USER_ZSHRC" 2>/dev/null; then
-    cat << 'AUTO_HYPR' >> "\$USER_ZSHRC"
-
-# Auto-start Hyprland en tty1
-if [ -z "\$DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
-    exec Hyprland
-fi
-AUTO_HYPR
-fi
-
-# Configuración Starship
-mkdir -p "/home/$SYS_USER/.config"
-if ! grep -q "starship init zsh" "\$USER_ZSHRC" 2>/dev/null; then
-    echo 'eval "$(starship init zsh)"' >> "\$USER_ZSHRC"
-fi
 
 CHROOT_SCRIPT
 
@@ -1289,7 +1386,112 @@ symbol = " "
 style = "bold red"
 STARSHIP_CONF
 
+    echo "==> Configurando perfiles de inicio y shells para $SYS_USER..."
+
+    # ~/.zprofile: Se ejecuta en el login de tty1 (Seamless Login directo a Hyprland)
+    cat << 'ZPROF' > "$USER_HOME/.zprofile"
+# Variables de entorno para Wayland y Hyprland
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=Hyprland
+export QT_QPA_PLATFORM="wayland;xcb"
+export GDK_BACKEND="wayland,x11"
+export MOZ_ENABLE_WAYLAND=1
+export _JAVA_AWT_WM_NONREPARENTING=1
+
+# Compatibilidad con máquinas virtuales y aceleración por software (QEMU / KVM / VirtualBox)
+export WLR_NO_HARDWARE_CURSORS=1
+export WLR_RENDERER_ALLOW_SOFTWARE=1
+
+# Auto-start Hyprland en tty1 (Seamless Login estilo Omarchy)
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    exec Hyprland
+fi
+ZPROF
+
+    # ~/.zshrc: Configuración interactiva, historial, plugins y Starship
+    cat << 'ZSHRC' > "$USER_HOME/.zshrc"
+# MrDemonc-SHELL Zsh Configuration
+export PATH="$HOME/.local/bin:$PATH"
+
+# Deshabilitar aviso zsh-newuser-install
+zstyle :compinstall filename "$HOME/.zshrc"
+
+# Historial
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=10000
+setopt APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_DUPS
+
+# Plugins instalados por pacman
+[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# Alias
+alias ls='ls --color=auto'
+alias ll='ls -la --color=auto'
+alias la='ls -A --color=auto'
+alias grep='grep --color=auto'
+
+# Inicializar Starship Prompt
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init zsh)"
+fi
+ZSHRC
+
+    # Marcadores para evitar completamente zsh-newuser-install
+    echo "# zshenv" > "$USER_HOME/.zshenv"
+    echo "# zlogin" > "$USER_HOME/.zlogin"
+
+    # Soporte paralelo para Bash
+    cat << 'BPROF' > "$USER_HOME/.bash_profile"
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=Hyprland
+export QT_QPA_PLATFORM="wayland;xcb"
+export GDK_BACKEND="wayland,x11"
+export MOZ_ENABLE_WAYLAND=1
+export _JAVA_AWT_WM_NONREPARENTING=1
+export WLR_NO_HARDWARE_CURSORS=1
+export WLR_RENDERER_ALLOW_SOFTWARE=1
+
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    exec Hyprland
+fi
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+BPROF
+
+    cat << 'BASHRC' > "$USER_HOME/.bashrc"
+export PATH="$HOME/.local/bin:$PATH"
+alias ls='ls --color=auto'
+alias ll='ls -la --color=auto'
+alias la='ls -A --color=auto'
+alias grep='grep --color=auto'
+
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init bash)"
+fi
+BASHRC
+
+    # Propagar a /etc/skel para futuros usuarios creados en el sistema
+    mkdir -p /mnt/etc/skel
+    cp -f "$USER_HOME/.zprofile" /mnt/etc/skel/
+    cp -f "$USER_HOME/.zshrc" /mnt/etc/skel/
+    cp -f "$USER_HOME/.zshenv" /mnt/etc/skel/
+    cp -f "$USER_HOME/.zlogin" /mnt/etc/skel/
+    cp -f "$USER_HOME/.bash_profile" /mnt/etc/skel/
+    cp -f "$USER_HOME/.bashrc" /mnt/etc/skel/
+
+    # Corregir rutas hardcodeadas en configs hacia el usuario actual
+    sed -i "s|/home/demonc-test|/home/$SYS_USER|g" "$USER_HOME/.config/hypr/"*.lua 2>/dev/null || true
+    sed -i "s|/home/demonc-test|/home/$SYS_USER|g" "$USER_HOME/.config/hypr/"*.conf 2>/dev/null || true
+    sed -i "s|/home/demonc-test|/home/$SYS_USER|g" "$USER_HOME/.config/quickshell/"*.qml 2>/dev/null || true
+
+    # Asegurar permisos correctos y shell zsh
     arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER"
+    arch-chroot /mnt chmod 700 "/home/$SYS_USER"
+    arch-chroot /mnt chsh -s /usr/bin/zsh "$SYS_USER" 2>/dev/null || true
 
     set_phase "Finalizando instalación y sincronizando almacenamiento" 98
     echo "==> Sincronizando datos a disco y desmontando particiones..."
@@ -1306,7 +1508,6 @@ run_install_with_dashboard() {
     measure_terminal
 
     # Limpiar pantalla y dibujar el logo arriba (idéntico a Omarchy)
-    clear_logo
     printf '\033[?25l' # Ocultar cursor
 
     rm -f "$INSTALL_STATE_FILE" "$INSTALL_LOG_FILE"
@@ -1320,6 +1521,7 @@ run_install_with_dashboard() {
     local current_phase="Iniciando instalación de Arch Linux..."
     local tip_idx=0
     local last_tip_time=$SECONDS
+    local LAST_TERM_SIZE=""
 
     while kill -0 "$worker_pid" 2>/dev/null; do
         measure_terminal
@@ -1355,34 +1557,68 @@ run_install_with_dashboard() {
         fi
         local tip="${tips[$tip_idx]}"
 
-        # Posicionar el cursor justo debajo del logo (línea 12)
-        printf '\033[12;1H'
+        local log_rows=$(( TERM_HEIGHT - 22 ))
+        (( log_rows < 5 )) && log_rows=5
+        (( log_rows > 12 )) && log_rows=12
+        local total_h=$(( LOGO_HEIGHT + 2 + 1 + 1 + 1 + 1 + log_rows ))
+        local start_row=$(( (TERM_HEIGHT - total_h) / 2 ))
+        (( start_row < 2 )) && start_row=2
 
-        # 1. Título y fase actual
-        printf '\033[2K%s\033[1;37mInstalando Arch Linux...\033[0m  \033[38;5;220m%s\033[0m\n' "$PADDING_LEFT_SPACES" "$current_phase"
+        if [[ "$TERM_WIDTH $TERM_HEIGHT" != "$LAST_TERM_SIZE" ]]; then
+            LAST_TERM_SIZE="$TERM_WIDTH $TERM_HEIGHT"
+            printf "\033[H\033[2J"
+            printf "\033[%d;1H" "$start_row"
+            while IFS= read -r line; do
+                echo -e "${LOGO_PADDING_SPACES}${GREEN}${line}${NC}"
+            done <<< "$LOGO_TEXT"
+            echo ""
+        fi
 
-        # 2. Barra de progreso suave (40 columnas)
-        local bar_w=40
+        local dynamic_row=$(( start_row + LOGO_HEIGHT + 1 ))
+        printf "\033[%d;1H" "$dynamic_row"
+
+        # 1. Título y fase actual (Centrado)
+        local title_prefix="Instalando Arch Linux...   "
+        local max_phase=$(( TERM_WIDTH - ${#title_prefix} - 4 ))
+        (( max_phase < 15 )) && max_phase=15
+        local disp_phase="$current_phase"
+        if (( ${#disp_phase} > max_phase )); then
+            disp_phase="${disp_phase:0:$((max_phase - 3))}..."
+        fi
+        center_text "\033[1;37m${title_prefix}\033[0m\033[38;5;220m${disp_phase}\033[0m"
+
+        # 2. Barra de progreso suave (Centrado)
+        local bar_w=44
+        (( bar_w > TERM_WIDTH - 16 )) && bar_w=$(( TERM_WIDTH - 16 ))
+        (( bar_w < 15 )) && bar_w=15
         local filled=$(( last_pct * bar_w / 100 ))
         local empty=$(( bar_w - filled ))
         local bar_str=""
         for ((i=0; i<filled; i++)); do bar_str+="█"; done
         local empty_str=""
         for ((i=0; i<empty; i++)); do empty_str+="░"; done
-        printf '\033[2K%s\033[38;5;42m[%s\033[38;5;238m%s\033[38;5;42m]\033[0m  \033[1;37m%d%%\033[0m\n' "$PADDING_LEFT_SPACES" "$bar_str" "$empty_str" "$last_pct"
+        center_text "\033[38;5;42m[$bar_str\033[38;5;238m$empty_str\033[38;5;42m]\033[0m  \033[1;37m$last_pct%\033[0m"
 
-        # 3. Tip rotativo
-        printf '\033[2K%s\033[2mTip:\033[0m \033[38;5;42m%s\033[0m\n' "$PADDING_LEFT_SPACES" "$tip"
+        # 3. Tip rotativo (Centrado)
+        local tip_prefix="Tip: "
+        local max_tip=$(( TERM_WIDTH - ${#tip_prefix} - 6 ))
+        (( max_tip < 15 )) && max_tip=15
+        local disp_tip="$tip"
+        if (( ${#disp_tip} > max_tip )); then
+            disp_tip="${disp_tip:0:$((max_tip - 3))}..."
+        fi
+        center_text "\033[2m${tip_prefix}\033[0m\033[38;5;42m${disp_tip}\033[0m"
 
         # 4. Separador
         printf '\033[2K\n'
 
-        # 5. Salida de log en vivo (Live Log Stream idéntico a Omarchy)
-        local log_rows=$(( TERM_HEIGHT - 17 ))
-        (( log_rows < 4 )) && log_rows=4
-        (( log_rows > 18 )) && log_rows=18
-        local max_w=$(( TERM_WIDTH - PADDING_LEFT - 6 ))
-        (( max_w < 20 )) && max_w=20
+        # 5. Salida de log en vivo (Centrado en un bloque de 74 columnas)
+        local log_w=74
+        (( log_w > TERM_WIDTH - 6 )) && log_w=$(( TERM_WIDTH - 6 ))
+        local log_pad=$(( (TERM_WIDTH - log_w) / 2 ))
+        (( log_pad < 0 )) && log_pad=0
+        local log_pad_spaces=$(printf "%*s" "$log_pad" "")
+        local max_w=$(( log_w - 6 ))
 
         mapfile -t lines_tail < <(tail -n "$log_rows" "$INSTALL_LOG_FILE" 2>/dev/null)
         for ((i=0; i<log_rows; i++)); do
@@ -1391,7 +1627,7 @@ run_install_with_dashboard() {
                 l="${l:0:$max_w}..."
             fi
             if [ -n "$l" ]; then
-                printf '\033[2K%s\033[38;5;244m  → %s\033[0m\n' "$PADDING_LEFT_SPACES" "$l"
+                printf '\033[2K%s\033[38;5;244m  → %s\033[0m\n' "$log_pad_spaces" "$l"
             else
                 printf '\033[2K\n'
             fi

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+build() {
+    local mod
+
+    map add_module 'dm-crypt' 'dm-integrity' 'hid-generic?'
+    if [[ -n "$CRYPTO_MODULES" ]]; then
+        for mod in $CRYPTO_MODULES; do
+            add_module "$mod"
+        done
+    else
+        add_all_modules '/crypto/'
+    fi
+
+    add_binary 'cryptsetup'
+    add_binary 'dmsetup'
+    add_binary 'stty'
+
+    map add_udev_rule \
+        '10-dm.rules' \
+        '13-dm-disk.rules' \
+        '95-dm-notify.rules'
+
+    add_binary '/usr/lib/libgcc_s.so.1' 2>/dev/null || true
+    add_binary '/usr/lib/ossl-modules/legacy.so' 2>/dev/null || true
+
+    add_runscript
+}
+
+help() {
+    cat <<HELPEOF
+Esta función añade el soporte de desbloqueo de disco LUKS con una pantalla TUI personalizada y estilizada con la paleta Tokyo Night y el logo de Arch Linux.
+HELPEOF
+}
+
+# vim: set ft=sh ts=4 sw=4 et:
