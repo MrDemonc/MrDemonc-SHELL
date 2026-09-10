@@ -13,9 +13,8 @@ QtObject {
     property bool isDraggingAny: false
     property bool themeModalOpen: false
 
-    // Monitoreo de archivo para abrir el selector de temas por comando CLI
     property var watchToggleProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_theme_picker.toggle\"; while true; do if [ -f \"$STATE\" ]; then rm -f \"$STATE\"; echo 'TOGGLE'; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_theme_picker.toggle\"; while true; do if [ -f \"$STATE\" ] || [ -f \"/tmp/quickshell_theme_picker.toggle\" ]; then rm -f \"$STATE\" /tmp/quickshell_theme_picker.toggle 2>/dev/null; echo 'TOGGLE'; fi; sleep 0.15; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

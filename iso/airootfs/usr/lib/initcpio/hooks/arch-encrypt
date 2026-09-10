@@ -51,6 +51,11 @@ EOF
         i=$((i + 1))
     done
 
+    local input_w=46
+    [ "$input_w" -gt "$((cols - 6))" ] && input_w=$((cols - 6))
+    local input_pad=$(( (cols - input_w) / 2 ))
+    [ "$input_pad" -lt 0 ] && input_pad=0
+
     local top_pad=2
 
     while true; do
@@ -71,21 +76,37 @@ EOF
         printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
         printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$logo_spaces"
         printf "%s            ███   █▀                           \n" "$logo_spaces"
-        printf "\033[0m\n\n"
+        printf "\033[0m\n"
 
-        printf "%s\033[1;36mContraseña:\033[0m " "$prompt_spaces"
-        stty -echo 2>/dev/null || true
         local pass=""
-        read -r pass
-        stty echo 2>/dev/null || true
-        printf "\n"
+        if command -v gum >/dev/null 2>&1; then
+            gum style --foreground 6 --bold --align center --width "$cols" "DESBLOQUEO DE DISCO CIFRADO"
+            printf "\n"
+            pass=$(gum input --password --placeholder "Introduce tu clave para iniciar..." --width "$input_w" --prompt " 󰌾 " --prompt.foreground 4 --padding "0 0 0 $input_pad" 2>/dev/null)
+        else
+            printf "%s\033[1;36mContraseña:\033[0m " "$prompt_spaces"
+            stty -echo 2>/dev/null || true
+            read -r pass
+            stty echo 2>/dev/null || true
+            printf "\n"
+        fi
 
         if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
-            printf "\n%s\033[1;32m✔ Desbloqueado. Iniciando sistema...\033[0m\n" "$prompt_spaces"
+            if command -v gum >/dev/null 2>&1; then
+                printf "\n"
+                gum style --foreground 2 --bold --align center --width "$cols" "✔ Disco descifrado correctamente. Iniciando sistema..."
+            else
+                printf "\n%s\033[1;32m✔ Desbloqueado. Iniciando sistema...\033[0m\n" "$prompt_spaces"
+            fi
             sleep 1
             break
         else
-            printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo.\033[0m\n" "$prompt_spaces"
+            if command -v gum >/dev/null 2>&1; then
+                printf "\n"
+                gum style --foreground 1 --bold --align center --width "$cols" "✖ Contraseña incorrecta. Inténtalo de nuevo."
+            else
+                printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo.\033[0m\n" "$prompt_spaces"
+            fi
             sleep 2
         fi
     done

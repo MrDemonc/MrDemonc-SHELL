@@ -550,6 +550,12 @@ PanelWindow {
                     }
                 }
 
+                onClicked: mouse => {
+                    if (!isDraggingThis) {
+                        PopoutManager.themeModalOpen = !PopoutManager.themeModalOpen;
+                    }
+                }
+
                 onCanceled: {
                     if (isDraggingThis) {
                         isDraggingThis = false;

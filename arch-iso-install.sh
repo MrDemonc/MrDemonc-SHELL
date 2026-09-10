@@ -1044,11 +1044,19 @@ perform_installation_worker() {
         kitty
         nautilus
         capitaine-cursors
+        gum
         ttf-jetbrains-mono-nerd
         noto-fonts
         noto-fonts-emoji
         pipewire
+        pipewire-pulse
+        pipewire-alsa
+        pipewire-jack
         wireplumber
+        sof-firmware
+        alsa-ucm-conf
+        alsa-utils
+        pavucontrol
         libpulse
         playerctl
         bluez
@@ -1100,6 +1108,7 @@ build() {
     add_binary 'cryptsetup'
     add_binary 'dmsetup'
     add_binary 'stty'
+    add_binary 'gum'
     map add_udev_rule '10-dm.rules' '13-dm-disk.rules' '95-dm-notify.rules'
     add_binary '/usr/lib/libgcc_s.so.1' 2>/dev/null || true
     add_binary '/usr/lib/ossl-modules/legacy.so' 2>/dev/null || true
@@ -1147,6 +1156,11 @@ EOF
     i=0
     while [ "$i" -lt "$prompt_pad" ]; do prompt_spaces="${prompt_spaces} "; i=$((i + 1)); done
 
+    local input_w=46
+    [ "$input_w" -gt "$((cols - 6))" ] && input_w=$((cols - 6))
+    local input_pad=$(( (cols - input_w) / 2 ))
+    [ "$input_pad" -lt 0 ] && input_pad=0
+
     local top_pad=2
 
     while true; do
@@ -1164,21 +1178,37 @@ EOF
         printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
         printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$logo_spaces"
         printf "%s            ███   █▀                           \n" "$logo_spaces"
-        printf "\033[0m\n\n"
+        printf "\033[0m\n"
 
-        printf "%s\033[1;36mContraseña:\033[0m " "$prompt_spaces"
-        stty -echo 2>/dev/null || true
         local pass=""
-        read -r pass
-        stty echo 2>/dev/null || true
-        printf "\n"
+        if command -v gum >/dev/null 2>&1; then
+            gum style --foreground 6 --bold --align center --width "$cols" "DESBLOQUEO DE DISCO CIFRADO"
+            printf "\n"
+            pass=$(gum input --password --placeholder "Introduce tu clave para iniciar..." --width "$input_w" --prompt " 󰌾 " --prompt.foreground 4 --padding "0 0 0 $input_pad" 2>/dev/null)
+        else
+            printf "%s\033[1;36mContraseña:\033[0m " "$prompt_spaces"
+            stty -echo 2>/dev/null || true
+            read -r pass
+            stty echo 2>/dev/null || true
+            printf "\n"
+        fi
 
         if [ -n "$pass" ] && printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
-            printf "\n%s\033[1;32m✔ Desbloqueado. Iniciando sistema...\033[0m\n" "$prompt_spaces"
+            if command -v gum >/dev/null 2>&1; then
+                printf "\n"
+                gum style --foreground 2 --bold --align center --width "$cols" "✔ Disco descifrado correctamente. Iniciando sistema..."
+            else
+                printf "\n%s\033[1;32m✔ Desbloqueado. Iniciando sistema...\033[0m\n" "$prompt_spaces"
+            fi
             sleep 1
             break
         else
-            printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo.\033[0m\n" "$prompt_spaces"
+            if command -v gum >/dev/null 2>&1; then
+                printf "\n"
+                gum style --foreground 1 --bold --align center --width "$cols" "✖ Contraseña incorrecta. Inténtalo de nuevo."
+            else
+                printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo.\033[0m\n" "$prompt_spaces"
+            fi
             sleep 2
         fi
     done
@@ -1274,6 +1304,7 @@ limine bios-install "$TARGET_DISK" 2>/dev/null || true
 systemctl enable NetworkManager.service
 systemctl enable bluetooth.service 2>/dev/null || true
 systemctl enable systemd-timesyncd.service 2>/dev/null || true
+systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null || true
 
 # Seamless Login en tty1 con systemd
 mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -1376,6 +1407,23 @@ WRAP_APPS
 #!/usr/bin/env bash
 exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_wallpaper.sh "\$@"
 WRAP_WALL
+
+    cat << WRAP_THEME > "$USER_HOME/.local/bin/shell-theme"
+#!/usr/bin/env bash
+TARGET_DIR="/home/$SYS_USER/Documentos/MrDemonc-SHELL"
+if [ "\$1" = "set" ] || [ "\$1" = "list" ]; then
+    exec python3 "\$TARGET_DIR/scripts/theme_manager.py" "\$@"
+else
+    exec "\$TARGET_DIR/scripts/toggle_theme_picker.sh" "\$@"
+fi
+WRAP_THEME
+
+    cat << WRAP_POPOUT > "$USER_HOME/.local/bin/shell-popout"
+#!/usr/bin/env bash
+TARGET="\${1:-audio}"
+STATE="\${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle"
+echo "\$TARGET" > "\$STATE"
+WRAP_POPOUT
 
     chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
 
@@ -1612,7 +1660,7 @@ BASHRC
     arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default org.gnome.Nautilus.desktop inode/directory" 2>/dev/null || true
 
     # Propagar a /etc/skel para futuros usuarios creados en el sistema
-    mkdir -p /mnt/etc/skel/.config
+    mkdir -p /mnt/etc/skel/.config /mnt/etc/skel/.local/bin
     cp -f "$USER_HOME/.zprofile" /mnt/etc/skel/
     cp -f "$USER_HOME/.zshrc" /mnt/etc/skel/
     cp -f "$USER_HOME/.zshenv" /mnt/etc/skel/
@@ -1620,6 +1668,7 @@ BASHRC
     cp -f "$USER_HOME/.bash_profile" /mnt/etc/skel/
     cp -f "$USER_HOME/.bashrc" /mnt/etc/skel/
     cp -f "$USER_HOME/.config/starship.toml" /mnt/etc/skel/.config/ 2>/dev/null || true
+    cp -r "$USER_HOME/.local/bin/." /mnt/etc/skel/.local/bin/ 2>/dev/null || true
 
     # Corregir rutas hardcodeadas en configs hacia el usuario actual
     sed -i "s|/home/demonc-test|/home/$SYS_USER|g" "$USER_HOME/.config/hypr/"*.lua 2>/dev/null || true

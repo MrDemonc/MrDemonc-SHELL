@@ -14,7 +14,14 @@ hypridle
 
 # --- Servidor de Sonido & Control Multimedia ---
 pipewire
+pipewire-pulse
+pipewire-alsa
+pipewire-jack
 wireplumber
+sof-firmware
+alsa-ucm-conf
+alsa-utils
+pavucontrol
 libpulse
 playerctl
 
