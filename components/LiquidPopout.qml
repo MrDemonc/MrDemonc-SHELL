@@ -18,10 +18,20 @@ Item {
         if (effectiveTab === "bluetooth") return btComp;
         if (effectiveTab === "audio") return audioComp;
         if (effectiveTab === "theme") return themeComp;
+        if (effectiveTab === "clock") return clockComp;
         return null;
     }
 
+    readonly property real preferredWidth: {
+        if (effectiveTab === "clock") return PopoutManager.isVertical ? 320 : 600;
+        if (activeChildItem && activeChildItem.implicitWidth > 0) {
+            return activeChildItem.implicitWidth;
+        }
+        return 320;
+    }
+
     readonly property real preferredHeight: {
+        if (effectiveTab === "clock") return PopoutManager.isVertical ? 428 : 252;
         if (activeChildItem && activeChildItem.implicitHeight > 0) {
             return activeChildItem.implicitHeight + 20;
         }
@@ -454,6 +464,25 @@ Item {
             }
             ThemePopout {
                 id: themeComp
+                anchors.fill: parent
+            }
+        }
+
+        // 6. Reloj / Dashboard de Usuario y Sistema
+        Item {
+            id: clockView
+            anchors.fill: parent
+            visible: opacity > 0.01
+            opacity: (root.effectiveTab === "clock" && root.isOpen) ? 1.0 : 0.0
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Theme.anim.fastEffects
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveFastEffects
+                }
+            }
+            ClockPopout {
+                id: clockComp
                 anchors.fill: parent
             }
         }

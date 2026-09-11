@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Captura de Pantalla
+Comment=Herramienta minimalista de captura de pantalla
+Exec=shell-screenshot
+Icon=applets-screenshooter
+Terminal=false
+Type=Application
+Categories=Utility;Graphics;
+StartupNotify=true
+StartupWMClass=shell-screenshot

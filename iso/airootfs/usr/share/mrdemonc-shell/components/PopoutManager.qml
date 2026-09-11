@@ -87,7 +87,7 @@ QtObject {
 
     // Configuración de las 3 secciones principales de la barra: left, center, right
     property var barSections: ({
-        "left": ["workspaces"],
+        "left": ["workspaces", "cava"],
         "center": ["clock"],
         "right": ["audio", "bluetooth", "wifi", "battery"]
     })

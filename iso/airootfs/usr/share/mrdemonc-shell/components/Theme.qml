@@ -8,10 +8,10 @@ QtObject {
 
     // Tema Default basado en La Gran Ola de Kanagawa (default.jpg) y tonos nórdicos
     property bool isDark: true
-    property color bg: isDark ? "#2e3340" : "#eceff4"
-    property color bgSurface: isDark ? "#242833" : "#e5e9f0"
-    property color bgHover: isDark ? "#3b4252" : "#d8dee9"
-    property color border: isDark ? "#434c5e" : "#c8d0de"
+    property color bg: isDark ? "#1a1d24" : "#e2e6ee"
+    property color bgSurface: isDark ? "#14161d" : "#d5dbe6"
+    property color bgHover: isDark ? "#282d38" : "#cbd3e1"
+    property color border: isDark ? "#353b49" : "#b8c2d1"
     property color text: isDark ? "#eceff4" : "#2e3440"
     property color subtext: isDark ? "#d8dee9" : "#3b4252"
     property color overlay: isDark ? "#7b889b" : "#7b88a1"
@@ -144,6 +144,11 @@ QtObject {
         }
     }
 
+    function refresh() {
+        themeListProc.running = false;
+        themeListProc.running = true;
+    }
+
     property Process setThemeProc: Process {
         stdout: SplitParser {
             onRead: data => {
@@ -163,6 +168,10 @@ QtObject {
             theme.themeListProc.running = false;
             theme.themeListProc.running = true;
         }
+    }
+
+    function applyTheme(themeId) {
+        setTheme(themeId);
     }
 
     function setTheme(themeId) {

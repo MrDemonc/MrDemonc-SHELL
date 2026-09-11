@@ -15,10 +15,10 @@ BUILTIN_THEMES = {
         "author": "MrDemonc",
         "isDark": True,
         "wallpaper": "wallpaper.jpg",
-        "bg": "#2e3340",
-        "bgSurface": "#242833",
-        "bgHover": "#3b4252",
-        "border": "#434c5e",
+        "bg": "#1a1d24",
+        "bgSurface": "#14161d",
+        "bgHover": "#282d38",
+        "border": "#353b49",
         "text": "#eceff4",
         "subtext": "#d8dee9",
         "overlay": "#7b889b",
@@ -183,6 +183,12 @@ color13 {pink}
 color14 {primary}
 color15 {subtext if is_dark else fg}
 """
+        # Escribir en ~/.config/kitty/theme.conf (para include directo sin problemas de expansión)
+        kitty_cfg_dir = os.path.expanduser("~/.config/kitty")
+        os.makedirs(kitty_cfg_dir, exist_ok=True)
+        with open(os.path.join(kitty_cfg_dir, "theme.conf"), "w", encoding="utf-8") as f:
+            f.write(kitty_content)
+
         kitty_path = os.path.join(mrdemonc_theme_dir, "kitty.conf")
         with open(kitty_path, "w", encoding="utf-8") as f:
             f.write(kitty_content)
@@ -229,6 +235,7 @@ bright7={(subtext if is_dark else fg).lstrip('#')}
         # Notificar a las instancias abiertas de Kitty para recargar colores en vivo
         import subprocess
         try:
+            subprocess.run(["pkill", "-SIGUSR1", "kitty"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["killall", "-SIGUSR1", "kitty"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
             pass
@@ -311,6 +318,60 @@ $warning = rgba({war_r}, {war_g}, {war_b}, 1.0)
     except Exception:
         pass
 
+def sync_limine_theme(theme_data):
+    try:
+        limine_candidates = ["/boot/limine.conf", "/boot/limine/limine.conf", "/boot/EFI/BOOT/limine.conf"]
+        target_conf = None
+        for cand in limine_candidates:
+            if os.path.exists(cand):
+                target_conf = cand
+                break
+        if not target_conf:
+            return
+
+        bg = theme_data.get("bg", "#1a1d24").lstrip('#')
+        bg_surf = theme_data.get("bgSurface", "#14161d").lstrip('#')
+        pri = theme_data.get("primary", "#88c0d0").lstrip('#')
+        cyan = theme_data.get("cyan", "#81a1c1").lstrip('#')
+        border = theme_data.get("border", "#353b49").lstrip('#')
+        fg = theme_data.get("text", "#eceff4").lstrip('#')
+        danger = theme_data.get("danger", "#bf616a").lstrip('#')
+        succ = theme_data.get("success", "#a3be8c").lstrip('#')
+        warn = theme_data.get("warning", "#ebcb8b").lstrip('#')
+        pink = theme_data.get("pink", "#b48ead").lstrip('#')
+
+        # Sincronizar wallpaper en /boot si es accesible
+        wall_path = theme_data.get("wallpaperPath", "")
+        if wall_path and os.path.isfile(wall_path) and os.access("/boot", os.W_OK):
+            import shutil
+            shutil.copyfile(wall_path, "/boot/limine-wallpaper.jpg")
+
+        if os.access(target_conf, os.W_OK):
+            with open(target_conf, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            new_lines = []
+            for line in lines:
+                if line.startswith("backdrop:"):
+                    new_lines.append(f"backdrop: {bg}\n")
+                elif line.startswith("interface_branding_color:"):
+                    new_lines.append(f"interface_branding_color: {pri}\n")
+                elif line.startswith("interface_help_color:"):
+                    new_lines.append(f"interface_help_color: {cyan}\n")
+                elif line.startswith("term_palette:"):
+                    new_lines.append(f"term_palette: {bg};{danger};{succ};{warn};{cyan};{pink};{pri};{fg}\n")
+                elif line.startswith("term_palette_bright:"):
+                    new_lines.append(f"term_palette_bright: {border};{danger};{succ};{warn};{cyan};{pink};{pri};{fg}\n")
+                elif line.startswith("term_background:"):
+                    new_lines.append(f"term_background: b0{bg_surf}\n")
+                elif line.startswith("term_foreground:"):
+                    new_lines.append(f"term_foreground: {fg}\n")
+                else:
+                    new_lines.append(line)
+            with open(target_conf, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+    except Exception:
+        pass
+
 def set_theme(name):
     ensure_dirs()
     all_themes = get_all_themes()
@@ -346,6 +407,7 @@ def set_theme(name):
     sync_terminal_theme(theme_obj)
     sync_hyprland_theme(theme_obj)
     sync_hyprlock_theme(theme_obj)
+    sync_limine_theme(theme_obj)
     return True
 
 def main():

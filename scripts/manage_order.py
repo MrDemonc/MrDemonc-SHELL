@@ -7,11 +7,11 @@ CONFIG_DIR = os.path.expanduser("~/.config/quickshell")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "indicators_order.json")
 SECTIONS_FILE = os.path.join(CONFIG_DIR, "bar_sections.json")
 DEFAULT_SECTIONS = {
-    "left": ["workspaces"],
+    "left": ["workspaces", "cava"],
     "center": ["clock"],
     "right": ["audio", "bluetooth", "wifi", "battery"]
 }
-ALL_ITEMS = ["workspaces", "clock", "audio", "bluetooth", "wifi", "battery"]
+ALL_ITEMS = ["workspaces", "cava", "clock", "audio", "bluetooth", "wifi", "battery"]
 
 def get_sections():
     if not os.path.exists(SECTIONS_FILE):
@@ -31,7 +31,7 @@ def get_sections():
                 # Agregar faltantes si los hay
                 for it in ALL_ITEMS:
                     if it not in seen:
-                        if it == "workspaces":
+                        if it in ("workspaces", "cava"):
                             res["left"].append(it)
                         elif it == "clock":
                             res["center"].append(it)

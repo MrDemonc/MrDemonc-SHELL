@@ -88,4 +88,40 @@ ShellRoot {
             }
         }
     }
+
+    // 8. Modal flotante de Atajos de Teclado y Comandos del Sistema (SUPER + K)
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            KeybindsModal {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
+
+    // 9. Modal flotante de Configuración de Pantallas y Monitores (SUPER + SHIFT + S)
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            MonitorModal {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
+
+    // 10. Modal flotante de Selección y Búsqueda de Ubicación del Clima
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            WeatherLocationModal {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
 }

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Visor de PDF
+Comment=Visor de documentos PDF minimalista con modo oscuro
+Exec=shell-pdf %F
+Icon=application-pdf
+Terminal=false
+Type=Application
+Categories=Office;Viewer;
+MimeType=application/pdf;application/x-pdf;
+StartupNotify=true
+StartupWMClass=shell-pdf

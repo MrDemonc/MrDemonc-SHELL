@@ -97,6 +97,7 @@ PanelWindow {
 
     function getModule(name) {
         if (name === "workspaces") return modWorkspaces;
+        if (name === "cava") return modCava;
         if (name === "clock") return modClock;
         if (name === "audio") return modAudio;
         if (name === "bluetooth") return modBluetooth;
@@ -108,13 +109,19 @@ PanelWindow {
     function getModuleWidth(name) {
         if (PopoutManager.isVertical) return 22;
         let m = getModule(name);
+        if (name === "cava") {
+            return (m && (m.visible || barWindow.draggingModName === "cava")) ? Math.max(22, m.implicitWidth) : 0;
+        }
         return m ? Math.max(22, m.implicitWidth || m.width) : 30;
     }
 
     function getModuleHeight(name) {
         if (!PopoutManager.isVertical) return 24;
         if (name === "workspaces") {
-            return wsComp ? Math.max(24, wsComp.implicitHeight) : 60;
+            return modWorkspaces ? Math.max(24, modWorkspaces.implicitHeight) : (wsComp ? Math.max(24, wsComp.implicitHeight) : 60);
+        }
+        if (name === "cava") {
+            return (modCava && (modCava.visible || barWindow.draggingModName === "cava")) ? Math.max(22, modCava.implicitHeight) : 0;
         }
         if (name === "clock") return 26;
         return 22;
@@ -123,20 +130,30 @@ PanelWindow {
     function getSectionWidth(secList) {
         if (!secList || secList.length === 0) return 0;
         let w = 0;
+        let count = 0;
         for (let i = 0; i < secList.length; i++) {
-            w += getModuleWidth(secList[i]);
-            if (i < secList.length - 1) w += 8;
+            let mw = getModuleWidth(secList[i]);
+            if (mw > 0) {
+                w += mw;
+                count++;
+            }
         }
+        if (count > 1) w += (count - 1) * 8;
         return w;
     }
 
     function getSectionHeight(secList) {
         if (!secList || secList.length === 0) return 0;
         let h = 0;
+        let count = 0;
         for (let i = 0; i < secList.length; i++) {
-            h += getModuleHeight(secList[i]);
-            if (i < secList.length - 1) h += 8;
+            let mh = getModuleHeight(secList[i]);
+            if (mh > 0) {
+                h += mh;
+                count++;
+            }
         }
+        if (count > 1) h += (count - 1) * 8;
         return h;
     }
 
@@ -153,7 +170,8 @@ PanelWindow {
         if (leftIdx !== -1) {
             let curX = 10;
             for (let i = 0; i < leftIdx; i++) {
-                curX += getModuleWidth(leftList[i]) + 8;
+                let mw = getModuleWidth(leftList[i]);
+                if (mw > 0) curX += mw + 8;
             }
             return curX;
         }
@@ -164,7 +182,8 @@ PanelWindow {
             let startX = (barWindow.width - totalCenterW) / 2;
             let curX = startX;
             for (let i = 0; i < centerIdx; i++) {
-                curX += getModuleWidth(centerList[i]) + 8;
+                let mw = getModuleWidth(centerList[i]);
+                if (mw > 0) curX += mw + 8;
             }
             return curX;
         }
@@ -175,7 +194,8 @@ PanelWindow {
             let startX = barWindow.width - totalRightW - 10;
             let curX = startX;
             for (let i = 0; i < rightIdx; i++) {
-                curX += getModuleWidth(rightList[i]) + 8;
+                let mw = getModuleWidth(rightList[i]);
+                if (mw > 0) curX += mw + 8;
             }
             return curX;
         }
@@ -196,7 +216,8 @@ PanelWindow {
         if (leftIdx !== -1) {
             let curY = 10;
             for (let i = 0; i < leftIdx; i++) {
-                curY += getModuleHeight(leftList[i]) + 8;
+                let mh = getModuleHeight(leftList[i]);
+                if (mh > 0) curY += mh + 8;
             }
             return curY;
         }
@@ -207,7 +228,8 @@ PanelWindow {
             let startY = (barWindow.height - totalCenterH) / 2;
             let curY = startY;
             for (let i = 0; i < centerIdx; i++) {
-                curY += getModuleHeight(centerList[i]) + 8;
+                let mh = getModuleHeight(centerList[i]);
+                if (mh > 0) curY += mh + 8;
             }
             return curY;
         }
@@ -218,7 +240,8 @@ PanelWindow {
             let startY = barWindow.height - totalRightH - 10;
             let curY = startY;
             for (let i = 0; i < rightIdx; i++) {
-                curY += getModuleHeight(rightList[i]) + 8;
+                let mh = getModuleHeight(rightList[i]);
+                if (mh > 0) curY += mh + 8;
             }
             return curY;
         }
@@ -283,9 +306,15 @@ PanelWindow {
                 candSub.splice(k, 0, name);
 
                 let totalSize = 0;
+                let activeCount = 0;
                 for (let j = 0; j < candSub.length; j++) {
-                    totalSize += (isVert ? getModuleHeight(candSub[j]) : getModuleWidth(candSub[j])) + (j < candSub.length - 1 ? 8 : 0);
+                    let sz = isVert ? getModuleHeight(candSub[j]) : getModuleWidth(candSub[j]);
+                    if (sz > 0) {
+                        totalSize += sz;
+                        activeCount++;
+                    }
                 }
+                if (activeCount > 1) totalSize += (activeCount - 1) * 8;
 
                 let secStart = 10;
                 if (secId === "center") {
@@ -296,7 +325,8 @@ PanelWindow {
 
                 let candItemCoord = secStart;
                 for (let j = 0; j < k; j++) {
-                    candItemCoord += (isVert ? getModuleHeight(candSub[j]) : getModuleWidth(candSub[j])) + 8;
+                    let sz = isVert ? getModuleHeight(candSub[j]) : getModuleWidth(candSub[j]);
+                    if (sz > 0) candItemCoord += sz + 8;
                 }
 
                 let candCenter = candItemCoord + itemSize / 2;
@@ -454,6 +484,119 @@ PanelWindow {
             }
         }
 
+        // 1b. Módulo Cava Visualizer (Móvil e independiente)
+        Item {
+            id: modCava
+            property string modName: "cava"
+            implicitWidth: PopoutManager.isVertical ? 22 : ((cavaComp.isPlaying || isBeingDragged) ? (cavaComp.implicitWidth + 8) : 0)
+            width: implicitWidth
+            implicitHeight: PopoutManager.isVertical ? ((cavaComp.isPlaying || isBeingDragged) ? (cavaComp.implicitHeight + 8) : 0) : 24
+            height: implicitHeight
+            visible: (cavaComp.isPlaying || isBeingDragged)
+
+            Behavior on implicitWidth {
+                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+            }
+            Behavior on implicitHeight {
+                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+            }
+
+            readonly property bool isBeingDragged: barWindow.draggingModName === modName
+
+            x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
+
+            Behavior on x {
+                enabled: !PopoutManager.isVertical && !modCava.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+            Behavior on y {
+                enabled: PopoutManager.isVertical && !modCava.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+
+            z: isBeingDragged ? 9999 : 1
+            scale: isBeingDragged ? 1.08 : (cavaMouse.containsMouse ? 1.05 : 1.0)
+            opacity: isBeingDragged ? 0.92 : 1.0
+
+            Behavior on scale {
+                NumberAnimation { duration: 150; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.anim.expressiveFastSpatial }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 6
+                color: (cavaMouse.containsMouse || modCava.isBeingDragged) ? Theme.bgHover : "transparent"
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
+
+            CavaVisualizer {
+                id: cavaComp
+                anchors.centerIn: parent
+            }
+
+            MouseArea {
+                id: cavaMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+
+                property real pressCoord: 0
+                property real initialCoord: 0
+                property bool isDraggingThis: false
+
+                onPressed: mouse => {
+                    let globalPt = mapToItem(barContent, mouse.x, mouse.y);
+                    pressCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let m = modCava;
+                    if (PopoutManager.isVertical) {
+                        initialCoord = m ? m.y : barWindow.getSlotY("cava");
+                    } else {
+                        initialCoord = m ? m.x : barWindow.getSlotX("cava");
+                    }
+                    isDraggingThis = false;
+                }
+
+                onPositionChanged: mouse => {
+                    if (!pressed) return;
+                    let globalPt = mapToItem(barContent, mouse.x, mouse.y);
+                    let curCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let delta = curCoord - pressCoord;
+                    if (!isDraggingThis) {
+                        if (Math.abs(delta) > 6) {
+                            isDraggingThis = true;
+                            barWindow.startModuleDrag("cava", initialCoord);
+                        }
+                    }
+                    if (isDraggingThis) {
+                        barWindow.updateModuleDrag("cava", initialCoord + delta);
+                    }
+                }
+
+                onReleased: {
+                    if (isDraggingThis) {
+                        isDraggingThis = false;
+                        barWindow.finishModuleDrag();
+                    }
+                }
+
+                onCanceled: {
+                    if (isDraggingThis) {
+                        isDraggingThis = false;
+                        barWindow.finishModuleDrag();
+                    }
+                }
+            }
+        }
+
         // 2. Módulo Clock
         Item {
             id: modClock
@@ -486,7 +629,8 @@ PanelWindow {
             }
 
             z: isBeingDragged ? 9999 : 1
-            scale: isBeingDragged ? 1.08 : 1.0
+            readonly property bool isActive: PopoutManager.activePopout === "clock"
+            scale: isBeingDragged ? 1.08 : (isActive ? 1.02 : (clockMouse.containsMouse ? 1.04 : 1.0))
             opacity: isBeingDragged ? 0.92 : 1.0
 
             Behavior on scale {
@@ -496,7 +640,7 @@ PanelWindow {
             Rectangle {
                 anchors.fill: parent
                 radius: 6
-                color: clockMouse.containsMouse ? Theme.bgHover : "transparent"
+                color: (modClock.isActive || clockMouse.containsMouse) ? Theme.bgHover : "transparent"
                 Behavior on color { ColorAnimation { duration: 120 } }
             }
 
@@ -547,12 +691,11 @@ PanelWindow {
                     if (isDraggingThis) {
                         isDraggingThis = false;
                         barWindow.finishModuleDrag();
-                    }
-                }
-
-                onClicked: mouse => {
-                    if (!isDraggingThis) {
-                        PopoutManager.themeModalOpen = !PopoutManager.themeModalOpen;
+                    } else {
+                        if (!PopoutManager.isDraggingAny) {
+                            let centerCoord = PopoutManager.isVertical ? (modClock.y + modClock.height / 2) : (modClock.x + modClock.width / 2);
+                            PopoutManager.toggle("clock", centerCoord);
+                        }
                     }
                 }
 

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Launcher para el reproductor de video Quickshell
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+SEARCH_DIRS=(
+    "$SCRIPT_DIR/../viewers/shell-video"
+    "$HOME/Documentos/MrDemonc-SHELL/viewers/shell-video"
+    "/usr/share/mrdemonc-shell/viewers/shell-video"
+)
+
+TARGET_FILE=""
+if [ -n "$1" ]; then
+    TARGET_FILE="$(realpath "$1")"
+fi
+
+for dir in "${SEARCH_DIRS[@]}"; do
+    if [ -f "$dir/shell.qml" ]; then
+        TARGET_FILE="$TARGET_FILE" exec quickshell -p "$dir"
+    fi
+done
+
+echo "Error: No se encontró el reproductor shell-video en Quickshell" >&2
+exit 1

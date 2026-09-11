@@ -32,6 +32,12 @@ hl.bind(mainMod .. " + SHIFT + T", hl.dsp.exec_cmd(binDir .. "/shell-theme"))
 -- Quickshell: Lanzador de Aplicaciones (SUPER + Espacio)
 hl.bind(mainMod .. " + space", hl.dsp.exec_cmd(binDir .. "/shell-apps"))
 
+-- Quickshell: Guía de Atajos de Teclado y Comandos (SUPER + K)
+hl.bind(mainMod .. " + K", hl.dsp.exec_cmd(binDir .. "/shell-keybinds"))
+
+-- Quickshell: Configuración de Pantallas y Monitores (SUPER + SHIFT + S)
+hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(binDir .. "/shell-monitors"))
+
 -- Explorador de archivos (SUPER + E)
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 
@@ -41,7 +47,12 @@ hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))
 
 -- Bloquear pantalla (SUPER + L)
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("command -v hyprlock >/dev/null 2>&1 && hyprlock || notify-send 'MrDemonc-SHELL' 'hyprlock no está instalado. Ejecuta: sudo pacman -S hyprlock' -u normal -t 4000"))
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("command -v hyprlock >/dev/null 2>&1 && hyprlock || notify-send 'Sistema' 'hyprlock no está instalado. Ejecuta: sudo pacman -S hyprlock' -u normal -t 4000"))
+
+-- Captura de Pantalla (Tecla Impr Pant / Print)
+hl.bind("Print", hl.dsp.exec_cmd(binDir .. "/shell-screenshot"))
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd(binDir .. "/shell-screenshot area"))
+hl.bind(mainMod .. " + Print", hl.dsp.exec_cmd(binDir .. "/shell-screenshot area"))
 
 -- Apagado / Salir
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'"))

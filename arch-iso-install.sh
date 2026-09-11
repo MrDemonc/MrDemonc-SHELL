@@ -1370,12 +1370,27 @@ mkdir -p /boot/EFI/BOOT /boot/limine
 cp -f /usr/share/limine/BOOTX64.EFI /boot/EFI/BOOT/BOOTX64.EFI 2>/dev/null || true
 cp -f /usr/share/limine/BOOTIA32.EFI /boot/EFI/BOOT/BOOTIA32.EFI 2>/dev/null || true
 cp -f /usr/share/limine/limine-bios.sys /boot/limine-bios.sys 2>/dev/null || true
-cp -f /usr/share/limine/limine-bios.sys /boot/limine/limine-bios.sys 2>/dev/null || true
+# Copiar wallpaper del tema default al bootloader Limine
+if [ -f "$DEST_REPO/themes/default/wallpaper.jpg" ]; then
+    cp -f "$DEST_REPO/themes/default/wallpaper.jpg" /boot/limine-wallpaper.jpg 2>/dev/null || true
+elif [ -f "$DEST_REPO/wallpapers/default.jpg" ]; then
+    cp -f "$DEST_REPO/wallpapers/default.jpg" /boot/limine-wallpaper.jpg 2>/dev/null || true
+fi
 
 cat << 'LIMINE_HEAD' > /boot/limine.conf
 timeout: 3
-interface_branding: Arch Linux (Limine)
-interface_branding_color: 7aa2f7
+wallpaper: boot():/limine-wallpaper.jpg
+wallpaper_style: stretched
+backdrop: 1a1d24
+interface_branding: Arch Linux
+interface_branding_color: 88c0d0
+interface_help_color: 81a1c1
+term_palette: 1a1d24;bf616a;a3be8c;ebcb8b;81a1c1;b48ead;88c0d0;eceff4
+term_palette_bright: 353b49;bf616a;a3be8c;ebcb8b;81a1c1;b48ead;88c0d0;eceff4
+term_background: b014161d
+term_foreground: eceff4
+term_margin: 48
+term_margin_gradient: 4
 
 /Arch Linux
     protocol: linux
@@ -1620,6 +1635,9 @@ WRAP_POPOUT
         cp -f "$DEST_REPO/kitty/kitty.conf" "$USER_HOME/.config/kitty/kitty.conf"
     fi
 
+    # Inicializar tema default en configs del usuario
+    su - "$SYS_USER" -c "python3 '$DEST_REPO/scripts/theme_manager.py' set default" 2>/dev/null || true
+
     cat << QS_CONFIG > "$USER_HOME/.config/quickshell/shell.qml"
 import Quickshell
 import "/home/$SYS_USER/Documentos/MrDemonc-SHELL"
@@ -1630,8 +1648,8 @@ QS_CONFIG
 
     cat << 'THEME_TOML' > "$USER_HOME/.local/state/mrdemonc/current/theme/colors.toml"
 accent = "#88c0d0"
-background = "#2e3340"
-color0 = "#242833"
+background = "#1a1d24"
+color0 = "#14161d"
 color1 = "#bf616a"
 color2 = "#a3be8c"
 color3 = "#ebcb8b"

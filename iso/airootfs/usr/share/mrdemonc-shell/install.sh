@@ -137,7 +137,20 @@ WRAPPER
 
 create_cli_wrapper "shell-apps" "scripts/toggle_apps.sh"
 create_cli_wrapper "shell-wallpaper" "scripts/toggle_wallpaper.sh"
+create_cli_wrapper "shell-keybinds" "scripts/toggle_keybinds.sh"
+create_cli_wrapper "shell-monitors" "scripts/toggle_monitors.sh"
 create_cli_wrapper "clipboard-action" "scripts/clipboard_action.sh"
+create_cli_wrapper "shell-image" "bin/shell-image"
+create_cli_wrapper "shell-video" "bin/shell-video"
+create_cli_wrapper "shell-pdf" "bin/shell-pdf"
+create_cli_wrapper "shell-screenshot" "bin/shell-screenshot"
+
+# Instalar accesos directos .desktop
+mkdir -p "$USER_HOME/.local/share/applications"
+cp -f "$REPO_DIR/desktop/"*.desktop "$USER_HOME/.local/share/applications/" 2>/dev/null || true
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$USER_HOME/.local/share/applications" 2>/dev/null || true
+fi
 
 # Wrapper para shell-theme con soporte CLI ('set', 'list') y GUI
 cat << WRAPPER > "$BIN_DIR/shell-theme"

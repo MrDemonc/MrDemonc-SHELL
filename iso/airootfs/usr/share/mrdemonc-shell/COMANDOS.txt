@@ -57,8 +57,36 @@
     Esc : Cerrar ventana
 
 
-4. ATAJOS GENERALES DE HYPRLAND CONFIGURADOS
+4. GUÍA DE ATAJOS Y COMANDOS DEL SISTEMA (Keybinds Cheatsheet)
 -----------------------------------------------------
+• Abrir/Cerrar la Guía Visual de Atajos y Comandos:
+    shell-keybinds
+    Atajo Hyprland: SUPER + K
+
+
+5. CONFIGURACIÓN DE PANTALLAS Y MONITORES (Multi-Monitor Manager)
+-----------------------------------------------------
+• Abrir/Cerrar la Ventana de Control de Monitores:
+    shell-monitors
+    Atajo Hyprland: SUPER + SHIFT + S
+
+• Funciones disponibles:
+    - Perfiles rápidos: Extender, Solo Externo (apaga laptop), Solo Laptop, Duplicar (Espejo).
+    - Selector táctil de escala HiDPI (100%, 125%, 150%, 175%, 200%).
+    - Selección visual de resolución y tasa de refresco (Hz).
+    - Rotación y orientación de pantalla (Normal, 90°, 180°, 270°).
+    - Encendido y apagado individual de salidas.
+
+• Características de la Guía:
+    - Buscador interactivo en tiempo real por acción, tecla o descripción.
+    - Filtros por categoría: Todos, Lanzadores y Shell, Ventanas, Espacios de Trabajo, Portapapeles, Sistema y Comandos CLI.
+    - Renderizado de teclas tipo Key-caps físicos elegantes.
+    - Esc : Cerrar ventana
+
+
+5. ATAJOS GENERALES DE HYPRLAND CONFIGURADOS
+-----------------------------------------------------
+• SUPER + K                 : Guía de atajos de teclado y comandos del sistema
 • SUPER + ENTER             : Abrir terminal (Kitty con Zsh y Starship)
 • SUPER + B                 : Abrir navegador web predeterminado (Zen Browser)
 • SUPER + C                 : Copiar (Portapapeles nativo Wayland)
@@ -82,6 +110,7 @@
     shell-popout audio
     shell-popout battery
     shell-popout bluetooth
+    shell-popout clock        # Panel de usuario, controles de música y recursos del sistema
     shell-popout power
 
 • Cerrar cualquier menú activo:
@@ -139,5 +168,72 @@
     - Cifrado automático completo con LUKS2 (Argon2id).
     - Contraseña Maestra Unificada (LUKS + Root + Usuario).
     - Seamless Login directo a Hyprland en tty1 (sin GDM).
+
+
+9. VISORES MINIMALISTAS PROPIOS (Adaptados a Temas)
+-----------------------------------------------------
+• Visor de Imágenes Minimalista:
+    shell-image [ruta_imagen]
+    - Controles flotantes auto-ocultables (fade automático tras 2.5s de inactividad, sin barra de título ni botón de cerrar).
+    - Atajos:
+        ← / → (o 'h' / 'l') : Imagen anterior / siguiente en la carpeta
+        + / - (o Scroll)    : Zoom in / Zoom out
+        0                   : Ajustar a ventana / Zoom 100%
+        r / R               : Rotar 90° horario / antihorario
+        F11 / f             : Pantalla completa
+        q / Esc             : Salir
+
+• Reproductor de Video Minimalista:
+    shell-video [ruta_video]
+    - Solo lienzo de video y controles flotantes translúcidos auto-ocultables (sin barra de título ni botón de cerrar).
+    - Atajos:
+        Espacio / Clic     : Reproducir / Pausar
+        ← / →              : Retroceder / Adelantar 10s (o 5s con 'j' / 'l')
+        ↑ / ↓              : Subir / Bajar volumen
+        m                  : Silenciar / Activar audio
+        l                  : Repetición en bucle (Loop)
+        F11 / f / Doble cl.: Pantalla completa
+        q / Esc            : Salir
+
+• Visor de Documentos PDF Minimalista:
+    shell-pdf [ruta_pdf]
+    - Desplazamiento continuo vertical o cambio de página, sin bordes ni botones superfluos.
+    - Atajos:
+        Scroll             : Desplazamiento continuo vertical
+        → / AvPág / Espacio: Página siguiente
+        ← / RePág          : Página anterior
+        Inicio / Fin       : Primera / Última página
+        + / - (o Ctrl+Scr.): Zoom in / Zoom out
+        0                  : Alternar Ajustar Ancho / 100%
+        i / d              : Alternar Modo Oscuro (invierte colores del PDF)
+        F11 / f            : Pantalla completa
+        q / Esc            : Salir
+
+* Los tres visores se adaptan dinámicamente en tiempo real al tema activo en el shell.
+
+
+10. CAPTURA DE PANTALLA MINIMALISTA (shell-screenshot)
+-----------------------------------------------------
+• Atajos de Teclado Hyprland:
+    Print               : Abrir selector flotante de captura
+    Shift + Print       : Captura inmediata de área seleccionada
+    Super + Print       : Captura inmediata de área seleccionada
+
+• Interfaz Flotante (al presionar Print):
+    󰹑  Completa (tecla 1) : Captura toda la pantalla
+    󰩭  Área (tecla 2)     : Seleccionar rectángulo con el ratón (slurp)
+    Esc / q / Clic fuera: Cancelar selector
+    * Presionar Print nuevamente cierra el selector (comportamiento toggle).
+
+• Destino automático:
+    - Se guarda automáticamente en formato PNG con fecha y hora en:
+      ~/Imágenes/Screenshots/ (o ~/Pictures/Screenshots/)
+    - Se copia automáticamente al portapapeles (wl-copy)
+    - Muestra notificación flotante con previsualización en miniatura
+
+• Uso por línea de comandos:
+    shell-screenshot            # Abre el menú selector interactivo (o lo cierra si está activo)
+    shell-screenshot full       # Captura pantalla completa directa
+    shell-screenshot area       # Captura área con ratón directa
 
 =====================================================

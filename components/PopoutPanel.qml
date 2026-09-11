@@ -23,14 +23,15 @@ PanelWindow {
             if (PopoutManager.barPosition === "left") return 26;
             if (PopoutManager.barPosition === "right") return 0;
             let screenW = popoutWindow.screen ? popoutWindow.screen.width : 1280;
+            let targetW = popout.preferredWidth;
             if (PopoutManager.popoutCenter > 0) {
-                return Math.max(10, Math.min(screenW - 330, PopoutManager.popoutCenter - 160));
+                return Math.max(10, Math.min(screenW - targetW - 10, PopoutManager.popoutCenter - targetW / 2));
             }
-            return Math.max(10, screenW - 330);
+            return Math.max(10, screenW - targetW - 10);
         }
         right: PopoutManager.barPosition === "right" ? 26 : 0
     }
-    implicitWidth: 320
+    implicitWidth: popout.preferredWidth
     implicitHeight: popout.preferredHeight
 
     Behavior on margins.left {
@@ -44,15 +45,6 @@ PanelWindow {
 
     Behavior on margins.top {
         enabled: PopoutManager.isVertical && PopoutManager.hasPopout && popout.animProgress > 0.05
-        NumberAnimation {
-            duration: Theme.anim.fastSpatial
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
-        }
-    }
-
-    Behavior on implicitHeight {
-        enabled: popout.animProgress > 0.05
         NumberAnimation {
             duration: Theme.anim.fastSpatial
             easing.type: Easing.BezierSpline

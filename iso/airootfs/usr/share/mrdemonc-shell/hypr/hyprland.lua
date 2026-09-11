@@ -278,3 +278,11 @@ hl.window_rule({
     move  = "20 monitor_h-120",
     float = true,
 })
+
+-- Minimalist Viewers (Image, Video, PDF) and Screenshot Tool
+hl.window_rule({
+    name  = "shell-viewers-and-tools",
+    match = { title = "^.*(Visor de Imágenes|Reproductor de Video|Visor de PDF|Captura de Pantalla).*$" },
+    float = true,
+    center = true,
+})
