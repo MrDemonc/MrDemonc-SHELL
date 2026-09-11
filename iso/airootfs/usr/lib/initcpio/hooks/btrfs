@@ -1,0 +1,5 @@
+#!/usr/bin/ash
+
+run_hook() {
+    btrfs device scan >/dev/null 2>&1 || true
+}

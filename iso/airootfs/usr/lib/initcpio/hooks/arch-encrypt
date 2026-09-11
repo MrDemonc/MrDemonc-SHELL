@@ -51,12 +51,7 @@ EOF
     [ "$cols" -le 0 ] && cols=80
     [ "$lines" -le 0 ] && lines=24
 
-    # Dimensiones de elementos visuales
     local logo_w=47
-    local bar_len=32
-    local bar_total_w=$(( bar_len + 4 ))
-
-    # Centrado horizontal del logo
     local logo_pad=$(( (cols - logo_w) / 2 ))
     [ "$logo_pad" -lt 0 ] && logo_pad=0
     local logo_spaces=""
@@ -66,19 +61,27 @@ EOF
         i=$((i + 1))
     done
 
-    # Centrado horizontal de la barra / prompt
-    local bar_pad=$(( (cols - bar_total_w) / 2 ))
-    [ "$bar_pad" -lt 0 ] && bar_pad=0
-    local bar_spaces=""
-    i=0
-    while [ "$i" -lt "$bar_pad" ]; do
-        bar_spaces="${bar_spaces} "
-        i=$((i + 1))
-    done
-
     # Centrado vertical (Logo 9 líneas + 2 líneas de separación + 1 de barra/input = 12 líneas)
     local top_pad=$(( (lines - 12) / 2 ))
     [ "$top_pad" -lt 1 ] && top_pad=1
+
+    render_input_line() {
+        local len=$1
+        local total_w=47
+        local dots=""
+        local j=0
+        while [ "$j" -lt "$len" ]; do dots="${dots}•"; j=$((j + 1)); done
+        local pill="[ ${dots} ]"
+        [ "$len" -eq 0 ] && pill="[   ]"
+        local pill_len=${#pill}
+        local side_w=$(( (total_w - pill_len) / 2 ))
+        local left_bar=""
+        j=0; while [ "$j" -lt "$side_w" ]; do left_bar="${left_bar}─"; j=$((j + 1)); done
+        local right_w=$(( total_w - pill_len - side_w ))
+        local right_bar=""
+        j=0; while [ "$j" -lt "$right_w" ]; do right_bar="${right_bar}─"; j=$((j + 1)); done
+        printf "\r%s\033[38;2;67;76;94m%s\033[38;2;129;161;193m[\033[38;2;136;192;208m %s \033[38;2;129;161;193m]\033[38;2;67;76;94m%s\033[0m" "$logo_spaces" "$left_bar" "$dots" "$right_bar"
+    }
 
     while true; do
         printf "\033[H\033[2J"
@@ -101,48 +104,60 @@ EOF
         printf "%s            ███   █▀                           \n" "$logo_spaces"
         printf "\033[0m\n\n"
 
+        # Dibujar campo de contraseña centrado en reposo
+        render_input_line 0
+
+        # Lectura interactiva de caracteres centrados
+        stty -echo 2>/dev/null || true
         local pass=""
-        if command -v gum >/dev/null 2>&1; then
-            pass=$(gum input --password --no-show-help --placeholder="" --prompt="${bar_spaces}❯ " --prompt.foreground="6" --cursor.foreground="6" --width=0)
-        else
-            printf "%s\033[38;2;136;192;208m❯ \033[0m" "$bar_spaces"
-            stty -echo 2>/dev/null || true
-            read -r pass
-            stty echo 2>/dev/null || true
-            printf "\n"
-        fi
+        local ch=""
+        while IFS= read -r -n 1 ch; do
+            [ -z "$ch" ] && break # Enter
+            # Backspace
+            if [ "$ch" = "$(printf "\x7f")" ] || [ "$ch" = "$(printf "\x08")" ]; then
+                if [ -n "$pass" ]; then
+                    pass="${pass%?}"
+                    render_input_line "${#pass}"
+                fi
+                continue
+            fi
+            pass="${pass}${ch}"
+            render_input_line "${#pass}"
+        done
+        stty echo 2>/dev/null || true
 
         if [ -z "$pass" ]; then
             continue
         fi
 
-        # Mover el cursor a la línea del input para reemplazarla con la animación de barra de carga
-        printf "\033[1A\033[2K"
+        # Barra de carga de ancho 47 columnas (estilo bloque sólido fluido Omarchy)
+        local total_w=47
+        local inner_w=$(( total_w - 2 )) # 45 bloques interiores
 
         # Lanzar verificación y apertura LUKS en segundo plano
         printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}" >/dev/null 2>&1 &
         local cpid=$!
 
-        # Animación fluida de carga justo en la posición donde se ingresó la contraseña
-        local p=1
+        local step=1
         local dir=1
         while kill -0 "$cpid" 2>/dev/null; do
             local filled=""
             local empty=""
             local j=0
-            while [ "$j" -lt "$p" ]; do filled="${filled}━"; j=$((j + 1)); done
-            while [ "$j" -lt "$bar_len" ]; do empty="${empty}─"; j=$((j + 1)); done
+            while [ "$j" -lt "$step" ]; do filled="${filled}█"; j=$((j + 1)); done
+            while [ "$j" -lt "$inner_w" ]; do empty="${empty}░"; j=$((j + 1)); done
 
-            printf "\r%s\033[38;2;136;192;208m╶%s\033[38;2;67;76;94m%s╴\033[0m" "$bar_spaces" "$filled" "$empty"
-            p=$(( p + dir ))
-            if [ "$p" -ge "$bar_len" ]; then
-                p=$bar_len
+            printf "\r%s\033[38;2;67;76;94m[\033[38;2;136;192;208m%s\033[38;2;46;51;64m%s\033[38;2;67;76;94m]\033[0m" "$logo_spaces" "$filled" "$empty"
+
+            step=$(( step + dir ))
+            if [ "$step" -ge "$inner_w" ]; then
+                step=$inner_w
                 dir=-1
-            elif [ "$p" -le 1 ]; then
-                p=1
+            elif [ "$step" -le 1 ]; then
+                step=1
                 dir=1
             fi
-            usleep 35000 2>/dev/null || sleep 0.04 2>/dev/null || sleep 1
+            usleep 30000 2>/dev/null || sleep 0.03 2>/dev/null || sleep 1
         done
 
         wait "$cpid"
@@ -151,12 +166,19 @@ EOF
         if [ "$status" -eq 0 ]; then
             local full_bar=""
             local j=0
-            while [ "$j" -lt "$bar_len" ]; do full_bar="${full_bar}━"; j=$((j + 1)); done
-            printf "\r%s\033[38;2;163;190;140m✔ ╶%s╴\033[0m\n" "$bar_spaces" "$full_bar"
-            sleep 0.6
+            while [ "$j" -lt "$inner_w" ]; do full_bar="${full_bar}█"; j=$((j + 1)); done
+            printf "\r%s\033[38;2;163;190;140m[%s]\033[0m\n" "$logo_spaces" "$full_bar"
+            sleep 0.5
+            # Limpiar pantalla completamente para un arranque limpio sin rastro de mensajes
+            printf "\033[H\033[2J"
             break
         else
-            printf "\r%s\033[38;2;191;97;106m✖ Contraseña incorrecta\033[0m" "$bar_spaces"
+            local err_msg="✖ Contraseña incorrecta"
+            local err_len=${#err_msg}
+            local err_pad=$(( (total_w - err_len) / 2 ))
+            local err_sp=""
+            local j=0; while [ "$j" -lt "$err_pad" ]; do err_sp="${err_sp} "; j=$((j + 1)); done
+            printf "\r%s%s\033[38;2;191;97;106m%s\033[0m" "$logo_spaces" "$err_sp" "$err_msg"
             sleep 1.5
         fi
     done
