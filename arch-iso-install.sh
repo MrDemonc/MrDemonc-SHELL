@@ -1117,14 +1117,8 @@ run_hook() {
 }
 BTRFS_HOOK
     chmod +x /mnt/usr/lib/initcpio/hooks/btrfs
-        if [ -f "/usr/lib/initcpio/install/arch-encrypt" ]; then
-            cp -f /usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
-            cp -f /usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
-        elif [ -f "/iso/airootfs/usr/lib/initcpio/install/arch-encrypt" ]; then
-            cp -f /iso/airootfs/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/install/arch-encrypt
-            cp -f /iso/airootfs/usr/lib/initcpio/hooks/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
-        else
-            cat << 'INSTALL_HOOK_EOF' > /mnt/usr/lib/initcpio/install/arch-encrypt
+
+    cat << 'INSTALL_HOOK_EOF' > /mnt/usr/lib/initcpio/install/arch-encrypt
 #!/bin/bash
 build() {
     map add_module 'dm-crypt' 'dm-integrity' 'hid-generic?'
@@ -1331,8 +1325,7 @@ EOF
     done
 }
 HOOK_RUN_EOF
-        fi
-        chmod +x /mnt/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
+    chmod +x /mnt/usr/lib/initcpio/install/arch-encrypt /mnt/usr/lib/initcpio/hooks/arch-encrypt
 
     cat << CHROOT_SCRIPT > /mnt/root/setup_chroot.sh
 #!/usr/bin/env bash
