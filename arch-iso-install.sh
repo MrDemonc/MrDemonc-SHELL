@@ -8,35 +8,41 @@ set -eo pipefail
 # ------------------------------------------------------------------------------
 # 1. Configuración de Terminal, Paleta Tokyo Night y Logo
 # ------------------------------------------------------------------------------
-set_tokyo_night_colors() {
-    # Paleta Tokyo Night para Linux Virtual Console (VT)
-    echo -en "\e]P01a1b26"; echo -en "\e]P1f7768e"; echo -en "\e]P29ece6a"
-    echo -en "\e]P3e0af68"; echo -en "\e]P47aa2f7"; echo -en "\e]P5bb9af7"
-    echo -en "\e]P67dcfff"; echo -en "\e]P7a9b1d6"; echo -en "\e]P8414868"
-    echo -en "\e]P9f7768e"; echo -en "\e]PA9ece6a"; echo -en "\e]PBe0af68"
-    echo -en "\e]PC7aa2f7"; echo -en "\e]PDbb9af7"; echo -en "\e]PE7dcfff"
-    echo -en "\e]PFc0caf5"
+set_default_theme_colors() {
+    # Paleta Default basada en La Gran Ola de Kanagawa (default.jpg) y tonos pizarra nórdicos
+    echo -en "\e]P02e3340"; echo -en "\e]P1bf616a"; echo -en "\e]P2a3be8c"
+    echo -en "\e]P3ebcb8b"; echo -en "\e]P481a1c1"; echo -en "\e]P5b48ead"
+    echo -en "\e]P688c0d0"; echo -en "\e]P7eceff4"; echo -en "\e]P84c566a"
+    echo -en "\e]P9bf616a"; echo -en "\e]PAa3be8c"; echo -en "\e]PBebcb8b"
+    echo -en "\e]PC81a1c1"; echo -en "\e]PDb48ead"; echo -en "\e]PE88c0d0"
+    echo -en "\e]PFffffff"
     echo -en "\033[0m"
 }
-set_tokyo_night_colors 2>/dev/null || true
+set_default_theme_colors 2>/dev/null || true
 
-ARCH_BLUE="\033[38;5;39m"
-GREEN="\033[38;5;42m"
-RED="\033[38;5;196m"
-YELLOW="\033[38;5;220m"
-PURPLE="\033[38;5;141m"
-GRAY="\033[38;5;242m"
-DARK_GRAY="\033[38;5;238m"
+ARCH_BLUE="\033[38;2;136;192;208m"
+CYAN="\033[38;2;129;161;193m"
+GREEN="\033[38;2;163;190;140m"
+RED="\033[38;2;191;97;106m"
+YELLOW="\033[38;2;235;203;139m"
+PURPLE="\033[38;2;180;142;173m"
+GRAY="\033[38;2;123;136;155m"
+DARK_GRAY="\033[38;2;67;76;94m"
+TEXT="\033[38;2;236;239;244m"
+SUBTEXT="\033[38;2;216;222;233m"
 BOLD="\033[1m"
 DIM="\033[2m"
 NC="\033[0m"
 
-# Variables de estilo para gum
+# Variables de estilo para gum respetando el Tema Default
 export GUM_CONFIRM_PROMPT_FOREGROUND="6"
 export GUM_CONFIRM_SELECTED_FOREGROUND="0"
-export GUM_CONFIRM_SELECTED_BACKGROUND="2"
+export GUM_CONFIRM_SELECTED_BACKGROUND="6"
 export GUM_CONFIRM_UNSELECTED_FOREGROUND="7"
 export GUM_CONFIRM_UNSELECTED_BACKGROUND="0"
+export GUM_CHOOSE_SELECTED_FOREGROUND="6"
+export GUM_INPUT_PROMPT_FOREGROUND="6"
+export GUM_INPUT_CURSOR_FOREGROUND="6"
 
 # Logo ARCH elaborado (tipografía idéntica a Omarchy, 47 columnas, 9 líneas)
 LOGO_TEXT=$(cat << "EOF"
@@ -136,7 +142,7 @@ clear_logo() {
 
     echo ""
     while IFS= read -r line; do
-        echo -e "${LOGO_PADDING_SPACES}${GREEN}${line}${NC}"
+        echo -e "${LOGO_PADDING_SPACES}${ARCH_BLUE}${line}${NC}"
     done <<< "$LOGO_TEXT"
     echo ""
 }
@@ -1131,8 +1137,10 @@ INSTALL_HOOK_EOF
 
             cat << 'HOOK_RUN_EOF' > /mnt/usr/lib/initcpio/hooks/arch-encrypt
 #!/usr/bin/ash
+
 run_hook() {
     modprobe -a -q dm-crypt >/dev/null 2>&1
+
     if [ -n "${cryptdevice}" ]; then
         IFS=: read cryptdev cryptname cryptoptions <<EOF
 ${cryptdevice}
@@ -1141,47 +1149,85 @@ EOF
         cryptdev="${root}"
         cryptname="cryptroot"
     fi
-    [ -b "/dev/mapper/${cryptname}" ] && return 0
-    resolved=$(resolve_device "${cryptdev}")
-    [ -z "${resolved}" ] && return 1
 
-    printf "\033]P01a1b26\033]P1f7768e\033]P29ece6a\033]P3e0af68\033]P47aa2f7\033]P5bb9af7\033]P67dcfff\033]P7a9b1d6\033]P8414868\033]P9f7768e\033]PA9ece6a\033]PBe0af68\033]PC7aa2f7\033]PDbb9af7\033]PE7dcfff\033]PFc0caf5\033[0m"
+    if [ -b "/dev/mapper/${cryptname}" ]; then
+        return 0
+    fi
+
+    resolved=$(resolve_device "${cryptdev}")
+    if [ -z "${resolved}" ]; then
+        return 1
+    fi
+
+    # Configurar paleta Default (Kanagawa Wave / tonos nórdicos pizarra)
+    printf "\033]P02e3340\033]P1bf616a\033]P2a3be8c\033]P3ebcb8b\033]P481a1c1\033]P5b48ead\033]P688c0d0\033]P7eceff4\033]P84c566a\033]P9bf616a\033]PAa3be8c\033]PBebcb8b\033]PC81a1c1\033]PDb48ead\033]PE88c0d0\033]PFffffff\033[0m"
 
     [ -z "$TERM" ] && export TERM=linux
 
-    local term_size
-    term_size=$(stty -F /dev/tty0 size 2>/dev/null || stty -F /dev/tty1 size 2>/dev/null || stty size 2>/dev/null || echo "24 80")
-    local lines cols
-    set -- $term_size
-    lines=${1:-24}
-    cols=${2:-80}
-    [ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
-    [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
+    # Detección precisa de dimensiones del terminal en framebuffer o tty
+    local sz=""
+    for dev in /dev/tty /dev/tty0 /dev/tty1 /dev/console; do
+        sz=$(stty size < "$dev" 2>/dev/null)
+        [ -n "$sz" ] && [ "$sz" != "0 0" ] && break
+        sz=$(stty -F "$dev" size 2>/dev/null)
+        [ -n "$sz" ] && [ "$sz" != "0 0" ] && break
+    done
+    if [ -z "$sz" ] || [ "$sz" = "0 0" ]; then
+        if [ -f /sys/class/graphics/fb0/virtual_size ]; then
+            IFS=, read -r fb_w fb_h < /sys/class/graphics/fb0/virtual_size 2>/dev/null
+            if [ -n "$fb_w" ] && [ -n "$fb_h" ] && [ "$fb_w" -gt 0 ]; then
+                local c=$(( fb_w / 8 ))
+                local l=$(( fb_h / 16 ))
+                sz="$l $c"
+            fi
+        fi
+    fi
+    [ -z "$sz" ] && sz="24 80"
+    set -- $sz
+    local lines=${1:-24}
+    local cols=${2:-80}
+    [ "$cols" -le 0 ] && cols=80
+    [ "$lines" -le 0 ] && lines=24
 
+    # Dimensiones de elementos visuales
     local logo_w=47
+    local bar_len=32
+    local bar_total_w=$(( bar_len + 4 ))
+
+    # Centrado horizontal del logo
     local logo_pad=$(( (cols - logo_w) / 2 ))
     [ "$logo_pad" -lt 0 ] && logo_pad=0
     local logo_spaces=""
     local i=0
-    while [ "$i" -lt "$logo_pad" ]; do logo_spaces="${logo_spaces} "; i=$((i + 1)); done
+    while [ "$i" -lt "$logo_pad" ]; do
+        logo_spaces="${logo_spaces} "
+        i=$((i + 1))
+    done
 
-    local prompt_text="Contraseña: "
-    local prompt_w=46
-    [ "$prompt_w" -gt "$cols" ] && prompt_w=$cols
-    local prompt_pad=$(( (cols - prompt_w) / 2 ))
-    [ "$prompt_pad" -lt 0 ] && prompt_pad=0
-    local prompt_spaces=""
+    # Centrado horizontal de la barra / prompt
+    local bar_pad=$(( (cols - bar_total_w) / 2 ))
+    [ "$bar_pad" -lt 0 ] && bar_pad=0
+    local bar_spaces=""
     i=0
-    while [ "$i" -lt "$prompt_pad" ]; do prompt_spaces="${prompt_spaces} "; i=$((i + 1)); done
+    while [ "$i" -lt "$bar_pad" ]; do
+        bar_spaces="${bar_spaces} "
+        i=$((i + 1))
+    done
 
-    local top_pad=2
+    # Centrado vertical (Logo 9 líneas + 2 líneas de separación + 1 de barra/input = 12 líneas)
+    local top_pad=$(( (lines - 12) / 2 ))
+    [ "$top_pad" -lt 1 ] && top_pad=1
 
     while true; do
         printf "\033[H\033[2J"
         i=0
-        while [ "$i" -lt "$top_pad" ]; do printf "\n"; i=$((i + 1)); done
+        while [ "$i" -lt "$top_pad" ]; do
+            printf "\n"
+            i=$((i + 1))
+        done
 
-        printf "\033[38;5;42m"
+        # Logo ARCH en color primario del tema Default (#88c0d0)
+        printf "\033[38;2;136;192;208m"
         printf "%s ▄███████    ▄███████     ▄███████    ▄█   █▄  \n" "$logo_spaces"
         printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
         printf "%s███   ███   ███   ███    ███   █▀    ███   ███ \n" "$logo_spaces"
@@ -1191,16 +1237,13 @@ EOF
         printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
         printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$logo_spaces"
         printf "%s            ███   █▀                           \n" "$logo_spaces"
-        printf "\033[0m\n"
+        printf "\033[0m\n\n"
 
         local pass=""
         if command -v gum >/dev/null 2>&1; then
-            gum style --foreground 6 --bold --align center --width "$cols" "DESBLOQUEO DE DISCO CIFRADO"
-            printf "\n"
-            pass=$(gum input --password --placeholder "Introduce tu clave para desbloquear..." --prompt "${prompt_spaces}${prompt_text}" --prompt.foreground 4)
+            pass=$(gum input --password --no-show-help --placeholder="" --prompt="${bar_spaces}❯ " --prompt.foreground="6" --cursor.foreground="6" --width=0)
         else
-            printf "%s\033[1;36mDESBLOQUEO DE DISCO CIFRADO\033[0m\n\n" "$logo_spaces"
-            printf "%s\033[1;36m%s\033[0m" "$prompt_spaces" "$prompt_text"
+            printf "%s\033[38;2;136;192;208m❯ \033[0m" "$bar_spaces"
             stty -echo 2>/dev/null || true
             read -r pass
             stty echo 2>/dev/null || true
@@ -1211,23 +1254,48 @@ EOF
             continue
         fi
 
-        if printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
-            if command -v gum >/dev/null 2>&1; then
-                printf "\n"
-                gum style --foreground 2 --bold --align center --width "$cols" "✔ Disco descifrado correctamente. Iniciando sistema..."
-            else
-                printf "\n%s\033[1;32m✔ Desbloqueado. Iniciando sistema...\033[0m\n" "$prompt_spaces"
+        # Mover el cursor a la línea del input para reemplazarla con la animación de barra de carga
+        printf "\033[1A\033[2K"
+
+        # Lanzar verificación y apertura LUKS en segundo plano
+        printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}" >/dev/null 2>&1 &
+        local cpid=$!
+
+        # Animación fluida de carga justo en la posición donde se ingresó la contraseña
+        local p=1
+        local dir=1
+        while kill -0 "$cpid" 2>/dev/null; do
+            local filled=""
+            local empty=""
+            local j=0
+            while [ "$j" -lt "$p" ]; do filled="${filled}━"; j=$((j + 1)); done
+            while [ "$j" -lt "$bar_len" ]; do empty="${empty}─"; j=$((j + 1)); done
+
+            printf "\r%s\033[38;2;136;192;208m╶%s\033[38;2;67;76;94m%s╴\033[0m" "$bar_spaces" "$filled" "$empty"
+            p=$(( p + dir ))
+            if [ "$p" -ge "$bar_len" ]; then
+                p=$bar_len
+                dir=-1
+            elif [ "$p" -le 1 ]; then
+                p=1
+                dir=1
             fi
-            sleep 1
+            usleep 35000 2>/dev/null || sleep 0.04 2>/dev/null || sleep 1
+        done
+
+        wait "$cpid"
+        local status=$?
+
+        if [ "$status" -eq 0 ]; then
+            local full_bar=""
+            local j=0
+            while [ "$j" -lt "$bar_len" ]; do full_bar="${full_bar}━"; j=$((j + 1)); done
+            printf "\r%s\033[38;2;163;190;140m✔ ╶%s╴\033[0m\n" "$bar_spaces" "$full_bar"
+            sleep 0.6
             break
         else
-            if command -v gum >/dev/null 2>&1; then
-                printf "\n"
-                gum style --foreground 1 --bold --align center --width "$cols" "✖ Contraseña incorrecta. Inténtalo de nuevo."
-            else
-                printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo.\033[0m\n" "$prompt_spaces"
-            fi
-            sleep 2
+            printf "\r%s\033[38;2;191;97;106m✖ Contraseña incorrecta\033[0m" "$bar_spaces"
+            sleep 1.5
         fi
     done
 }
@@ -1414,19 +1482,28 @@ CHROOT_SCRIPT
     mkdir -p "$USER_HOME/.local/bin"
     mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
     mkdir -p "$USER_HOME/Pictures/Wallpapers"
+    mkdir -p "$USER_HOME/.config/quickshell/themes"
 
-    # Copiar fondos de pantalla predeterminados y configurar wallpaper activo
-    if [ -d "$DEST_REPO/wallpapers" ]; then
-        cp -f "$DEST_REPO"/wallpapers/* "$USER_HOME/Pictures/Wallpapers/" 2>/dev/null || true
-    elif [ -d "/home/demonc-test/Pictures/Wallpapers" ]; then
-        cp -f /home/demonc-test/Pictures/Wallpapers/* "$USER_HOME/Pictures/Wallpapers/" 2>/dev/null || true
+    # Copiar temas predeterminados a la configuración de Quickshell
+    if [ -d "$DEST_REPO/themes" ]; then
+        cp -a "$DEST_REPO"/themes/. "$USER_HOME/.config/quickshell/themes/" 2>/dev/null || true
+    elif [ -d "/usr/share/mrdemonc-shell/themes" ]; then
+        cp -a /usr/share/mrdemonc-shell/themes/. "$USER_HOME/.config/quickshell/themes/" 2>/dev/null || true
     fi
 
     cat << WALL_JSON > "$USER_HOME/.config/quickshell/current_wallpaper.json"
 {
-  "path": "/home/$SYS_USER/Pictures/Wallpapers/wall0.png"
+  "path": "/home/$SYS_USER/Documentos/MrDemonc-SHELL/themes/default/wallpaper.jpg",
+  "fileName": "wallpaper.jpg",
+  "name": "Default"
 }
 WALL_JSON
+
+    cat << THEME_JSON > "$USER_HOME/.config/quickshell/current_theme.json"
+{
+  "theme": "default"
+}
+THEME_JSON
 
     # Configurar diseño de cursor (Capitaine) en entorno de usuario
     mkdir -p "$USER_HOME/.icons/default" "$USER_HOME/.config/gtk-3.0" "$USER_HOME/.config/gtk-4.0"
@@ -1508,29 +1585,29 @@ ShellRoot {
 QS_CONFIG
 
     cat << 'THEME_TOML' > "$USER_HOME/.local/state/mrdemonc/current/theme/colors.toml"
-accent = "#89b4fa"
-background = "#1e1e2e"
-color0 = "#45475a"
-color1 = "#f38ba8"
-color2 = "#a6e3a1"
-color3 = "#f9e2af"
-color4 = "#89b4fa"
-color5 = "#f5c2e7"
-color6 = "#89dceb"
-color7 = "#bac2de"
-color8 = "#585b70"
-color9 = "#f38ba8"
-color10 = "#a6e3a1"
-color11 = "#f9e2af"
-color12 = "#89b4fa"
-color13 = "#f5c2e7"
-color14 = "#89dceb"
-color15 = "#a6adc8"
-foreground = "#cdd6f4"
+accent = "#88c0d0"
+background = "#2e3340"
+color0 = "#242833"
+color1 = "#bf616a"
+color2 = "#a3be8c"
+color3 = "#ebcb8b"
+color4 = "#81a1c1"
+color5 = "#b48ead"
+color6 = "#88c0d0"
+color7 = "#eceff4"
+color8 = "#7b889b"
+color9 = "#bf616a"
+color10 = "#a3be8c"
+color11 = "#ebcb8b"
+color12 = "#81a1c1"
+color13 = "#b48ead"
+color14 = "#88c0d0"
+color15 = "#d8dee9"
+foreground = "#eceff4"
 THEME_TOML
 
     if [ -f "$DEST_REPO/scripts/theme_manager.py" ]; then
-        arch-chroot /mnt su - "$SYS_USER" -c "python3 ~/Documentos/MrDemonc-SHELL/scripts/theme_manager.py apply catppuccin-mocha" 2>/dev/null || true
+        arch-chroot /mnt su - "$SYS_USER" -c "python3 ~/Documentos/MrDemonc-SHELL/scripts/theme_manager.py apply default" 2>/dev/null || true
     fi
 
     mkdir -p "$USER_HOME/.config"

@@ -6,23 +6,23 @@ import Quickshell.Io
 QtObject {
     id: theme
 
-    // Catppuccin Mocha / Dark & Light
+    // Tema Default basado en La Gran Ola de Kanagawa (default.jpg) y tonos nórdicos
     property bool isDark: true
-    property color bg: isDark ? "#1e1e2e" : "#eff1f5"
-    property color bgSurface: isDark ? "#181825" : "#e6e9ef"
-    property color bgHover: isDark ? "#313244" : "#ccd0da"
-    property color border: isDark ? "#313244" : "#bcc0cc"
-    property color text: isDark ? "#cdd6f4" : "#4c4f69"
-    property color subtext: isDark ? "#a6adc8" : "#6c6f85"
-    property color overlay: isDark ? "#6c7086" : "#9ca0b0"
+    property color bg: isDark ? "#2e3340" : "#eceff4"
+    property color bgSurface: isDark ? "#242833" : "#e5e9f0"
+    property color bgHover: isDark ? "#3b4252" : "#d8dee9"
+    property color border: isDark ? "#434c5e" : "#c8d0de"
+    property color text: isDark ? "#eceff4" : "#2e3440"
+    property color subtext: isDark ? "#d8dee9" : "#3b4252"
+    property color overlay: isDark ? "#7b889b" : "#7b88a1"
     
     // Colores de acento
-    property color primary: isDark ? "#89b4fa" : "#1e66f5"
-    property color success: isDark ? "#a6e3a1" : "#40a02b"
-    property color warning: isDark ? "#f9e2af" : "#df8e1d"
-    property color danger: isDark ? "#f38ba8" : "#d20f39"
-    property color cyan: isDark ? "#89dceb" : "#04a5e5"
-    property color pink: isDark ? "#f5c2e7" : "#ea76cb"
+    property color primary: isDark ? "#88c0d0" : "#5e81ac"
+    property color success: isDark ? "#a3be8c" : "#4c566a"
+    property color warning: isDark ? "#ebcb8b" : "#d08770"
+    property color danger: isDark ? "#bf616a" : "#bf616a"
+    property color cyan: isDark ? "#81a1c1" : "#88c0d0"
+    property color pink: isDark ? "#b48ead" : "#b48ead"
 
     // Tipografía estándar
     property string fontFamily: "JetBrainsMono Nerd Font Mono"
@@ -62,7 +62,7 @@ QtObject {
     }
 
     // Lista de temas disponibles y tema activo
-    property string activeThemeId: "catppuccin-mocha"
+    property string activeThemeId: "default"
     property var availableThemes: []
     property int previewIndex: 0
     readonly property var previewThemeData: {

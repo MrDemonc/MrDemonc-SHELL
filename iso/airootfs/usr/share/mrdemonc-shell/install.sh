@@ -355,10 +355,10 @@ fi
 # ------------------------------------------------------------------------------
 echo -e "${YELLOW}[8/10] Inicializando tema y sincronización...${NC}"
 
-# Inicializar con Catppuccin Mocha
+# Inicializar con Default
 if [ -f "$REPO_DIR/scripts/theme_manager.py" ]; then
-    python3 "$REPO_DIR/scripts/theme_manager.py" set catppuccin-mocha >/dev/null 2>&1 || true
-    echo -e "${GREEN}[OK] Tema 'catppuccin-mocha' sincronizado correctamente.${NC}"
+    python3 "$REPO_DIR/scripts/theme_manager.py" set default >/dev/null 2>&1 || true
+    echo -e "${GREEN}[OK] Tema 'default' sincronizado correctamente.${NC}"
 fi
 
 # ------------------------------------------------------------------------------

@@ -21,21 +21,42 @@ EOF
         return 1
     fi
 
-    # Configurar paleta Tokyo Night
-    printf "\033]P01a1b26\033]P1f7768e\033]P29ece6a\033]P3e0af68\033]P47aa2f7\033]P5bb9af7\033]P67dcfff\033]P7a9b1d6\033]P8414868\033]P9f7768e\033]PA9ece6a\033]PBe0af68\033]PC7aa2f7\033]PDbb9af7\033]PE7dcfff\033]PFc0caf5\033[0m"
+    # Configurar paleta Default (Kanagawa Wave / tonos nórdicos pizarra)
+    printf "\033]P02e3340\033]P1bf616a\033]P2a3be8c\033]P3ebcb8b\033]P481a1c1\033]P5b48ead\033]P688c0d0\033]P7eceff4\033]P84c566a\033]P9bf616a\033]PAa3be8c\033]PBebcb8b\033]PC81a1c1\033]PDb48ead\033]PE88c0d0\033]PFffffff\033[0m"
 
     [ -z "$TERM" ] && export TERM=linux
 
-    local term_size
-    term_size=$(stty -F /dev/tty0 size 2>/dev/null || stty -F /dev/tty1 size 2>/dev/null || stty size 2>/dev/null || echo "24 80")
-    local lines cols
-    set -- $term_size
-    lines=${1:-24}
-    cols=${2:-80}
-    [ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
-    [ -z "$lines" ] || [ "$lines" -le 0 ] && lines=24
+    # Detección precisa de dimensiones del terminal en framebuffer o tty
+    local sz=""
+    for dev in /dev/tty /dev/tty0 /dev/tty1 /dev/console; do
+        sz=$(stty size < "$dev" 2>/dev/null)
+        [ -n "$sz" ] && [ "$sz" != "0 0" ] && break
+        sz=$(stty -F "$dev" size 2>/dev/null)
+        [ -n "$sz" ] && [ "$sz" != "0 0" ] && break
+    done
+    if [ -z "$sz" ] || [ "$sz" = "0 0" ]; then
+        if [ -f /sys/class/graphics/fb0/virtual_size ]; then
+            IFS=, read -r fb_w fb_h < /sys/class/graphics/fb0/virtual_size 2>/dev/null
+            if [ -n "$fb_w" ] && [ -n "$fb_h" ] && [ "$fb_w" -gt 0 ]; then
+                local c=$(( fb_w / 8 ))
+                local l=$(( fb_h / 16 ))
+                sz="$l $c"
+            fi
+        fi
+    fi
+    [ -z "$sz" ] && sz="24 80"
+    set -- $sz
+    local lines=${1:-24}
+    local cols=${2:-80}
+    [ "$cols" -le 0 ] && cols=80
+    [ "$lines" -le 0 ] && lines=24
 
+    # Dimensiones de elementos visuales
     local logo_w=47
+    local bar_len=32
+    local bar_total_w=$(( bar_len + 4 ))
+
+    # Centrado horizontal del logo
     local logo_pad=$(( (cols - logo_w) / 2 ))
     [ "$logo_pad" -lt 0 ] && logo_pad=0
     local logo_spaces=""
@@ -45,19 +66,19 @@ EOF
         i=$((i + 1))
     done
 
-    local prompt_text="Contraseña: "
-    local prompt_w=46
-    [ "$prompt_w" -gt "$cols" ] && prompt_w=$cols
-    local prompt_pad=$(( (cols - prompt_w) / 2 ))
-    [ "$prompt_pad" -lt 0 ] && prompt_pad=0
-    local prompt_spaces=""
+    # Centrado horizontal de la barra / prompt
+    local bar_pad=$(( (cols - bar_total_w) / 2 ))
+    [ "$bar_pad" -lt 0 ] && bar_pad=0
+    local bar_spaces=""
     i=0
-    while [ "$i" -lt "$prompt_pad" ]; do
-        prompt_spaces="${prompt_spaces} "
+    while [ "$i" -lt "$bar_pad" ]; do
+        bar_spaces="${bar_spaces} "
         i=$((i + 1))
     done
 
-    local top_pad=2
+    # Centrado vertical (Logo 9 líneas + 2 líneas de separación + 1 de barra/input = 12 líneas)
+    local top_pad=$(( (lines - 12) / 2 ))
+    [ "$top_pad" -lt 1 ] && top_pad=1
 
     while true; do
         printf "\033[H\033[2J"
@@ -67,7 +88,8 @@ EOF
             i=$((i + 1))
         done
 
-        printf "\033[38;5;42m"
+        # Logo ARCH en color primario del tema Default (#88c0d0)
+        printf "\033[38;2;136;192;208m"
         printf "%s ▄███████    ▄███████     ▄███████    ▄█   █▄  \n" "$logo_spaces"
         printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
         printf "%s███   ███   ███   ███    ███   █▀    ███   ███ \n" "$logo_spaces"
@@ -77,16 +99,13 @@ EOF
         printf "%s███   ███   ███   ███    ███   ███   ███   ███ \n" "$logo_spaces"
         printf "%s███   █▀    ███   ███    ███████▀    ███   █▀  \n" "$logo_spaces"
         printf "%s            ███   █▀                           \n" "$logo_spaces"
-        printf "\033[0m\n"
+        printf "\033[0m\n\n"
 
         local pass=""
         if command -v gum >/dev/null 2>&1; then
-            gum style --foreground 6 --bold --align center --width "$cols" "DESBLOQUEO DE DISCO CIFRADO"
-            printf "\n"
-            pass=$(gum input --password --placeholder "Introduce tu clave para desbloquear..." --prompt "${prompt_spaces}${prompt_text}" --prompt.foreground 4)
+            pass=$(gum input --password --no-show-help --placeholder="" --prompt="${bar_spaces}❯ " --prompt.foreground="6" --cursor.foreground="6" --width=0)
         else
-            printf "%s\033[1;36mDESBLOQUEO DE DISCO CIFRADO\033[0m\n\n" "$logo_spaces"
-            printf "%s\033[1;36m%s\033[0m" "$prompt_spaces" "$prompt_text"
+            printf "%s\033[38;2;136;192;208m❯ \033[0m" "$bar_spaces"
             stty -echo 2>/dev/null || true
             read -r pass
             stty echo 2>/dev/null || true
@@ -97,23 +116,48 @@ EOF
             continue
         fi
 
-        if printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}"; then
-            if command -v gum >/dev/null 2>&1; then
-                printf "\n"
-                gum style --foreground 2 --bold --align center --width "$cols" "✔ Disco descifrado correctamente. Iniciando sistema..."
-            else
-                printf "\n%s\033[1;32m✔ Desbloqueado. Iniciando sistema...\033[0m\n" "$prompt_spaces"
+        # Mover el cursor a la línea del input para reemplazarla con la animación de barra de carga
+        printf "\033[1A\033[2K"
+
+        # Lanzar verificación y apertura LUKS en segundo plano
+        printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}" >/dev/null 2>&1 &
+        local cpid=$!
+
+        # Animación fluida de carga justo en la posición donde se ingresó la contraseña
+        local p=1
+        local dir=1
+        while kill -0 "$cpid" 2>/dev/null; do
+            local filled=""
+            local empty=""
+            local j=0
+            while [ "$j" -lt "$p" ]; do filled="${filled}━"; j=$((j + 1)); done
+            while [ "$j" -lt "$bar_len" ]; do empty="${empty}─"; j=$((j + 1)); done
+
+            printf "\r%s\033[38;2;136;192;208m╶%s\033[38;2;67;76;94m%s╴\033[0m" "$bar_spaces" "$filled" "$empty"
+            p=$(( p + dir ))
+            if [ "$p" -ge "$bar_len" ]; then
+                p=$bar_len
+                dir=-1
+            elif [ "$p" -le 1 ]; then
+                p=1
+                dir=1
             fi
-            sleep 1
+            usleep 35000 2>/dev/null || sleep 0.04 2>/dev/null || sleep 1
+        done
+
+        wait "$cpid"
+        local status=$?
+
+        if [ "$status" -eq 0 ]; then
+            local full_bar=""
+            local j=0
+            while [ "$j" -lt "$bar_len" ]; do full_bar="${full_bar}━"; j=$((j + 1)); done
+            printf "\r%s\033[38;2;163;190;140m✔ ╶%s╴\033[0m\n" "$bar_spaces" "$full_bar"
+            sleep 0.6
             break
         else
-            if command -v gum >/dev/null 2>&1; then
-                printf "\n"
-                gum style --foreground 1 --bold --align center --width "$cols" "✖ Contraseña incorrecta. Inténtalo de nuevo."
-            else
-                printf "\n%s\033[1;31m✖ Contraseña incorrecta. Inténtalo de nuevo.\033[0m\n" "$prompt_spaces"
-            fi
-            sleep 2
+            printf "\r%s\033[38;2;191;97;106m✖ Contraseña incorrecta\033[0m" "$bar_spaces"
+            sleep 1.5
         fi
     done
 }

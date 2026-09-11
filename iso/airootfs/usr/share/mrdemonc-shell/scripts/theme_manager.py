@@ -2,221 +2,40 @@
 import os
 import json
 import sys
+import glob
 
 THEMES_DIR = os.path.expanduser("~/.config/quickshell/themes")
 CONFIG_FILE = os.path.expanduser("~/.config/quickshell/current_theme.json")
 
+# Tema Default basado en La Gran Ola de Kanagawa (default.jpg) y tonos nórdicos
 BUILTIN_THEMES = {
-    "catppuccin-mocha": {
-        "name": "Catppuccin Mocha",
-        "description": "Paleta relajante pastel de alto contraste para la noche",
-        "author": "Catppuccin Org",
+    "default": {
+        "name": "Default",
+        "description": "Tema predeterminado inspirado en La Gran Ola de Kanagawa y tonos pizarra nórdicos",
+        "author": "MrDemonc",
         "isDark": True,
-        "bg": "#1e1e2e",
-        "bgSurface": "#181825",
-        "bgHover": "#313244",
-        "border": "#45475a",
-        "text": "#cdd6f4",
-        "subtext": "#a6adc8",
-        "overlay": "#6c7086",
-        "primary": "#89b4fa",
-        "success": "#a6e3a1",
-        "warning": "#f9e2af",
-        "danger": "#f38ba8",
-        "cyan": "#89dceb",
-        "pink": "#f5c2e7"
-    },
-    "catppuccin-latte": {
-        "name": "Catppuccin Latte",
-        "description": "Edición diurna cálida y limpia de Catppuccin",
-        "author": "Catppuccin Org",
-        "isDark": False,
-        "bg": "#eff1f5",
-        "bgSurface": "#e6e9ef",
-        "bgHover": "#ccd0da",
-        "border": "#bcc0cc",
-        "text": "#4c4f69",
-        "subtext": "#6c6f85",
-        "overlay": "#9ca0b0",
-        "primary": "#1e66f5",
-        "success": "#40a02b",
-        "warning": "#df8e1d",
-        "danger": "#d20f39",
-        "cyan": "#04a5e5",
-        "pink": "#ea76cb"
-    },
-    "tokyo-night": {
-        "name": "Tokyo Night",
-        "description": "Inspirado en las luces de neón del centro de Tokio",
-        "author": "Enkelt",
-        "isDark": True,
-        "bg": "#1a1b26",
-        "bgSurface": "#16161e",
-        "bgHover": "#292e42",
-        "border": "#3b4261",
-        "text": "#c0caf5",
-        "subtext": "#a9b1d6",
-        "overlay": "#565f89",
-        "primary": "#7aa2f7",
-        "success": "#9ece6a",
-        "warning": "#e0af68",
-        "danger": "#f7768e",
-        "cyan": "#7dcfff",
-        "pink": "#bb9af7"
-    },
-    "tokyo-night-light": {
-        "name": "Tokyo Night Light",
-        "description": "Variante diurna de Tokio con tonos azules y plata",
-        "author": "Enkelt",
-        "isDark": False,
-        "bg": "#e1e2e7",
-        "bgSurface": "#d5d6db",
-        "bgHover": "#cfc9c2",
-        "border": "#b4b5b9",
-        "text": "#3760bf",
-        "subtext": "#6172b0",
-        "overlay": "#8990b3",
-        "primary": "#2e7de9",
-        "success": "#587539",
-        "warning": "#8c6c3e",
-        "danger": "#f52a65",
-        "cyan": "#007197",
-        "pink": "#9854f1"
-    },
-    "nord": {
-        "name": "Nord",
-        "description": "Paleta ártica elegante basada en tonos fríos nórdicos",
-        "author": "Arctic Ice Studio",
-        "isDark": True,
-        "bg": "#2e3440",
-        "bgSurface": "#242933",
+        "wallpaper": "wallpaper.jpg",
+        "bg": "#2e3340",
+        "bgSurface": "#242833",
         "bgHover": "#3b4252",
         "border": "#434c5e",
         "text": "#eceff4",
-        "subtext": "#e5e9f0",
-        "overlay": "#7b88a1",
+        "subtext": "#d8dee9",
+        "overlay": "#7b889b",
         "primary": "#88c0d0",
         "success": "#a3be8c",
         "warning": "#ebcb8b",
         "danger": "#bf616a",
         "cyan": "#81a1c1",
         "pink": "#b48ead"
-    },
-    "nord-light": {
-        "name": "Nord Light",
-        "description": "La serenidad de la nieve y el hielo nórdico en modo claro",
-        "author": "Arctic Ice Studio",
-        "isDark": False,
-        "bg": "#eceff4",
-        "bgSurface": "#e5e9f0",
-        "bgHover": "#d8dee9",
-        "border": "#c8d0de",
-        "text": "#2e3440",
-        "subtext": "#3b4252",
-        "overlay": "#7b88a1",
-        "primary": "#5e81ac",
-        "success": "#4c566a",
-        "warning": "#d08770",
-        "danger": "#bf616a",
-        "cyan": "#88c0d0",
-        "pink": "#b48ead"
-    },
-    "gruvbox-dark": {
-        "name": "Gruvbox Dark",
-        "description": "Tono retro cálido con contraste suave y acentos tierra",
-        "author": "morhetz",
-        "isDark": True,
-        "bg": "#282828",
-        "bgSurface": "#1d2021",
-        "bgHover": "#3c3836",
-        "border": "#504945",
-        "text": "#ebdbb2",
-        "subtext": "#d5c4a1",
-        "overlay": "#928374",
-        "primary": "#d79921",
-        "success": "#b8bb26",
-        "warning": "#fabd2f",
-        "danger": "#fb4934",
-        "cyan": "#83a598",
-        "pink": "#d3869b"
-    },
-    "gruvbox-light": {
-        "name": "Gruvbox Light",
-        "description": "Pergamino cálido retro con acentos rojizos y dorados",
-        "author": "morhetz",
-        "isDark": False,
-        "bg": "#fbf1c7",
-        "bgSurface": "#f2e5bc",
-        "bgHover": "#ebdbb2",
-        "border": "#d5c4a1",
-        "text": "#282828",
-        "subtext": "#3c3836",
-        "overlay": "#7c6f64",
-        "primary": "#b57614",
-        "success": "#79740e",
-        "warning": "#af3a03",
-        "danger": "#9d0006",
-        "cyan": "#427b58",
-        "pink": "#8f3f71"
-    },
-    "rose-pine": {
-        "name": "Rosé Pine",
-        "description": "Elegancia minimalista con matices florales y vintage",
-        "author": "Rosé Pine",
-        "isDark": True,
-        "bg": "#191724",
-        "bgSurface": "#1f1d2e",
-        "bgHover": "#26233a",
-        "border": "#403d52",
-        "text": "#e0def4",
-        "subtext": "#908caa",
-        "overlay": "#6e6a86",
-        "primary": "#ebbcba",
-        "success": "#9ccfd8",
-        "warning": "#f6c177",
-        "danger": "#eb6f92",
-        "cyan": "#31748f",
-        "pink": "#c4a7e7"
-    },
-    "rose-pine-dawn": {
-        "name": "Rosé Pine Dawn",
-        "description": "Luz de amanecer con tonos lavanda, pino y pétalo",
-        "author": "Rosé Pine",
-        "isDark": False,
-        "bg": "#faf4ed",
-        "bgSurface": "#fffaf3",
-        "bgHover": "#f2e9e1",
-        "border": "#cecacd",
-        "text": "#575279",
-        "subtext": "#797593",
-        "overlay": "#9893a5",
-        "primary": "#d7827e",
-        "success": "#56949f",
-        "warning": "#ea9d34",
-        "danger": "#b4637a",
-        "cyan": "#286983",
-        "pink": "#907aa9"
-    },
-    "oled-pure": {
-        "name": "OLED Pure Black",
-        "description": "Negro absoluto para pantallas OLED y máximo ahorro",
-        "author": "Custom",
-        "isDark": True,
-        "bg": "#000000",
-        "bgSurface": "#0d0d0d",
-        "bgHover": "#1c1c1c",
-        "border": "#2c2c2c",
-        "text": "#f5f5f5",
-        "subtext": "#cccccc",
-        "overlay": "#666666",
-        "primary": "#ffffff",
-        "success": "#4ade80",
-        "warning": "#fbbf24",
-        "danger": "#f87171",
-        "cyan": "#38bdf8",
-        "pink": "#f472b6"
     }
 }
+
+THEME_SEARCH_DIRS = [
+    os.path.expanduser("~/.config/quickshell/themes"),
+    os.path.expanduser("~/Documentos/MrDemonc-SHELL/themes"),
+    "/usr/share/mrdemonc-shell/themes"
+]
 
 def ensure_dirs():
     os.makedirs(THEMES_DIR, exist_ok=True)
@@ -228,22 +47,71 @@ def get_current_theme_name():
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                return data.get("theme", "catppuccin-mocha")
+                return data.get("theme", "default")
         except Exception:
             pass
-    return "catppuccin-mocha"
+    return "default"
 
 def get_all_themes():
-    themes = dict(BUILTIN_THEMES)
     ensure_dirs()
-    for filename in os.listdir(THEMES_DIR):
-        if filename.endswith(".json"):
-            tid = filename[:-5]
-            try:
-                with open(os.path.join(THEMES_DIR, filename), 'r', encoding='utf-8') as f:
-                    themes[tid] = json.load(f)
-            except Exception:
-                pass
+    themes = {}
+
+    # Buscar temas en las carpetas estructuradas (themes/<theme_id>/theme.json)
+    for base_dir in THEME_SEARCH_DIRS:
+        if not os.path.isdir(base_dir):
+            continue
+        for entry in os.listdir(base_dir):
+            sub_path = os.path.join(base_dir, entry)
+            if os.path.isdir(sub_path):
+                tj = os.path.join(sub_path, "theme.json")
+                if os.path.isfile(tj):
+                    try:
+                        with open(tj, 'r', encoding='utf-8') as f:
+                            th_data = json.load(f)
+                            tid = th_data.get("id", entry)
+                            th_data["id"] = tid
+                            th_data["_dir"] = sub_path
+                            # Resolver ruta absoluta de wallpaper si existe en la carpeta del tema
+                            w = th_data.get("wallpaper", "")
+                            if w:
+                                if not os.path.isabs(w):
+                                    w = os.path.join(sub_path, w)
+                                if os.path.exists(w):
+                                    th_data["wallpaperPath"] = w
+                            else:
+                                for ext in [".jpg", ".jpeg", ".png", ".webp"]:
+                                    cand = os.path.join(sub_path, f"wallpaper{ext}")
+                                    if os.path.exists(cand):
+                                        th_data["wallpaperPath"] = cand
+                                        break
+                            if tid not in themes:
+                                themes[tid] = th_data
+                    except Exception:
+                        pass
+            elif entry.endswith(".json"):
+                tid = entry[:-5]
+                try:
+                    with open(sub_path, 'r', encoding='utf-8') as f:
+                        th_data = json.load(f)
+                        th_data["id"] = tid
+                        if tid not in themes:
+                            themes[tid] = th_data
+                except Exception:
+                    pass
+
+    # Integrar BUILTIN_THEMES si no están cargados aún
+    for tid, val in BUILTIN_THEMES.items():
+        if tid not in themes:
+            th = dict(val)
+            th["id"] = tid
+            # Buscar wallpaper para el builtin
+            for base_dir in THEME_SEARCH_DIRS:
+                cand = os.path.join(base_dir, tid, "wallpaper.jpg")
+                if os.path.exists(cand):
+                    th["wallpaperPath"] = cand
+                    break
+            themes[tid] = th
+
     return themes
 
 def get_theme(name=None):
@@ -254,8 +122,8 @@ def get_theme(name=None):
         th = all_themes[name]
         th["id"] = name
         return th
-    th = BUILTIN_THEMES["catppuccin-mocha"]
-    th["id"] = "catppuccin-mocha"
+    th = dict(BUILTIN_THEMES["default"])
+    th["id"] = "default"
     return th
 
 def sync_terminal_theme(theme_data):
@@ -264,19 +132,19 @@ def sync_terminal_theme(theme_data):
         os.makedirs(mrdemonc_theme_dir, exist_ok=True)
 
         is_dark = theme_data.get("isDark", True)
-        bg = theme_data.get("bg", "#1e1e2e")
-        bg_surface = theme_data.get("bgSurface", "#181825")
-        bg_hover = theme_data.get("bgHover", "#313244")
-        border = theme_data.get("border", "#45475a")
-        fg = theme_data.get("text", "#cdd6f4")
-        subtext = theme_data.get("subtext", "#a6adc8")
-        overlay = theme_data.get("overlay", "#6c7086")
-        primary = theme_data.get("primary", "#89b4fa")
-        success = theme_data.get("success", "#a6e3a1")
-        warning = theme_data.get("warning", "#f9e2af")
-        danger = theme_data.get("danger", "#f38ba8")
-        cyan = theme_data.get("cyan", "#89dceb")
-        pink = theme_data.get("pink", "#f5c2e7")
+        bg = theme_data.get("bg", "#2e3340")
+        bg_surface = theme_data.get("bgSurface", "#242833")
+        bg_hover = theme_data.get("bgHover", "#3b4252")
+        border = theme_data.get("border", "#434c5e")
+        fg = theme_data.get("text", "#eceff4")
+        subtext = theme_data.get("subtext", "#d8dee9")
+        overlay = theme_data.get("overlay", "#7b889b")
+        primary = theme_data.get("primary", "#88c0d0")
+        success = theme_data.get("success", "#a3be8c")
+        warning = theme_data.get("warning", "#ebcb8b")
+        danger = theme_data.get("danger", "#bf616a")
+        cyan = theme_data.get("cyan", "#81a1c1")
+        pink = theme_data.get("pink", "#b48ead")
 
         # Generación de configuración para Kitty
         kitty_content = f"""# Generado automáticamente por Quickshell Theme Manager
@@ -300,9 +168,9 @@ color0 {bg_surface if is_dark else bg_hover}
 color1 {danger}
 color2 {success}
 color3 {warning}
-color4 {primary}
+color4 {cyan}
 color5 {pink}
-color6 {cyan}
+color6 {primary}
 color7 {fg}
 
 # Paleta ANSI brillante
@@ -310,9 +178,9 @@ color8 {overlay}
 color9 {danger}
 color10 {success}
 color11 {warning}
-color12 {primary}
+color12 {cyan}
 color13 {pink}
-color14 {cyan}
+color14 {primary}
 color15 {subtext if is_dark else fg}
 """
         kitty_path = os.path.join(mrdemonc_theme_dir, "kitty.conf")
@@ -334,18 +202,18 @@ regular0={(bg_surface if is_dark else bg_hover).lstrip('#')}
 regular1={danger.lstrip('#')}
 regular2={success.lstrip('#')}
 regular3={warning.lstrip('#')}
-regular4={primary.lstrip('#')}
+regular4={cyan.lstrip('#')}
 regular5={pink.lstrip('#')}
-regular6={cyan.lstrip('#')}
+regular6={primary.lstrip('#')}
 regular7={fg.lstrip('#')}
 
 bright0={overlay.lstrip('#')}
 bright1={danger.lstrip('#')}
 bright2={success.lstrip('#')}
 bright3={warning.lstrip('#')}
-bright4={primary.lstrip('#')}
+bright4={cyan.lstrip('#')}
 bright5={pink.lstrip('#')}
-bright6={cyan.lstrip('#')}
+bright6={primary.lstrip('#')}
 bright7={(subtext if is_dark else fg).lstrip('#')}
 """
         foot_path = os.path.join(mrdemonc_theme_dir, "foot.ini")
@@ -356,7 +224,7 @@ bright7={(subtext if is_dark else fg).lstrip('#')}
         name_f = os.path.expanduser("~/.local/state/mrdemonc/current/theme.name")
         os.makedirs(os.path.dirname(name_f), exist_ok=True)
         with open(name_f, "w", encoding="utf-8") as f:
-            f.write(theme_data.get("id", "custom") + "\n")
+            f.write(theme_data.get("id", "default") + "\n")
 
         # Notificar a las instancias abiertas de Kitty para recargar colores en vivo
         import subprocess
@@ -364,14 +232,14 @@ bright7={(subtext if is_dark else fg).lstrip('#')}
             subprocess.run(["killall", "-SIGUSR1", "kitty"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
             pass
-    except Exception as e:
+    except Exception:
         pass
 
 def sync_hyprland_theme(theme_data):
     try:
-        primary = theme_data.get("primary", "#7aa2f7").lstrip('#')
-        cyan = theme_data.get("cyan", "#7dcfff").lstrip('#')
-        border = theme_data.get("border", "#3b4261").lstrip('#')
+        primary = theme_data.get("primary", "#88c0d0").lstrip('#')
+        cyan = theme_data.get("cyan", "#81a1c1").lstrip('#')
+        border = theme_data.get("border", "#434c5e").lstrip('#')
         
         # 1. Actualizar ~/.config/hypr/theme_colors.lua para que Hyprland lo lea al iniciar/recargar
         hypr_dir = os.path.expanduser("~/.config/hypr")
@@ -408,15 +276,15 @@ def sync_hyprlock_theme(theme_data):
             except ValueError:
                 return default
 
-        bg_r, bg_g, bg_b = hex_to_rgb(theme_data.get("bg", "#1e1e2e"))
-        surf_r, surf_g, surf_b = hex_to_rgb(theme_data.get("bgSurface", "#181825"))
-        pri_r, pri_g, pri_b = hex_to_rgb(theme_data.get("primary", "#89b4fa"))
-        txt_r, txt_g, txt_b = hex_to_rgb(theme_data.get("text", "#cdd6f4"))
-        sub_r, sub_g, sub_b = hex_to_rgb(theme_data.get("subtext", "#a6adc8"))
-        ovr_r, ovr_g, ovr_b = hex_to_rgb(theme_data.get("overlay", "#6c7086"))
-        suc_r, suc_g, suc_b = hex_to_rgb(theme_data.get("success", "#a6e3a1"))
-        dan_r, dan_g, dan_b = hex_to_rgb(theme_data.get("danger", "#f38ba8"))
-        war_r, war_g, war_b = hex_to_rgb(theme_data.get("warning", "#f9e2af"))
+        bg_r, bg_g, bg_b = hex_to_rgb(theme_data.get("bg", "#2e3340"))
+        surf_r, surf_g, surf_b = hex_to_rgb(theme_data.get("bgSurface", "#242833"))
+        pri_r, pri_g, pri_b = hex_to_rgb(theme_data.get("primary", "#88c0d0"))
+        txt_r, txt_g, txt_b = hex_to_rgb(theme_data.get("text", "#eceff4"))
+        sub_r, sub_g, sub_b = hex_to_rgb(theme_data.get("subtext", "#d8dee9"))
+        ovr_r, ovr_g, ovr_b = hex_to_rgb(theme_data.get("overlay", "#7b889b"))
+        suc_r, suc_g, suc_b = hex_to_rgb(theme_data.get("success", "#a3be8c"))
+        dan_r, dan_g, dan_b = hex_to_rgb(theme_data.get("danger", "#bf616a"))
+        war_r, war_g, war_b = hex_to_rgb(theme_data.get("warning", "#ebcb8b"))
 
         content = f"""# Generado automáticamente por Quickshell Theme Manager
 $bg = rgba({bg_r}, {bg_g}, {bg_b}, 1.0)
@@ -452,6 +320,20 @@ def set_theme(name):
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         json.dump({"theme": name}, f, indent=2)
     
+    theme_obj = all_themes[name]
+    theme_obj["id"] = name
+
+    # Sincronizar automáticamente el wallpaper vinculado al tema si existe
+    wall_path = theme_obj.get("wallpaperPath")
+    if wall_path and os.path.exists(wall_path):
+        try:
+            scripts_dir = os.path.dirname(os.path.abspath(__file__))
+            sys.path.insert(0, scripts_dir)
+            import wallpaper_manager
+            wallpaper_manager.set_wallpaper(wall_path)
+        except Exception:
+            pass
+
     # Notificar a Quickshell para recarga instantánea
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
     trigger = os.path.join(runtime_dir, "quickshell_theme_reload.toggle")
@@ -461,8 +343,6 @@ def set_theme(name):
     except Exception:
         pass
 
-    theme_obj = all_themes[name]
-    theme_obj["id"] = name
     sync_terminal_theme(theme_obj)
     sync_hyprland_theme(theme_obj)
     sync_hyprlock_theme(theme_obj)
@@ -482,24 +362,26 @@ def main():
                     "description": val.get("description", "Tema para Quickshell"),
                     "author": val.get("author", "Comunidad"),
                     "isDark": val.get("isDark", True),
-                    "bg": val.get("bg", "#1e1e2e"),
-                    "bgSurface": val.get("bgSurface", "#181825"),
-                    "bgHover": val.get("bgHover", "#313244"),
-                    "border": val.get("border", "#45475a"),
-                    "text": val.get("text", "#cdd6f4"),
-                    "subtext": val.get("subtext", "#a6adc8"),
-                    "overlay": val.get("overlay", "#6c7086"),
-                    "primary": val.get("primary", "#89b4fa"),
-                    "success": val.get("success", "#a6e3a1"),
-                    "warning": val.get("warning", "#f9e2af"),
-                    "danger": val.get("danger", "#f38ba8"),
-                    "cyan": val.get("cyan", "#89dceb"),
-                    "pink": val.get("pink", "#f5c2e7"),
+                    "wallpaper": val.get("wallpaper", ""),
+                    "wallpaperPath": val.get("wallpaperPath", ""),
+                    "bg": val.get("bg", "#2e3340"),
+                    "bgSurface": val.get("bgSurface", "#242833"),
+                    "bgHover": val.get("bgHover", "#3b4252"),
+                    "border": val.get("border", "#434c5e"),
+                    "text": val.get("text", "#eceff4"),
+                    "subtext": val.get("subtext", "#d8dee9"),
+                    "overlay": val.get("overlay", "#7b889b"),
+                    "primary": val.get("primary", "#88c0d0"),
+                    "success": val.get("success", "#a3be8c"),
+                    "warning": val.get("warning", "#ebcb8b"),
+                    "danger": val.get("danger", "#bf616a"),
+                    "cyan": val.get("cyan", "#81a1c1"),
+                    "pink": val.get("pink", "#b48ead"),
                     "isCurrent": tid == cur
                 })
             print(json.dumps(res))
             return
-        elif cmd == "set" and len(sys.argv) > 2:
+        elif cmd in ("set", "apply") and len(sys.argv) > 2:
             target = sys.argv[2]
             if set_theme(target):
                 print(json.dumps(get_theme(target)))
