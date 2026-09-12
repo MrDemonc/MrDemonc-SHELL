@@ -44,6 +44,12 @@ hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(binDir .. "/shell-notifications"))
 -- Quickshell: Modo Cafeína (SUPER + SHIFT + C)
 hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd(binDir .. "/shell-caffeine"))
 
+-- Quickshell: Grabadora de Pantalla (SUPER + SHIFT + R)
+hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd(binDir .. "/shell-recorder"))
+
+-- Quickshell: Cuentagotas / Selector de Color (SUPER + SHIFT + P)
+hl.bind(mainMod .. " + SHIFT + P", hl.dsp.exec_cmd(binDir .. "/shell-colorpicker"))
+
 -- Explorador de archivos (SUPER + E)
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 
@@ -54,7 +60,7 @@ hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))
 
 -- Bloquear pantalla (SUPER + L)
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("command -v hyprlock >/dev/null 2>&1 && hyprlock || notify-send 'Sistema' 'hyprlock no está instalado. Ejecuta: sudo pacman -S hyprlock' -u normal -t 4000"))
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(binDir .. "/shell-lock"))
 
 -- Captura de Pantalla (Tecla Impr Pant / Print)
 hl.bind("Print", hl.dsp.exec_cmd(binDir .. "/shell-screenshot"))

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Bloqueador de pantalla nativo de Quickshell para MrDemonc-SHELL (SUPER + L)
+
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+LOCK_FILE="${RUNTIME_DIR}/quickshell_lock.toggle"
+
+if [ "$1" = "unlock" ]; then
+    echo "UNLOCK" > "$LOCK_FILE"
+    exit 0
+fi
+
+if pgrep -f "quickshell" >/dev/null 2>&1; then
+    touch "$LOCK_FILE"
+else
+    # Red de seguridad si Quickshell no está en ejecución
+    if command -v hyprlock >/dev/null 2>&1; then
+        exec hyprlock "$@"
+    fi
+fi

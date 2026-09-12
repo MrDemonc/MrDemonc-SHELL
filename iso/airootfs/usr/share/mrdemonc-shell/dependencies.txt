@@ -24,6 +24,7 @@ alsa-utils
 pavucontrol
 libpulse
 playerctl
+cava
 
 # --- Conectividad de Red & Bluetooth ---
 networkmanager
@@ -36,9 +37,11 @@ brightnessctl
 xdg-utils
 libnotify
 
-# --- Captura de Pantalla & Portapapeles Wayland ---
+# --- Captura, Grabación de Pantalla & Selector de Color Wayland ---
 grim
 slurp
+wf-recorder
+hyprpicker
 wl-clipboard
 wtype
 

@@ -18,6 +18,12 @@ QtObject {
     
     // Colores de acento
     property color primary: isDark ? "#88c0d0" : "#5e81ac"
+    property color accent: primary
+    property color accentBg: Qt.rgba(primary.r, primary.g, primary.b, 0.15)
+    property color accentHover: Qt.lighter(primary, 1.1)
+    property color bgSubtle: bgSurface
+    property color bgCard: bgSurface
+    property color borderHover: Qt.lighter(border, 1.2)
     property color success: isDark ? "#a3be8c" : "#4c566a"
     property color warning: isDark ? "#ebcb8b" : "#d08770"
     property color danger: isDark ? "#bf616a" : "#bf616a"

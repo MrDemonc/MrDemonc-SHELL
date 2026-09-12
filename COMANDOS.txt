@@ -95,10 +95,12 @@
 • SUPER + W                 : Cerrar ventana activa
 • SUPER + F                 : Alternar pantalla completa (Fullscreen)
 • SUPER + T                 : Alternar ventana flotante (Float toggle)
-• SUPER + L                 : Bloquear pantalla (Hyprlock adaptable a temas)
+• SUPER + L                 : Bloquear pantalla (Pantalla de Bloqueo nativa moderna Quickshell)
 • SUPER + SHIFT + W         : Selector de Wallpapers
 • SUPER + SHIFT + T         : Selector de Temas
 • SUPER + SHIFT + C         : Activar/Desactivar Modo Cafeína (evita suspensión y bloqueo)
+• SUPER + SHIFT + R         : Grabación de Pantalla (área completa o región, audio y micrófono)
+• SUPER + SHIFT + P         : Cuentagotas de Color (inspección interactiva HEX, RGB, HSL, HSV)
 • SUPER + Espacio           : Lanzador de aplicaciones
 • SUPER + N                 : Panel / Centro de Notificaciones y Mensajes
 • SUPER + ESC (o SUPER + M) : Menú de Apagado y Sesión (Apagar, Reiniciar, Suspender, Bloquear, Cerrar Sesión, Hibernar)
@@ -303,4 +305,65 @@
     - Contraseña Maestra Unificada (LUKS + Root + Usuario).
     - Seamless Login directo a Hyprland en tty1 (sin GDM).
 
+
+16. HERRAMIENTA DE GRABACIÓN DE PANTALLA (SCREEN RECORDER)
+-----------------------------------------------------
+• Abrir panel de opciones o detener grabación activa:
+    shell-recorder
+    Atajo Hyprland: SUPER + SHIFT + R
+
+• Comandos directos por CLI:
+    shell-recorder toggle            # Alterna menú o detiene grabación
+    shell-recorder stop              # Detiene inmediatamente la grabación
+    shell-recorder status            # Devuelve RECORDING o IDLE
+    shell-recorder start screen 1 0  # Inicia grabando pantalla completa con audio del sistema
+    shell-recorder start area 1 1    # Inicia grabando región con audio y micrófono
+
+• Características:
+    - Grabación de pantalla completa o selección de región/sección interactiva (slurp).
+    - Selector de audio del sistema (aplicaciones/juegos/reproducción).
+    - Selector de micrófono (voz y fuentes externas).
+    - Mezcla en tiempo real con PipeWire para grabar audio interno + micrófono simultáneamente.
+    - Indicador visual en la barra superior con temporizador activo ("REC 00:15") y punto rojo parpadeante.
+    - Clic en el indicador de la barra detiene la grabación al instante.
+    - Los vídeos se guardan automáticamente en: ~/Videos/screenrecoder/
+
+
+17. HERRAMIENTA DE CUENTAGOTAS DE COLOR (COLOR EYEDROPPER)
+-----------------------------------------------------
+• Activar cuentagotas directamente:
+    shell-colorpicker
+    Atajo Hyprland: SUPER + SHIFT + P
+
+• Características:
+    - Lupa/Puntero interactivo directo para seleccionar cualquier píxel de la pantalla.
+    - Copia automáticamente el valor HEX seleccionado al portapapeles.
+    - Abre ventana modal con tarjeta de inspección de formatos:
+        • HEX  (#RRGGBB)
+        • RGB  (rgb(r, g, b))
+        • HSL  (hsl(h, s%, l%))
+        • HSV  (hsv(h, s%, v%))
+    - Botones de copia individual con confirmación visual interactiva.
+    - Botón "Seleccionar otro color" para tomar más muestras sin cerrar la ventana.
+    - Compatible con hyprpicker nativo o motor integrado sin dependencias adicionales.
+
+18. PANTALLA DE BLOQUEO MODERNA NATIVA (LOCK SCREEN)
+-----------------------------------------------------
+• Bloquear pantalla de inmediato:
+    shell-lock
+    Atajo Hyprland: SUPER + L
+    O desde el Menú de Energía: SUPER + Escape -> Bloquear
+
+• Características integradas:
+    - Protocolo nativo ext-session-lock-v1 directamente en Quickshell (sin crasheos).
+    - Gran reloj digital estilizado con sombra moderna y fecha completa en español.
+    - Widget de clima y temperatura local en vivo (integrado con el servicio de información).
+    - Tarjeta de autenticación con efecto de vidrio esmerilado (glassmorphism) y avatar de usuario.
+    - Autenticación segura PAM directa mediante stdin (sin exponer contraseña en lista de procesos).
+    - Animación de sacudida (shake) y mensaje visual descriptivo en caso de error.
+    - Visualizador de audio reactivo en tiempo real (Cava) cuando se está reproduciendo música o sonido.
+    - Píldoras flotantes superiores con información de hardware (Hostname, CPU %, RAM GB), contador de notificaciones pendientes, volumen de audio y estado de batería.
+    - Desbloqueo rápido pulsando Enter o haciendo clic en la flecha de envío.
+
 =====================================================
+

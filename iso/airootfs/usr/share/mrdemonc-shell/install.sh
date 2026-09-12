@@ -54,6 +54,8 @@ PACKAGES=(
     libnotify
     grim
     slurp
+    wf-recorder
+    hyprpicker
     wl-clipboard
     wtype
     kitty
@@ -165,6 +167,9 @@ create_cli_wrapper "shell-screenshot" "bin/shell-screenshot"
 create_cli_wrapper "shell-power" "bin/shell-power"
 create_cli_wrapper "shell-notifications" "bin/shell-notifications"
 create_cli_wrapper "shell-caffeine" "bin/shell-caffeine"
+create_cli_wrapper "shell-recorder" "bin/shell-recorder"
+create_cli_wrapper "shell-colorpicker" "bin/shell-colorpicker"
+create_cli_wrapper "shell-lock" "bin/shell-lock"
 
 # Instalar accesos directos .desktop
 mkdir -p "$USER_HOME/.local/share/applications"

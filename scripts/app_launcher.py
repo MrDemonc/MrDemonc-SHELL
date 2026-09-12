@@ -9,6 +9,8 @@ import subprocess
 import time
 
 CACHE_FILE = os.path.expanduser(f"{os.environ.get('XDG_RUNTIME_DIR', '/tmp')}/quickshell_apps_cache.json")
+CONFIG_DIR = os.path.expanduser("~/.config/quickshell")
+RECENT_FILE = os.path.join(CONFIG_DIR, "recent_apps.json")
 
 ICON_SEARCH_DIRS = [
     "/usr/share/pixmaps",
@@ -121,10 +123,77 @@ def get_installed_apps(force_refresh=False):
 
     return apps
 
-def launch_app(exec_cmd, is_terminal=False):
+def get_recent_apps(all_apps):
+    recents = []
+    seen_execs = set()
+
+    # 1. Cargar historial persistente si existe
+    if os.path.exists(RECENT_FILE):
+        try:
+            with open(RECENT_FILE, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+                if isinstance(saved, list):
+                    for item in saved:
+                        for app in all_apps:
+                            if (app.get("name") == item or app.get("exec") == item or app.get("desktopFile") == item) and app["exec"] not in seen_execs:
+                                recents.append(app)
+                                seen_execs.add(app["exec"])
+                                break
+                            if len(recents) >= 4:
+                                break
+        except Exception:
+            pass
+
+    # 2. Si faltan apps para completar 4, buscar aplicaciones comunes instaladas
+    if len(recents) < 4:
+        defaults = ["kitty", "firefox", "nautilus", "dolphin", "thunar", "chromium", "htop", "terminal"]
+        for d in defaults:
+            for app in all_apps:
+                exec_lower = (app.get("exec") or "").lower()
+                name_lower = (app.get("name") or "").lower()
+                if (d in exec_lower or d in name_lower) and app["exec"] not in seen_execs:
+                    recents.append(app)
+                    seen_execs.add(app["exec"])
+                    break
+            if len(recents) >= 4:
+                break
+
+    # 3. Si aún faltan, tomar las primeras disponibles
+    for app in all_apps:
+        if len(recents) >= 4:
+            break
+        if app["exec"] not in seen_execs:
+            recents.append(app)
+            seen_execs.add(app["exec"])
+
+    return recents[:4]
+
+def record_recent_app(identifier):
+    if not identifier:
+        return
+    try:
+        os.makedirs(os.path.dirname(RECENT_FILE), exist_ok=True)
+        recents = []
+        if os.path.exists(RECENT_FILE):
+            with open(RECENT_FILE, "r", encoding="utf-8") as f:
+                recents = json.load(f)
+                if not isinstance(recents, list):
+                    recents = []
+        recents = [r for r in recents if r != identifier]
+        recents.insert(0, identifier)
+        recents = recents[:10]
+        with open(RECENT_FILE, "w", encoding="utf-8") as f:
+            json.dump(recents, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
+def launch_app(exec_cmd, is_terminal=False, app_id=None):
     if not exec_cmd:
         return {"error": "Empty command"}
     
+    # Registrar en aplicaciones recientes
+    record_recent_app(app_id or exec_cmd)
+
     cmd_to_run = exec_cmd
     if is_terminal:
         cmd_to_run = f"kitty {exec_cmd}"
@@ -147,11 +216,16 @@ def main():
     
     if action == "list":
         apps = get_installed_apps(force_refresh=True)
-        print(json.dumps(apps))
+        recents = get_recent_apps(apps)
+        print(json.dumps({"apps": apps, "recents": recents}))
+    elif action == "recent" or action == "recents":
+        apps = get_installed_apps()
+        print(json.dumps(get_recent_apps(apps)))
     elif action == "launch" and len(sys.argv) > 2:
         exec_target = sys.argv[2]
         is_term = len(sys.argv) > 3 and sys.argv[3].lower() == "true"
-        print(json.dumps(launch_app(exec_target, is_term)))
+        app_name = sys.argv[4] if len(sys.argv) > 4 else None
+        print(json.dumps(launch_app(exec_target, is_term, app_name)))
     else:
         print(json.dumps({"error": f"Unknown action {action}"}))
 

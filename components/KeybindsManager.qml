@@ -73,6 +73,20 @@ QtObject {
         {
             category: "quickshell",
             categoryName: "Lanzadores y Shell",
+            keys: ["SUPER", "SHIFT", "R"],
+            title: "Grabación de Pantalla",
+            description: "Abre el menú de grabación (pantalla completa o región, audio interno y micrófono) o detiene una grabación activa."
+        },
+        {
+            category: "quickshell",
+            categoryName: "Lanzadores y Shell",
+            keys: ["SUPER", "SHIFT", "P"],
+            title: "Cuentagotas de Color (Eyedropper)",
+            description: "Selecciona interactivamente cualquier píxel de la pantalla y muestra una ventana con sus valores HEX, RGB, HSL y HSV."
+        },
+        {
+            category: "quickshell",
+            categoryName: "Lanzadores y Shell",
             keys: ["SUPER", "ENTER"],
             title: "Terminal del Sistema",
             description: "Lanza la terminal Kitty con shell Zsh configurada, soporte de fuentes Nerd y Starship."
@@ -209,7 +223,7 @@ QtObject {
             categoryName: "Sistema y Sesión",
             keys: ["SUPER", "L"],
             title: "Bloquear Pantalla (Lockscreen)",
-            description: "Bloquea la sesión activando Hyprlock con reloj y diseño coordinado con el tema."
+            description: "Bloquea la sesión activando la pantalla de bloqueo nativa con reloj, clima, visualizador Cava y autenticación."
         },
         {
             category: "system",

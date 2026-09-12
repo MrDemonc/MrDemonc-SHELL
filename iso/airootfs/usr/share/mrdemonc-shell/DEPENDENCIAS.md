@@ -53,6 +53,7 @@ paru -S --needed quickshell
 * **`wireplumber`**: Gestor de sesiones modular para PipeWire.
 * **`libpulse`**: Bibliotecas y comandos para consultar y ajustar volumen maestro y micrófonos.
 * **`playerctl`**: Control de reproducción multimedia desde la barra o atajos.
+* **`cava`**: Visualizador de audio reactivo en tiempo real para la barra y la pantalla de bloqueo.
 
 ### 3. Redes y Conectividad
 * **`networkmanager`**: Demonio y herramienta `nmcli` que gestiona conexiones Wi-Fi, Ethernet y puntos de acceso en el popout de red.
@@ -65,9 +66,11 @@ paru -S --needed quickshell
 * **`xdg-utils`**: Herramientas estándar (`xdg-open`) para abrir URLs, carpetas y archivos con sus aplicaciones asociadas.
 * **`libnotify`**: Proporciona el comando `notify-send` para notificaciones visuales en el escritorio.
 
-### 5. Capturas de Pantalla y Portapapeles
+### 5. Capturas de Pantalla, Grabación, Color Picker y Portapapeles
 * **`grim`**: Utilidad Wayland para tomar capturas de pantalla de la pantalla completa.
 * **`slurp`**: Permite seleccionar una región de pantalla interactiva con el ratón.
+* **`wf-recorder`**: Grabador de pantalla ligero y eficiente para Wayland con soporte de audio.
+* **`hyprpicker`**: Selector de color interactivo con lupa para Wayland / Hyprland.
 * **`wl-clipboard`**: Herramientas `wl-copy` y `wl-paste` para interactuar con el portapapeles en Wayland.
 * **`wtype`**: Inyector de pulsaciones de teclado virtual para Wayland, utilizado para los atajos globales de copiar, cortar y pegar (`SUPER + C / X / V`).
 

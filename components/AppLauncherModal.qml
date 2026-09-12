@@ -58,12 +58,14 @@ PanelWindow {
         anchors.centerIn: parent
 
         readonly property bool hasSearch: AppLauncherManager.searchQuery.trim().length > 0
-        readonly property int compactHeight: 74 // Margen 16*2 + altura buscador 42
         readonly property int targetHeight: {
-            if (!hasSearch) return compactHeight;
+            if (!hasSearch) {
+                let recCount = AppLauncherManager.recentApps ? AppLauncherManager.recentApps.length : 0;
+                return recCount > 0 ? (95 + recCount * 50) : 74;
+            }
             let count = AppLauncherManager.filteredApps ? AppLauncherManager.filteredApps.length : 0;
             if (count === 0) return 130;
-            return Math.min(460, compactHeight + 12 + Math.min(count, 7) * 48);
+            return Math.min(480, 95 + Math.min(count, 7) * 50);
         }
 
         implicitWidth: 540
@@ -112,109 +114,101 @@ PanelWindow {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 16
-            spacing: 12
+            spacing: 10
 
-            // Barra de Búsqueda Minimalista
-            Rectangle {
+            // 1. Buscador Limpio (sin contenedor ni caja anidada)
+            RowLayout {
                 Layout.fillWidth: true
-                implicitHeight: 42
-                radius: 10
-                color: Theme.bgSurface
-                border.color: searchInput.activeFocus ? Theme.primary : Theme.border
-                border.width: 1
+                Layout.preferredHeight: 36
+                spacing: 12
 
-                Behavior on border.color { ColorAnimation { duration: 150 } }
+                Text {
+                    text: "󰍉"
+                    color: searchInput.activeFocus ? Theme.accent : Theme.overlay
+                    font.family: Theme.iconFontFamily
+                    font.pixelSize: 18
+                    Layout.alignment: Qt.AlignVCenter
+                }
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 10
+                TextInput {
+                    id: searchInput
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 14
+                    selectByMouse: true
+                    clip: true
 
                     Text {
-                        text: "󰍉"
-                        color: searchInput.activeFocus ? Theme.primary : Theme.overlay
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 15
-                    }
-
-                    TextInput {
-                        id: searchInput
-                        Layout.fillWidth: true
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 13
-                        selectByMouse: true
-                        clip: true
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: !searchInput.text && !searchInput.inputMethodComposing
-                            text: "Buscar aplicaciones..."
-                            color: Theme.overlay
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 13
-                        }
-
-                        onTextChanged: {
-                            AppLauncherManager.searchQuery = text;
-                        }
-
-                        Keys.onEscapePressed: {
-                            AppLauncherManager.appLauncherOpen = false;
-                        }
-
-                        Keys.onUpPressed: {
-                            if (AppLauncherManager.filteredApps && AppLauncherManager.filteredApps.length > 0) {
-                                AppLauncherManager.selectedIndex = (AppLauncherManager.selectedIndex - 1 + AppLauncherManager.filteredApps.length) % AppLauncherManager.filteredApps.length;
-                                appListView.positionViewAtIndex(AppLauncherManager.selectedIndex, ListView.Contain);
-                            }
-                        }
-
-                        Keys.onDownPressed: {
-                            if (AppLauncherManager.filteredApps && AppLauncherManager.filteredApps.length > 0) {
-                                AppLauncherManager.selectedIndex = (AppLauncherManager.selectedIndex + 1) % AppLauncherManager.filteredApps.length;
-                                appListView.positionViewAtIndex(AppLauncherManager.selectedIndex, ListView.Contain);
-                            }
-                        }
-
-                        Keys.onReturnPressed: {
-                            AppLauncherManager.launchCurrent();
-                        }
-                    }
-
-                    // Contador de resultados cuando hay búsqueda
-                    Text {
-                        visible: modalCard.hasSearch
-                        text: AppLauncherManager.filteredApps ? AppLauncherManager.filteredApps.length : "0"
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !searchInput.text && !searchInput.inputMethodComposing
+                        text: "Buscar aplicaciones..."
                         color: Theme.overlay
                         font.family: Theme.fontFamily
-                        font.pixelSize: 11
+                        font.pixelSize: 14
                     }
+
+                    onTextChanged: {
+                        AppLauncherManager.searchQuery = text;
+                    }
+
+                    Keys.onEscapePressed: {
+                        AppLauncherManager.appLauncherOpen = false;
+                    }
+
+                    Keys.onUpPressed: {
+                        let activeList = modalCard.hasSearch ? AppLauncherManager.filteredApps : AppLauncherManager.recentApps;
+                        if (activeList && activeList.length > 0) {
+                            AppLauncherManager.selectedIndex = (AppLauncherManager.selectedIndex - 1 + activeList.length) % activeList.length;
+                            appListView.positionViewAtIndex(AppLauncherManager.selectedIndex, ListView.Contain);
+                        }
+                    }
+
+                    Keys.onDownPressed: {
+                        let activeList = modalCard.hasSearch ? AppLauncherManager.filteredApps : AppLauncherManager.recentApps;
+                        if (activeList && activeList.length > 0) {
+                            AppLauncherManager.selectedIndex = (AppLauncherManager.selectedIndex + 1) % activeList.length;
+                            appListView.positionViewAtIndex(AppLauncherManager.selectedIndex, ListView.Contain);
+                        }
+                    }
+
+                    Keys.onReturnPressed: {
+                        AppLauncherManager.launchCurrent();
+                    }
+                }
+
+                // Contador de resultados cuando hay búsqueda
+                Text {
+                    visible: modalCard.hasSearch
+                    text: AppLauncherManager.filteredApps ? AppLauncherManager.filteredApps.length : "0"
+                    color: Theme.overlay
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    Layout.alignment: Qt.AlignVCenter
                 }
             }
 
-            // Contenedor de Resultados (solo visible y desplegado al buscar)
+            // Separador horizontal sutil
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Theme.border
+            }
+
+            // Contenedor de Lista (Recientes o Resultados filtrados)
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: modalCard.hasSearch || opacity > 0.01
-                opacity: modalCard.hasSearch ? 1.0 : 0.0
                 clip: true
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Theme.anim.defaultEffects
-                    }
-                }
 
                 ListView {
                     id: appListView
                     anchors.fill: parent
                     clip: true
                     spacing: 4
-                    model: AppLauncherManager.filteredApps
+                    model: modalCard.hasSearch ? AppLauncherManager.filteredApps : AppLauncherManager.recentApps
                     currentIndex: AppLauncherManager.selectedIndex
 
                     delegate: Item {
@@ -326,7 +320,7 @@ PanelWindow {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 AppLauncherManager.selectedIndex = index;
-                                AppLauncherManager.launchApp(modelData.exec, modelData.terminal);
+                                AppLauncherManager.launchApp(modelData.exec, modelData.terminal, modelData.name);
                                 AppLauncherManager.appLauncherOpen = false;
                             }
                         }

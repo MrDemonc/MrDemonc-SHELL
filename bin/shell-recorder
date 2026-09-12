@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Launcher CLI para la grabadora de pantalla de Quickshell (SUPER + SHIFT + R)
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_SCRIPTS=(
+    "$SCRIPT_DIR/../scripts/record_screen.sh"
+    "$HOME/Documentos/MrDemonc-SHELL/scripts/record_screen.sh"
+    "/usr/share/mrdemonc-shell/scripts/record_screen.sh"
+)
+
+TARGET_SCRIPT=""
+for s in "${SEARCH_SCRIPTS[@]}"; do
+    if [ -f "$s" ]; then
+        TARGET_SCRIPT="$s"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: No se encontró record_screen.sh" >&2
+    exit 1
+fi
+
+exec bash "$TARGET_SCRIPT" "$@"

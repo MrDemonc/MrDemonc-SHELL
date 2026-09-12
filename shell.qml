@@ -5,6 +5,12 @@ import "./components"
 ShellRoot {
     id: rootShell
 
+    // Asegurar inicialización inmediata de singletons con procesos en segundo plano
+    property var _recMgr: ScreenRecordManager
+    property var _pickerMgr: ColorPickerManager
+    property var _caffMgr: CaffeineManager
+    property var _lockMgr: LockScreenManager
+
     // 1. Fondo de pantalla integrado por pantalla
     Variants {
         model: Quickshell.screens
@@ -151,4 +157,32 @@ ShellRoot {
             }
         }
     }
+
+    // 15. Modal flotante de Grabación de Pantalla (SUPER + SHIFT + R)
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            ScreenRecordModal {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
+
+    // 16. Modal flotante de Cuentagotas / Selector de Color (SUPER + SHIFT + P)
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            ColorPickerModal {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
+
+    // 17. Pantalla de Bloqueo Nativa Quickshell (SUPER + L / Inactividad)
+    LockScreen {}
 }
+
