@@ -50,27 +50,70 @@ def get_monitors():
         transform = int(m.get("transform", 0))
         desc = m.get("description", "") or m.get("model", "") or ("Pantalla Integrada" if is_laptop else "Monitor Externo")
 
+        def calculate_aspect_ratio(w, h):
+            import math
+            g = math.gcd(w, h)
+            aw, ah = w // g, h // g
+            if (aw, ah) == (8, 5): return "16:10"
+            if (aw, ah) == (64, 27) or (aw, ah) == (43, 18) or (aw, ah) == (12, 5): return "21:9"
+            if (aw, ah) == (32, 9): return "32:9"
+            return f"{aw}:{ah}"
+
         raw_modes = m.get("availableModes", [])
-        parsed_modes = []
-        resolutions_set = set()
+        res_dict = {}
+        import re
         for rm in raw_modes:
-            parsed_modes.append(rm)
-            if "@" in rm:
-                res_part = rm.split("@")[0]
-                resolutions_set.add(res_part)
+            match = re.match(r"^(\d+)x(\d+)(?:@([\d\.]+)Hz)?", rm)
+            if match:
+                w = int(match.group(1))
+                h = int(match.group(2))
+                rate = float(match.group(3)) if match.group(3) else 60.0
+                key = (w, h)
+                if key not in res_dict or rate > res_dict[key]:
+                    res_dict[key] = rate
 
-        if not parsed_modes:
-            curr_str = f"{width}x{height}@{rr}Hz"
-            parsed_modes = [curr_str, "1920x1080@60.00Hz", "1280x720@60.00Hz"]
-            resolutions_set.update([f"{width}x{height}", "1920x1080", "1280x720"])
+        if not res_dict:
+            res_dict[(width, height)] = rr
+            aspect = calculate_aspect_ratio(width, height)
+            if aspect == "16:9":
+                res_dict.setdefault((1920, 1080), 60.0)
+                res_dict.setdefault((1600, 900), 60.0)
+                res_dict.setdefault((1366, 768), 60.0)
+                res_dict.setdefault((1280, 720), 60.0)
+            elif aspect == "16:10":
+                res_dict.setdefault((1920, 1200), 60.0)
+                res_dict.setdefault((1680, 1050), 60.0)
+                res_dict.setdefault((1440, 900), 60.0)
+                res_dict.setdefault((1280, 800), 60.0)
 
-        def res_key(r):
-            try:
-                parts = r.split("x")
-                return int(parts[0]) * int(parts[1])
-            except Exception:
-                return 0
-        sorted_res = sorted(list(resolutions_set), key=res_key, reverse=True)
+        # Ordenar resoluciones por total de píxeles (de mayor a menor)
+        sorted_keys = sorted(res_dict.keys(), key=lambda x: (x[0] * x[1]), reverse=True)
+        structured_modes = []
+
+        # Opción Nativa / Recomendada
+        native_aspect = calculate_aspect_ratio(width, height)
+        structured_modes.append({
+            "mode": "preferred",
+            "resolution": f"{width}x{height}",
+            "label": f"{width} × {height} ({native_aspect})",
+            "rate": f"{int(round(rr))}Hz",
+            "display": f"{width} × {height} ({native_aspect}) · Nativa",
+            "is_native": True
+        })
+
+        for w, h in sorted_keys:
+            best_rate = res_dict[(w, h)]
+            aspect = calculate_aspect_ratio(w, h)
+            is_native = (w == width and h == height)
+            rate_int = int(round(best_rate))
+            structured_modes.append({
+                "mode": f"{w}x{h}@{best_rate:.2f}Hz",
+                "resolution": f"{w}x{h}",
+                "label": f"{w} × {h} ({aspect})",
+                "rate": f"{rate_int}Hz",
+                "display": f"{w} × {h} ({aspect}) · {rate_int}Hz" + (" (Nativa)" if is_native else ""),
+                "is_native": is_native
+            })
 
         monitors.append({
             "name": name,
@@ -86,8 +129,9 @@ def get_monitors():
             "disabled": disabled,
             "mirror": mirror,
             "transform": transform,
-            "available_modes": parsed_modes[:25],
-            "resolutions": sorted_res[:15],
+            "modes": structured_modes,
+            "available_modes": [sm["mode"] for sm in structured_modes],
+            "resolutions": [f"{w}x{h}" for w, h in sorted_keys],
             "pos_x": m.get("x", 0),
             "pos_y": m.get("y", 0)
         })

@@ -1335,7 +1335,6 @@ EOF
         local cpid=$!
 
         local step=1
-        local dir=1
         while kill -0 "$cpid" 2>/dev/null; do
             local filled=""
             local empty=""
@@ -1345,15 +1344,16 @@ EOF
 
             printf "\r%s\033[38;2;67;76;94m[\033[38;2;136;192;208m%s\033[38;2;46;51;64m%s\033[38;2;67;76;94m]\033[0m" "$logo_spaces" "$filled" "$empty"
 
-            step=$(( step + dir ))
-            if [ "$step" -ge "$inner_w" ]; then
-                step=$inner_w
-                dir=-1
-            elif [ "$step" -le 1 ]; then
-                step=1
-                dir=1
+            # Avance progresivo natural sin retroceder ni hacer rebote
+            if [ "$step" -lt $(( inner_w - 4 )) ]; then
+                step=$(( step + 1 ))
+                usleep 35000 2>/dev/null || sleep 0.035 2>/dev/null || sleep 1
+            elif [ "$step" -lt $(( inner_w - 1 )) ]; then
+                step=$(( step + 1 ))
+                usleep 120000 2>/dev/null || sleep 0.12 2>/dev/null || sleep 1
+            else
+                usleep 50000 2>/dev/null || sleep 0.05 2>/dev/null || sleep 1
             fi
-            usleep 30000 2>/dev/null || sleep 0.03 2>/dev/null || sleep 1
         done
 
         wait "$cpid"

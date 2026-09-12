@@ -57,7 +57,7 @@ PanelWindow {
         anchors.centerIn: parent
 
         implicitWidth: 700
-        implicitHeight: 465
+        implicitHeight: 485
         color: Theme.bg
         border.color: Theme.border
         border.width: 1
@@ -453,7 +453,15 @@ PanelWindow {
                             }
                             Item { Layout.fillWidth: true }
                             Text {
-                                text: monitorControlCard.monMode
+                                text: {
+                                    if (!monitorControlCard.mon || !monitorControlCard.mon.modes) return monitorControlCard.monMode;
+                                    for (let i = 0; i < monitorControlCard.mon.modes.length; i++) {
+                                        if (monitorControlCard.mon.modes[i].mode === monitorControlCard.monMode) {
+                                            return monitorControlCard.mon.modes[i].rate;
+                                        }
+                                    }
+                                    return "";
+                                }
                                 color: Theme.primary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -461,46 +469,140 @@ PanelWindow {
                             }
                         }
 
-                        // Lista horizontal compacta de resoluciones disponibles
-                        Flickable {
+                        // Contenedor del selector desplegable flotante
+                        Item {
                             Layout.fillWidth: true
                             implicitHeight: 34
-                            contentWidth: modesRow.width
-                            clip: true
+                            z: 500
 
-                            RowLayout {
-                                id: modesRow
-                                spacing: 6
+                            Rectangle {
+                                id: resDropdownBtn
+                                anchors.fill: parent
+                                radius: 7
+                                color: resBtnMouse.containsMouse ? Theme.bgHover : Theme.bg
+                                border.color: resPopup.visible ? Theme.primary : Theme.border
+                                border.width: 1
 
-                                Repeater {
-                                    model: (monitorControlCard.mon && monitorControlCard.mon.available_modes) ? monitorControlCard.mon.available_modes.slice(0, 8) : ["preferred"]
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 12
+                                    anchors.rightMargin: 12
+                                    spacing: 8
+
+                                    Text {
+                                        text: "󰍹"
+                                        color: Theme.primary
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 13
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: {
+                                            if (!monitorControlCard.mon || !monitorControlCard.mon.modes) return monitorControlCard.monMode;
+                                            for (let i = 0; i < monitorControlCard.mon.modes.length; i++) {
+                                                let m = monitorControlCard.mon.modes[i];
+                                                if (m.mode === monitorControlCard.monMode) {
+                                                    return m.display;
+                                                }
+                                            }
+                                            return monitorControlCard.monMode === "preferred" ? "Automática (Nativa Recomendada)" : monitorControlCard.monMode;
+                                        }
+                                        color: Theme.text
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 11
+                                        font.bold: true
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        text: resPopup.visible ? "󰅃" : "󰅀"
+                                        color: Theme.subtext
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 12
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: resBtnMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: resPopup.visible = !resPopup.visible
+                                }
+                            }
+
+                            // Desplegable flotante de resoluciones reales con scrollbar
+                            Rectangle {
+                                id: resPopup
+                                visible: false
+                                anchors.top: resDropdownBtn.bottom
+                                anchors.topMargin: 4
+                                anchors.left: resDropdownBtn.left
+                                anchors.right: resDropdownBtn.right
+                                height: Math.min(150, (resListView.count * 30) + 8)
+                                radius: 8
+                                color: Theme.bgSurface
+                                border.color: Theme.primary
+                                border.width: 1
+                                clip: true
+                                z: 1000
+
+                                ListView {
+                                    id: resListView
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    clip: true
+                                    model: (monitorControlCard.mon && monitorControlCard.mon.modes) ? monitorControlCard.mon.modes : []
+                                    boundsBehavior: Flickable.StopAtBounds
+
+                                    ScrollBar.vertical: ScrollBar {
+                                        active: true
+                                        width: 6
+                                    }
 
                                     delegate: Rectangle {
-                                        required property string modelData
-                                        readonly property bool isModeSelected: monitorControlCard.monMode === modelData
-                                        implicitWidth: mTxt.implicitWidth + 16
-                                        implicitHeight: 30
-                                        radius: 6
-                                        color: isModeSelected ? Theme.primary : (mMouse.containsMouse ? Theme.bgHover : Theme.bg)
-                                        border.color: isModeSelected ? Theme.primary : Theme.border
-                                        border.width: 1
+                                        required property var modelData
+                                        readonly property bool isSelected: monitorControlCard.monMode === modelData.mode
+                                        width: resListView.width - 8
+                                        height: 28
+                                        radius: 5
+                                        color: isSelected ? Theme.bgHover : (itemMouse.containsMouse ? Theme.bg : "transparent")
 
-                                        Text {
-                                            id: mTxt
-                                            anchors.centerIn: parent
-                                            text: modelData
-                                            color: isModeSelected ? Theme.bg : Theme.text
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 10
-                                            font.bold: isModeSelected
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+                                            spacing: 8
+
+                                            Text {
+                                                text: modelData.display
+                                                color: isSelected ? Theme.primary : Theme.text
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
+                                                font.bold: isSelected
+                                                Layout.fillWidth: true
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Text {
+                                                visible: isSelected
+                                                text: "󰄬"
+                                                color: Theme.primary
+                                                font.family: Theme.iconFontFamily
+                                                font.pixelSize: 11
+                                            }
                                         }
 
                                         MouseArea {
-                                            id: mMouse
+                                            id: itemMouse
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: monitorControlCard.monMode = modelData
+                                            onClicked: {
+                                                monitorControlCard.monMode = modelData.mode;
+                                                resPopup.visible = false;
+                                            }
                                         }
                                     }
                                 }

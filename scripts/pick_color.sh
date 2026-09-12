@@ -6,9 +6,9 @@ DATA_FILE="${RUNTIME_DIR}/quickshell_colorpicker.data"
 
 COLOR=""
 
-# 1. Intentar con hyprpicker si está instalado
+# 1. Intentar con hyprpicker si está instalado (con lupa/círculo reducido a 55px)
 if command -v hyprpicker >/dev/null 2>&1; then
-    COLOR=$(hyprpicker -f hex 2>/dev/null)
+    COLOR=$(hyprpicker -f hex -u 55 2>/dev/null || hyprpicker -f hex 2>/dev/null)
 else
     # 2. Fallback sin dependencias adicionales usando grim + slurp + python
     if command -v grim >/dev/null 2>&1 && command -v slurp >/dev/null 2>&1; then

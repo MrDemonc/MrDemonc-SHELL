@@ -136,7 +136,41 @@ Item {
         }
     }
 
+    // Temporizador para apagar la pantalla tras 5 segundos de bloquearse
+    Timer {
+        id: dpmsOffTimer
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (lockMgr.isLocked) {
+                dpmsOffProc.running = false;
+                dpmsOffProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: dpmsOffProc
+        command: ["hyprctl", "dispatch", "dpms", "off"]
+    }
+
+    Process {
+        id: dpmsOnProc
+        command: ["hyprctl", "dispatch", "dpms", "on"]
+    }
+
+    function wakeScreen() {
+        dpmsOnProc.running = false;
+        dpmsOnProc.running = true;
+        if (isLocked) {
+            dpmsOffTimer.restart();
+        }
+    }
+
     function finishUnlock() {
+        dpmsOffTimer.stop();
+        dpmsOnProc.running = false;
+        dpmsOnProc.running = true;
         finishUnlockTimer.stop();
         isLocked = false;
         isUnlocking = false;
@@ -156,6 +190,8 @@ Item {
         // Refrescar batería y audio
         batProc.running = false; batProc.running = true;
         audioProc.running = false; audioProc.running = true;
+        // Iniciar temporizador de 5 segundos para apagar la pantalla
+        dpmsOffTimer.restart();
     }
 
     function unlock(immediate) {

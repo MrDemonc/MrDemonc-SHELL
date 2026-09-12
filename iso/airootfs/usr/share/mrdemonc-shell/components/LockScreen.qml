@@ -79,10 +79,13 @@ WlSessionLock {
                     }
                 }
 
-                // Clic en cualquier punto mantiene el foco siempre activo en el teclado
+                // Clic o movimiento en cualquier punto despierta la pantalla y mantiene foco
                 MouseArea {
                     anchors.fill: parent
+                    hoverEnabled: true
+                    onPositionChanged: LockScreenManager.wakeScreen()
                     onClicked: {
+                        LockScreenManager.wakeScreen();
                         pwdInput.forceActiveFocus();
                     }
                 }
@@ -484,6 +487,7 @@ WlSessionLock {
                                     focus: true
                                     horizontalAlignment: TextInput.AlignHCenter
                                     verticalAlignment: TextInput.AlignVCenter
+                                    onTextEdited: LockScreenManager.wakeScreen()
 
                                     Keys.onReturnPressed: {
                                         LockScreenManager.verifyPassword(pwdInput.text);
