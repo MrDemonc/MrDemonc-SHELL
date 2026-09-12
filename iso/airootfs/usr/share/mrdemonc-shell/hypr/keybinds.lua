@@ -38,6 +38,12 @@ hl.bind(mainMod .. " + K", hl.dsp.exec_cmd(binDir .. "/shell-keybinds"))
 -- Quickshell: Configuración de Pantallas y Monitores (SUPER + SHIFT + S)
 hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(binDir .. "/shell-monitors"))
 
+-- Quickshell: Centro y Panel de Notificaciones (SUPER + N)
+hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(binDir .. "/shell-notifications"))
+
+-- Quickshell: Modo Cafeína (SUPER + SHIFT + C)
+hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd(binDir .. "/shell-caffeine"))
+
 -- Explorador de archivos (SUPER + E)
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 

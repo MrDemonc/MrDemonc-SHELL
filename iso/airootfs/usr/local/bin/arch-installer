@@ -1674,7 +1674,22 @@ WRAP_MONITORS
 exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/bin/shell-screenshot "\$@"
 WRAP_SCREENSHOT
 
+    cat << WRAP_NOTIF > "$USER_HOME/.local/bin/shell-notifications"
+#!/usr/bin/env bash
+exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/bin/shell-notifications "\$@"
+WRAP_NOTIF
+
+    cat << WRAP_CAFFEINE > "$USER_HOME/.local/bin/shell-caffeine"
+#!/usr/bin/env bash
+exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/bin/shell-caffeine "\$@"
+WRAP_CAFFEINE
+
     chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
+
+    # Desactivar dunst para usar el sistema nativo de notificaciones de Quickshell
+    mkdir -p "$USER_HOME/.config/systemd/user"
+    ln -sf /dev/null "$USER_HOME/.config/systemd/user/dunst.service"
+    chown -R "$SYS_USER:$SYS_USER" "$USER_HOME/.config/systemd" 2>/dev/null || true
 
     if [ -d "$DEST_REPO/kitty" ]; then
         cp -f "$DEST_REPO/kitty/kitty.conf" "$USER_HOME/.config/kitty/kitty.conf"
@@ -1797,11 +1812,6 @@ alias grep='grep --color=auto'
 export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 if command -v starship >/dev/null 2>&1; then
     eval "$(starship init zsh)"
-fi
-
-# Mostrar Fastfetch con pato.gif en terminal interactiva
-if [[ -o interactive ]] && command -v fastfetch >/dev/null 2>&1; then
-    fastfetch
 fi
 ZSHRC
 

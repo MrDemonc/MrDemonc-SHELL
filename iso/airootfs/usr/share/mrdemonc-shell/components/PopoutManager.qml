@@ -89,7 +89,7 @@ QtObject {
     property var barSections: ({
         "left": ["workspaces", "cava"],
         "center": ["clock"],
-        "right": ["audio", "bluetooth", "wifi", "battery"]
+        "right": ["tray", "audio", "bluetooth", "wifi", "battery"]
     })
 
     property var loadSectionsProc: Process {

@@ -9,9 +9,9 @@ SECTIONS_FILE = os.path.join(CONFIG_DIR, "bar_sections.json")
 DEFAULT_SECTIONS = {
     "left": ["workspaces", "cava"],
     "center": ["clock"],
-    "right": ["audio", "bluetooth", "wifi", "battery"]
+    "right": ["tray", "audio", "bluetooth", "wifi", "battery"]
 }
-ALL_ITEMS = ["workspaces", "cava", "clock", "audio", "bluetooth", "wifi", "battery"]
+ALL_ITEMS = ["workspaces", "cava", "clock", "tray", "audio", "bluetooth", "wifi", "battery"]
 
 def get_sections():
     if not os.path.exists(SECTIONS_FILE):

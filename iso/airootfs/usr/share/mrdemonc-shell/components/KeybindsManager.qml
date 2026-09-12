@@ -59,6 +59,20 @@ QtObject {
         {
             category: "quickshell",
             categoryName: "Lanzadores y Shell",
+            keys: ["SUPER", "N"],
+            title: "Centro de Notificaciones",
+            description: "Abre el panel lateral de historial de notificaciones, silenciar (DND) y acciones rápidas."
+        },
+        {
+            category: "quickshell",
+            categoryName: "Lanzadores y Shell",
+            keys: ["SUPER", "SHIFT", "C"],
+            title: "Modo Cafeína (Caffeine)",
+            description: "Activa o desactiva el modo cafeína para evitar la suspensión y el bloqueo de pantalla por inactividad."
+        },
+        {
+            category: "quickshell",
+            categoryName: "Lanzadores y Shell",
             keys: ["SUPER", "ENTER"],
             title: "Terminal del Sistema",
             description: "Lanza la terminal Kitty con shell Zsh configurada, soporte de fuentes Nerd y Starship."

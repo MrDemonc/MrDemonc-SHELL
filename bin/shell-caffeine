@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Launcher CLI para el modo cafeína de Quickshell (SUPER + SHIFT + C)
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_SCRIPTS=(
+    "$SCRIPT_DIR/../scripts/toggle_caffeine.sh"
+    "$HOME/Documentos/MrDemonc-SHELL/scripts/toggle_caffeine.sh"
+    "/usr/share/mrdemonc-shell/scripts/toggle_caffeine.sh"
+)
+
+TARGET_SCRIPT=""
+for s in "${SEARCH_SCRIPTS[@]}"; do
+    if [ -f "$s" ]; then
+        TARGET_SCRIPT="$s"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: No se encontró toggle_caffeine.sh" >&2
+    exit 1
+fi
+
+exec bash "$TARGET_SCRIPT" "$@"

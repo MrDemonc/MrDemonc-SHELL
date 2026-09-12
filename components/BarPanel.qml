@@ -22,8 +22,13 @@ PanelWindow {
     WlrLayershell.exclusiveZone: 26
     exclusionMode: ExclusionMode.Auto
 
-    onWidthChanged: console.log("BAR DIM: width=" + width + " height=" + height + " pos=" + PopoutManager.barPosition)
-    onHeightChanged: console.log("BAR DIM: width=" + width + " height=" + height + " pos=" + PopoutManager.barPosition)
+    IdleInhibitor {
+        enabled: CaffeineManager.isActive
+        window: barWindow
+    }
+
+    onWidthChanged: console.log("BAR DIM: screen=" + (screen ? screen.name : "null") + " width=" + width + " height=" + height + " pos=" + PopoutManager.barPosition)
+    onHeightChanged: console.log("BAR DIM: screen=" + (screen ? screen.name : "null") + " width=" + width + " height=" + height + " pos=" + PopoutManager.barPosition)
 
     function getScreenCoords(localX, localY) {
         let screenW = barWindow.screen ? barWindow.screen.width : 1280;
@@ -69,7 +74,7 @@ PanelWindow {
         let cur = PopoutManager.barSections;
         let l = (cur && cur.left) ? [...cur.left] : ["workspaces"];
         let c = (cur && cur.center) ? [...cur.center] : ["clock"];
-        let r = (cur && cur.right) ? [...cur.right] : ["audio", "bluetooth", "wifi", "battery"];
+        let r = (cur && cur.right) ? [...cur.right] : ["tray", "audio", "bluetooth", "wifi", "battery"];
         return {
             "left": l,
             "center": c,
@@ -83,7 +88,7 @@ PanelWindow {
             let cur = currentSections;
             let l = (cur && cur.left) ? [...cur.left] : ["workspaces"];
             let c = (cur && cur.center) ? [...cur.center] : ["clock"];
-            let r = (cur && cur.right) ? [...cur.right] : ["audio", "bluetooth", "wifi", "battery"];
+            let r = (cur && cur.right) ? [...cur.right] : ["tray", "audio", "bluetooth", "wifi", "battery"];
             displaySections = {
                 "left": l,
                 "center": c,
@@ -95,10 +100,13 @@ PanelWindow {
     onCurrentSectionsChanged: updateSectionsDisplay()
     onCurrentPositionChanged: updateSectionsDisplay()
 
+
+
     function getModule(name) {
         if (name === "workspaces") return modWorkspaces;
         if (name === "cava") return modCava;
         if (name === "clock") return modClock;
+        if (name === "tray") return modTray;
         if (name === "audio") return modAudio;
         if (name === "bluetooth") return modBluetooth;
         if (name === "wifi") return modWifi;
@@ -109,6 +117,9 @@ PanelWindow {
     function getModuleWidth(name) {
         if (PopoutManager.isVertical) return 22;
         let m = getModule(name);
+        if (name === "tray") {
+            return (m && (m.visible || barWindow.draggingModName === "tray")) ? Math.max(22, m.implicitWidth) : 0;
+        }
         if (name === "cava") {
             return (m && (m.visible || barWindow.draggingModName === "cava")) ? Math.max(22, m.implicitWidth) : 0;
         }
@@ -123,7 +134,11 @@ PanelWindow {
         if (name === "cava") {
             return (modCava && (modCava.visible || barWindow.draggingModName === "cava")) ? Math.max(22, modCava.implicitHeight) : 0;
         }
-        if (name === "clock") return 26;
+        if (name === "clock") return (PopoutManager.isVertical && modClock) ? Math.max(26, modClock.implicitHeight) : 26;
+        if (name === "tray") {
+            let m = modTray;
+            return (m && (m.visible || barWindow.draggingModName === "tray")) ? Math.max(22, m.implicitHeight) : 0;
+        }
         return 22;
     }
 
@@ -603,7 +618,7 @@ PanelWindow {
             property string modName: "clock"
             implicitWidth: PopoutManager.isVertical ? 22 : (clockComp.implicitWidth + 14)
             width: implicitWidth
-            implicitHeight: PopoutManager.isVertical ? 26 : 26
+            implicitHeight: PopoutManager.isVertical ? (clockComp.implicitHeight + 8) : 26
             height: implicitHeight
 
             readonly property bool isBeingDragged: barWindow.draggingModName === modName
@@ -696,6 +711,97 @@ PanelWindow {
                             let centerCoord = PopoutManager.isVertical ? (modClock.y + modClock.height / 2) : (modClock.x + modClock.width / 2);
                             PopoutManager.toggle("clock", centerCoord);
                         }
+                    }
+                }
+
+                onCanceled: {
+                    if (isDraggingThis) {
+                        isDraggingThis = false;
+                        barWindow.finishModuleDrag();
+                    }
+                }
+            }
+        }
+
+        // 2.5 Módulo Tray / Background Apps (Menú interactivo para apps en segundo plano)
+        Item {
+            id: modTray
+            property string modName: "tray"
+
+            TrayDrawer {
+                id: trayDrawer
+                width: implicitWidth
+                height: implicitHeight
+                anchors.verticalCenter: !PopoutManager.isVertical ? parent.verticalCenter : undefined
+                anchors.horizontalCenter: PopoutManager.isVertical ? parent.horizontalCenter : undefined
+                z: 1
+            }
+
+            visible: (trayDrawer && trayDrawer.hasActiveApps) || isBeingDragged
+            implicitWidth: PopoutManager.isVertical ? 22 : trayDrawer.implicitWidth
+            width: implicitWidth
+            implicitHeight: PopoutManager.isVertical ? trayDrawer.implicitHeight : 24
+            height: implicitHeight
+
+            readonly property bool isBeingDragged: barWindow.draggingModName === modName
+
+            x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
+            y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
+
+            z: isBeingDragged ? 9999 : 2
+            scale: isBeingDragged ? 1.15 : 1.0
+            opacity: isBeingDragged ? 0.92 : 1.0
+
+            Behavior on scale {
+                NumberAnimation { duration: Theme.anim.fastSpatial; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.anim.expressiveFastSpatial }
+            }
+
+            // MouseArea para arrastre y cambio de posición en la barra
+            MouseArea {
+                id: trayDragMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+                z: isDraggingThis ? 9999 : 0
+
+                property real pressCoord: 0
+                property real initialCoord: 0
+                property bool isDraggingThis: false
+
+                onPressed: mouse => {
+                    let globalPt = mapToItem(barContent, mouse.x, mouse.y);
+                    pressCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let m = modTray;
+                    if (PopoutManager.isVertical) {
+                        initialCoord = m ? m.y : barWindow.getSlotY("tray");
+                    } else {
+                        initialCoord = m ? m.x : barWindow.getSlotX("tray");
+                    }
+                    isDraggingThis = false;
+                }
+
+                onPositionChanged: mouse => {
+                    if (!pressed) return;
+                    let globalPt = mapToItem(barContent, mouse.x, mouse.y);
+                    let curCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
+                    let delta = curCoord - pressCoord;
+                    if (!isDraggingThis) {
+                        if (Math.abs(delta) > 6) {
+                            isDraggingThis = true;
+                            barWindow.startModuleDrag("tray", initialCoord);
+                        }
+                    }
+                    if (isDraggingThis) {
+                        barWindow.updateModuleDrag("tray", initialCoord + delta);
+                    }
+                }
+
+                onReleased: {
+                    if (isDraggingThis) {
+                        isDraggingThis = false;
+                        barWindow.finishModuleDrag();
+                    } else {
+                        trayDrawer.isExpanded = !trayDrawer.isExpanded;
                     }
                 }
 

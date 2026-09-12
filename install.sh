@@ -163,6 +163,8 @@ create_cli_wrapper "shell-video" "bin/shell-video"
 create_cli_wrapper "shell-pdf" "bin/shell-pdf"
 create_cli_wrapper "shell-screenshot" "bin/shell-screenshot"
 create_cli_wrapper "shell-power" "bin/shell-power"
+create_cli_wrapper "shell-notifications" "bin/shell-notifications"
+create_cli_wrapper "shell-caffeine" "bin/shell-caffeine"
 
 # Instalar accesos directos .desktop
 mkdir -p "$USER_HOME/.local/share/applications"
@@ -274,6 +276,10 @@ if command -v systemctl >/dev/null 2>&1; then
     sudo systemctl enable --now bluetooth 2>/dev/null || true
     sudo systemctl enable --now cups 2>/dev/null || true
     sudo systemctl enable --now avahi-daemon 2>/dev/null || true
+    # Dar prioridad exclusiva al servidor nativo de notificaciones de Quickshell
+    systemctl --user stop dunst.service 2>/dev/null || true
+    systemctl --user mask dunst.service 2>/dev/null || true
+    pkill -9 dunst 2>/dev/null || true
 fi
 
 # Añadir usuario a grupos de cámara y escáner/impresora si existe
@@ -364,16 +370,7 @@ if [ -f "$ZSHRC" ]; then
         echo 'export STARSHIP_CONFIG="$HOME/.config/starship.toml"' >> "$ZSHRC"
         echo 'eval "$(starship init zsh)"' >> "$ZSHRC"
     fi
-
-    # Activar Fastfetch con pato.gif en terminal interactiva
-    if ! grep -q 'fastfetch' "$ZSHRC"; then
-        echo '' >> "$ZSHRC"
-        echo '# Mostrar información de sistema Fastfetch' >> "$ZSHRC"
-        echo 'if [[ -o interactive ]] && command -v fastfetch >/dev/null 2>&1; then' >> "$ZSHRC"
-        echo '    fastfetch' >> "$ZSHRC"
-        echo 'fi' >> "$ZSHRC"
-    fi
-    echo -e "${GREEN}[OK] ~/.zshrc configurado con Oh My Zsh, Starship y Fastfetch.${NC}"
+    echo -e "${GREEN}[OK] ~/.zshrc configurado con Oh My Zsh y Starship.${NC}"
 fi
 
 # 5. Configurar Seamless Login en ~/.zprofile para inicio automático en tty1 con zsh
@@ -556,6 +553,7 @@ echo -e "  • ${BOLD}SUPER + Enter${NC}          : Abrir terminal Kitty (transp
   • ${BOLD}SUPER + L${NC}              : Bloquear pantalla (Hyprlock adaptable a temas)
   • ${BOLD}SUPER + Espacio${NC}        : Lanzador y buscador de aplicaciones
   • ${BOLD}SUPER + Esc / M${NC}          : Menú de apagado, reinicio, suspensión y sesión
+  • ${BOLD}SUPER + N${NC}              : Centro y panel lateral de notificaciones (historial, silenciar, copiar)
   • ${BOLD}SUPER + Shift + W${NC}      : Selector de fondos de pantalla
   • ${BOLD}SUPER + Shift + T${NC}      : Selector de temas de color
   • ${BOLD}SUPER + Shift + Flechas${NC}: Mover ventanas de posición
@@ -566,5 +564,5 @@ echo -e "  • ${CYAN}Seamless Login${NC}       : Arrancará directamente a Hypr
 echo -e "  • ${CYAN}Bloqueo por Inactividad${NC}: 'hypridle' atenuará a los 5m y bloqueará a los 10m."
 echo -e "  • ${CYAN}Herramientas IA Dev${NC}    : 'opencode' y 'antigravity' (agy) listas para usar."
 echo ""
-echo -e "  Comandos disponibles en terminal: ${CYAN}shell-apps${NC}, ${CYAN}shell-theme${NC}, ${CYAN}shell-wallpaper${NC}, ${CYAN}shell-bar${NC}, ${CYAN}shell-power${NC}, ${CYAN}opencode${NC}, ${CYAN}antigravity${NC}"
+echo -e "  Comandos disponibles en terminal: ${CYAN}shell-apps${NC}, ${CYAN}shell-theme${NC}, ${CYAN}shell-wallpaper${NC}, ${CYAN}shell-bar${NC}, ${CYAN}shell-power${NC}, ${CYAN}shell-notifications${NC}, ${CYAN}opencode${NC}, ${CYAN}antigravity${NC}"
 echo ""

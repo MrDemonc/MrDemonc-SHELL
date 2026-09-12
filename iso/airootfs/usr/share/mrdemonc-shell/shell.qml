@@ -129,4 +129,26 @@ ShellRoot {
     PowerModal {
         screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
     }
+
+    // 12. Banners flotantes de Notificaciones (Toasts emergentes)
+    NotificationPopups {
+        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    }
+
+    // 13. Panel lateral del Centro de Notificaciones (SUPER + N)
+    NotificationSidebar {
+        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    }
+
+    // 14. Menú contextual emergente para apps del Tray (Clic derecho)
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            TrayContextMenu {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
 }
