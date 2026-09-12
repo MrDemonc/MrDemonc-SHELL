@@ -35,7 +35,7 @@ echo ""
 # ------------------------------------------------------------------------------
 # 1. Verificación del Sistema Operativo y Gestor de Paquetes
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[1/10] Verificando dependencias del sistema...${NC}"
+echo -e "${YELLOW}[1/11] Verificando dependencias del sistema...${NC}"
 
 PACKAGES=(
     hyprland
@@ -68,6 +68,23 @@ PACKAGES=(
     curl
     git
     python
+    cups
+    cups-filters
+    cups-pdf
+    system-config-printer
+    avahi
+    nss-mdns
+    gutenprint
+    foomatic-db-engine
+    foomatic-db
+    hplip
+    sane
+    sane-airscan
+    v4l-utils
+    pipewire-v4l2
+    gst-plugin-pipewire
+    gst-plugins-good
+    libcamera
 )
 
 if command -v pacman >/dev/null 2>&1; then
@@ -100,7 +117,7 @@ fi
 # ------------------------------------------------------------------------------
 # 2. Creación de Directorios Necesarios
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[2/10] Creando estructura de directorios del usuario...${NC}"
+echo -e "${YELLOW}[2/11] Creando estructura de directorios del usuario...${NC}"
 mkdir -p "$BIN_DIR"
 mkdir -p "$HYPR_CONFIG_DIR"
 mkdir -p "$KITTY_CONFIG_DIR"
@@ -112,15 +129,14 @@ echo -e "${GREEN}[OK] Directorios listos.${NC}"
 # ------------------------------------------------------------------------------
 # 3. Permisos de Ejecución en Scripts
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[3/10] Configurando permisos de ejecución en scripts...${NC}"
-chmod +x "$REPO_DIR"/scripts/*.sh 2>/dev/null || true
-chmod +x "$REPO_DIR"/scripts/*.py 2>/dev/null || true
-echo -e "${GREEN}[OK] Scripts ejecutables configurados.${NC}"
+echo -e "${YELLOW}[3/11] Configurando permisos de ejecución en scripts...${NC}"
+chmod +x "$REPO_DIR/scripts/"*.sh 2>/dev/null || true
+chmod +x "$REPO_DIR/bin/"* 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
-# 4. Instalación de Comandos CLI en ~/.local/bin
+# 4. Instalación de Utilidades CLI en ~/.local/bin
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[4/10] Instalando utilidades CLI en $BIN_DIR...${NC}"
+echo -e "${YELLOW}[4/11] Instalando utilidades CLI en $BIN_DIR...${NC}"
 
 # Helper para crear wrappers portables
 create_cli_wrapper() {
@@ -146,6 +162,7 @@ create_cli_wrapper "shell-image" "bin/shell-image"
 create_cli_wrapper "shell-video" "bin/shell-video"
 create_cli_wrapper "shell-pdf" "bin/shell-pdf"
 create_cli_wrapper "shell-screenshot" "bin/shell-screenshot"
+create_cli_wrapper "shell-power" "bin/shell-power"
 
 # Instalar accesos directos .desktop
 mkdir -p "$USER_HOME/.local/share/applications"
@@ -193,12 +210,16 @@ WRAPPER
 chmod +x "$BIN_DIR/shell-bar"
 echo -e "  -> Instalado comando: ${CYAN}shell-bar${NC}"
 
-# Asegurar que ~/.local/bin esté en el PATH del usuario
+# Asegurar que ~/.local/bin y ~/.opencode/bin estén en el PATH del usuario
 for rc_file in "$USER_HOME/.bashrc" "$USER_HOME/.zshrc"; do
     if [ -f "$rc_file" ]; then
         if ! grep -q '\.local/bin' "$rc_file"; then
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$rc_file"
             echo -e "  Añadido ~/.local/bin al PATH en $rc_file"
+        fi
+        if ! grep -q '\.opencode/bin' "$rc_file"; then
+            echo 'export PATH="$HOME/.opencode/bin:$PATH"' >> "$rc_file"
+            echo -e "  Añadido ~/.opencode/bin al PATH en $rc_file"
         fi
     fi
 done
@@ -206,7 +227,7 @@ done
 # ------------------------------------------------------------------------------
 # 5. Configuración de Hyprland Modular y Pantalla de Bloqueo
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[5/10] Desplegando configuración modular de Hyprland, Hyprlock e Hypridle...${NC}"
+echo -e "${YELLOW}[5/11] Desplegando configuración modular de Hyprland, Hyprlock e Hypridle...${NC}"
 
 # Respaldar configuración previa si no se ha respaldado
 if [ -f "$HYPR_CONFIG_DIR/hyprland.lua" ] && [ ! -f "$HYPR_CONFIG_DIR/hyprland.lua.bak" ]; then
@@ -235,7 +256,7 @@ fi
 # ------------------------------------------------------------------------------
 # 6. Configuración de Kitty y Sistema
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[6/10] Configurando Kitty, MIME de archivos y Servicios...${NC}"
+echo -e "${YELLOW}[6/11] Configurando Kitty, MIME de archivos y Servicios...${NC}"
 
 if [ -f "$REPO_DIR/kitty/kitty.conf" ]; then
     cp -f "$REPO_DIR/kitty/kitty.conf" "$KITTY_CONFIG_DIR/kitty.conf"
@@ -247,16 +268,21 @@ if command -v xdg-mime >/dev/null 2>&1; then
     xdg-mime default org.gnome.Nautilus.desktop inode/directory 2>/dev/null || true
 fi
 
-# Habilitar servicios de red y bluetooth
+# Habilitar servicios de red, bluetooth e impresión
 if command -v systemctl >/dev/null 2>&1; then
     sudo systemctl enable --now NetworkManager 2>/dev/null || true
     sudo systemctl enable --now bluetooth 2>/dev/null || true
+    sudo systemctl enable --now cups 2>/dev/null || true
+    sudo systemctl enable --now avahi-daemon 2>/dev/null || true
 fi
+
+# Añadir usuario a grupos de cámara y escáner/impresora si existe
+sudo usermod -aG video,lp,scanner "$USER" 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
 # 7. Configuración de Shell Zsh, Oh My Zsh y Prompt Starship
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[7/10] Configurando Zsh, Oh My Zsh y Starship...${NC}"
+echo -e "${YELLOW}[7/11] Configurando Zsh, Oh My Zsh y Starship...${NC}"
 
 # 1. Instalar configuración de Starship
 mkdir -p "$USER_HOME/.config"
@@ -323,9 +349,12 @@ if [ -f "$ZSHRC" ]; then
         sed -i 's/^plugins=(.*)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "$ZSHRC"
     fi
 
-    # Asegurar ~/.local/bin en PATH
+    # Asegurar ~/.local/bin y ~/.opencode/bin en PATH
     if ! grep -q '\.local/bin' "$ZSHRC"; then
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$ZSHRC"
+    fi
+    if ! grep -q '\.opencode/bin' "$ZSHRC"; then
+        echo 'export PATH="$HOME/.opencode/bin:$PATH"' >> "$ZSHRC"
     fi
 
     # Activar Starship Prompt
@@ -384,7 +413,7 @@ fi
 # ------------------------------------------------------------------------------
 # 8. Inicialización del Tema y Arranque
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[8/10] Inicializando tema y sincronización...${NC}"
+echo -e "${YELLOW}[8/11] Inicializando tema y sincronización...${NC}"
 
 # Inicializar con Default
 if [ -f "$REPO_DIR/scripts/theme_manager.py" ]; then
@@ -395,7 +424,7 @@ fi
 # ------------------------------------------------------------------------------
 # 9. Configuración de Seamless Login
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[9/10] Configurando Seamless Login...${NC}"
+echo -e "${YELLOW}[9/11] Configurando Seamless Login...${NC}"
 
 # 1. Configurar Autologin en tty1 con systemd agetty
 if [ -d "/etc/systemd/system" ]; then
@@ -446,7 +475,7 @@ fi
 # ------------------------------------------------------------------------------
 # 10. Desinstalación Automática de GNOME Desktop y GDM
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[10/10] Desinstalando GNOME Desktop y GDM del sistema...${NC}"
+echo -e "${YELLOW}[10/11] Desinstalando GNOME Desktop y GDM del sistema...${NC}"
 
 # 1. Deshabilitar y detener servicio GDM
 if command -v systemctl >/dev/null 2>&1; then
@@ -475,6 +504,27 @@ else
     echo -e "${GREEN}[OK] GNOME Desktop y GDM no están presentes en el sistema.${NC}"
 fi
 
+# ------------------------------------------------------------------------------
+# 11. Herramientas de Desarrollo con IA: OpenCode & Antigravity CLI
+# ------------------------------------------------------------------------------
+echo -e "${YELLOW}[11/11] Instalando herramientas de IA (OpenCode & Antigravity CLI)...${NC}"
+
+echo -e "  -> Instalando OpenCode..."
+curl -fsSL https://opencode.ai/install | bash 2>/dev/null || {
+    echo -e "     ${YELLOW}Aviso: Falló la descarga de OpenCode o no hay conexión a internet disponible.${NC}"
+}
+
+echo -e "  -> Instalando Antigravity CLI..."
+curl -fsSL https://antigravity.google/cli/install.sh | bash 2>/dev/null || {
+    echo -e "     ${YELLOW}Aviso: Falló la descarga de Antigravity CLI o no hay conexión a internet disponible.${NC}"
+}
+
+# Crear enlace simbólico antigravity -> agy para soporte de ambos comandos
+if [ -f "$USER_HOME/.local/bin/agy" ]; then
+    ln -sf "$USER_HOME/.local/bin/agy" "$USER_HOME/.local/bin/antigravity" 2>/dev/null || true
+    echo -e "  -> Enlace creado: ${CYAN}antigravity -> agy${NC}"
+fi
+
 # Recargar Hyprland si está en ejecución
 if pgrep -x Hyprland >/dev/null 2>&1; then
     echo -e "  Recargando Hyprland..."
@@ -485,12 +535,13 @@ fi
 if pgrep -x quickshell >/dev/null 2>&1; then
     echo -e "  Reiniciando instancia activa de Quickshell..."
     killall -9 quickshell 2>/dev/null || true
+    systemctl --user stop quickshell.service 2>/dev/null || true
+    pkill -f "quickshell_.*\.toggle" 2>/dev/null || true
+    pkill -f "quickshell_.*\.set" 2>/dev/null || true
     sleep 1
-    if pgrep -x Hyprland >/dev/null 2>&1; then
-        hyprctl eval "hl.exec_cmd('quickshell -p $REPO_DIR')" >/dev/null 2>&1 || true
-    else
+    systemd-run --user --unit=quickshell --slice=app.slice quickshell -p "$REPO_DIR" 2>/dev/null || {
         nohup quickshell -p "$REPO_DIR" >/dev/null 2>&1 &
-    fi
+    }
 fi
 
 echo ""
@@ -504,6 +555,7 @@ echo -e "  • ${BOLD}SUPER + Enter${NC}          : Abrir terminal Kitty (transp
   • ${BOLD}SUPER + T${NC}              : Alternar ventana flotante (Float)
   • ${BOLD}SUPER + L${NC}              : Bloquear pantalla (Hyprlock adaptable a temas)
   • ${BOLD}SUPER + Espacio${NC}        : Lanzador y buscador de aplicaciones
+  • ${BOLD}SUPER + Esc / M${NC}          : Menú de apagado, reinicio, suspensión y sesión
   • ${BOLD}SUPER + Shift + W${NC}      : Selector de fondos de pantalla
   • ${BOLD}SUPER + Shift + T${NC}      : Selector de temas de color
   • ${BOLD}SUPER + Shift + Flechas${NC}: Mover ventanas de posición
@@ -512,6 +564,7 @@ echo -e "  • ${BOLD}SUPER + Enter${NC}          : Abrir terminal Kitty (transp
 echo ""
 echo -e "  • ${CYAN}Seamless Login${NC}       : Arrancará directamente a Hyprland sin pantalla de GDM."
 echo -e "  • ${CYAN}Bloqueo por Inactividad${NC}: 'hypridle' atenuará a los 5m y bloqueará a los 10m."
+echo -e "  • ${CYAN}Herramientas IA Dev${NC}    : 'opencode' y 'antigravity' (agy) listas para usar."
 echo ""
-echo -e "  Comandos disponibles en terminal: ${CYAN}shell-apps${NC}, ${CYAN}shell-theme${NC}, ${CYAN}shell-wallpaper${NC}, ${CYAN}shell-bar${NC}"
+echo -e "  Comandos disponibles en terminal: ${CYAN}shell-apps${NC}, ${CYAN}shell-theme${NC}, ${CYAN}shell-wallpaper${NC}, ${CYAN}shell-bar${NC}, ${CYAN}shell-power${NC}, ${CYAN}opencode${NC}, ${CYAN}antigravity${NC}"
 echo ""

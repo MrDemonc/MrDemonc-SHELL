@@ -52,7 +52,7 @@ chmod +x "$ISO_DIR/airootfs/usr/local/bin/arch-installer"
 
 mkdir -p "$ISO_DIR/airootfs/usr/share/mrdemonc-shell"
 rm -rf "$ISO_DIR/airootfs/usr/share/mrdemonc-shell"/*
-for item in components hypr kitty scripts starship install.sh shell.qml COMANDOS.txt DEPENDENCIAS.md wallpapers themes; do
+for item in components hypr kitty scripts starship install.sh shell.qml COMANDOS.txt DEPENDENCIAS.md dependencies.txt wallpapers themes viewers fastfetch; do
     if [ -e "$REPO_DIR/$item" ]; then
         cp -a "$REPO_DIR/$item" "$ISO_DIR/airootfs/usr/share/mrdemonc-shell/"
     fi

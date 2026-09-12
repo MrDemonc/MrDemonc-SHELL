@@ -55,8 +55,9 @@ hl.bind("Print", hl.dsp.exec_cmd(binDir .. "/shell-screenshot"))
 hl.bind("SHIFT + Print", hl.dsp.exec_cmd(binDir .. "/shell-screenshot area"))
 hl.bind(mainMod .. " + Print", hl.dsp.exec_cmd(binDir .. "/shell-screenshot area"))
 
--- Apagado / Salir
-hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'"))
+-- Quickshell: Menú de Apagado y Gestión de Energía (SUPER + Escape)
+hl.bind(mainMod .. " + Escape", hl.dsp.exec_cmd(binDir .. "/shell-power"))
+hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(binDir .. "/shell-power"))
 
 -------------------------------------------------------------
 -- PORTAPAPELES COMPATIBLE CON WAYLAND (SUPER + C / X / V)

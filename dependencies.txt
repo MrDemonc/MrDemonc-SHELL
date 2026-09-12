@@ -62,3 +62,24 @@ chafa
 # --- Intérprete para Backend de Servicios ---
 python
 
+# --- Servicios y Compatibilidad de Impresoras (CUPS, Drivers & mDNS) ---
+cups
+cups-filters
+cups-pdf
+system-config-printer
+avahi
+nss-mdns
+gutenprint
+foomatic-db-engine
+foomatic-db
+hplip
+sane
+sane-airscan
+
+# --- Compatibilidad de Cámara y Captura de Video (V4L2 & PipeWire) ---
+v4l-utils
+pipewire-v4l2
+gst-plugin-pipewire
+gst-plugins-good
+libcamera
+

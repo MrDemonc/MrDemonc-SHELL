@@ -99,6 +99,7 @@
 • SUPER + SHIFT + W         : Selector de Wallpapers
 • SUPER + SHIFT + T         : Selector de Temas
 • SUPER + Espacio           : Lanzador de aplicaciones
+• SUPER + ESC (o SUPER + M) : Menú de Apagado y Sesión (Apagar, Reiniciar, Suspender, Bloquear, Cerrar Sesión, Hibernar)
 • SUPER + E                 : Explorador de archivos (Nautilus)
 • SUPER + Flechas           : Cambiar foco entre ventanas
 • SUPER + SHIFT + Flechas   : Mover ventanas de posición en la pantalla
@@ -236,5 +237,42 @@
     shell-screenshot            # Abre el menú selector interactivo (o lo cierra si está activo)
     shell-screenshot full       # Captura pantalla completa directa
     shell-screenshot area       # Captura área con ratón directa
+
+
+11. HERRAMIENTAS DE DESARROLLO CON IA (OpenCode & Antigravity)
+-----------------------------------------------------
+• OpenCode AI CLI:
+    opencode
+    - Asistente de inteligencia artificial y agente de programación para la terminal.
+    - Instalado en: ~/.opencode/bin/opencode (añadido al PATH de zsh y bash).
+    - Comando de instalación upstream: curl -fsSL https://opencode.ai/install | bash
+
+• Antigravity CLI:
+    antigravity
+    agy
+    - Herramienta CLI de desarrollo agéntico avanzado.
+    - Instalado en: ~/.local/bin/agy con enlace simbólico antigravity -> agy.
+    - Comando de instalación upstream: curl -fsSL https://antigravity.google/cli/install.sh | bash
+
+
+12. MENÚ DE ENERGÍA Y SESIÓN (shell-power)
+-----------------------------------------------------
+• Abrir/Cerrar el Menú de Energía:
+    shell-power
+    Atajo Hyprland: SUPER + ESC (o SUPER + M)
+
+• Opciones y accesos directos:
+    1 / P : Apagar el sistema por completo (con confirmación de seguridad)
+    2 / R : Reiniciar el equipo (con confirmación de seguridad)
+    3 / S : Suspender el equipo a memoria RAM (inmediato)
+    4 / L : Bloquear pantalla activa con Hyprlock (inmediato)
+    5 / E : Cerrar sesión de Hyprland (con confirmación de seguridad)
+    6 / H : Hibernar el sistema en disco (con confirmación de seguridad)
+
+• Atajos dentro de la ventana:
+    ← / → / Tab     : Navegar entre tarjetas de acción
+    Enter / Espacio : Seleccionar / Confirmar acción
+    1 - 6           : Disparador rápido de la acción
+    Esc / Clic fuera: Cancelar confirmación o cerrar la ventana
 
 =====================================================

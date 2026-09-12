@@ -1095,6 +1095,23 @@ perform_installation_worker() {
         ffmpeg
         tar
         xz
+        cups
+        cups-filters
+        cups-pdf
+        system-config-printer
+        avahi
+        nss-mdns
+        gutenprint
+        foomatic-db-engine
+        foomatic-db
+        hplip
+        sane
+        sane-airscan
+        v4l-utils
+        pipewire-v4l2
+        gst-plugin-pipewire
+        gst-plugins-good
+        libcamera
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
@@ -1350,7 +1367,8 @@ cat << HOSTS > /etc/hosts
 HOSTS
 
 echo "root:$MASTER_PASS" | chpasswd
-id -u "$SYS_USER" &>/dev/null || useradd -m -g users -G wheel,video,audio,storage,optical,network -s /usr/bin/zsh "$SYS_USER"
+id -u "$SYS_USER" &>/dev/null || useradd -m -g users -G wheel,video,audio,storage,optical,network,lp,scanner -s /usr/bin/zsh "$SYS_USER"
+usermod -aG lp,scanner "$SYS_USER" 2>/dev/null || true
 echo "$SYS_USER:$MASTER_PASS" | chpasswd
 
 echo "%wheel ALL=(ALL:ALL) ALL" > /etc/sudoers.d/wheel
@@ -1433,7 +1451,12 @@ limine bios-install "$TARGET_DISK" 2>/dev/null || true
 systemctl enable NetworkManager.service
 systemctl enable bluetooth.service 2>/dev/null || true
 systemctl enable systemd-timesyncd.service 2>/dev/null || true
+systemctl enable cups.service 2>/dev/null || true
+systemctl enable avahi-daemon.service 2>/dev/null || true
 systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null || true
+
+# Configurar resolución mDNS en nsswitch.conf para descubrimiento de impresoras de red
+sed -i 's/^hosts:.*/hosts: mymachines mdns_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns/' /etc/nsswitch.conf 2>/dev/null || true
 
 # Seamless Login en tty1 con systemd
 mkdir -p /etc/systemd/system/getty@tty1.service.d
@@ -1626,10 +1649,30 @@ WRAP_THEME
 
     cat << WRAP_POPOUT > "$USER_HOME/.local/bin/shell-popout"
 #!/usr/bin/env bash
-TARGET="\${1:-audio}"
-STATE="\${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle"
-echo "\$TARGET" > "\$STATE"
+TARGET="${1:-audio}"
+STATE="${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle"
+echo "$TARGET" > "$STATE"
 WRAP_POPOUT
+
+    cat << WRAP_POWER > "$USER_HOME/.local/bin/shell-power"
+#!/usr/bin/env bash
+exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_power.sh "\$@"
+WRAP_POWER
+
+    cat << WRAP_KEYBINDS > "$USER_HOME/.local/bin/shell-keybinds"
+#!/usr/bin/env bash
+exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_keybinds.sh "\$@"
+WRAP_KEYBINDS
+
+    cat << WRAP_MONITORS > "$USER_HOME/.local/bin/shell-monitors"
+#!/usr/bin/env bash
+exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_monitors.sh "\$@"
+WRAP_MONITORS
+
+    cat << WRAP_SCREENSHOT > "$USER_HOME/.local/bin/shell-screenshot"
+#!/usr/bin/env bash
+exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/bin/shell-screenshot "\$@"
+WRAP_SCREENSHOT
 
     chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
 
@@ -1729,7 +1772,7 @@ ZPROF
     # ~/.zshrc: Configuración interactiva, historial, plugins y Starship
     cat << 'ZSHRC' > "$USER_HOME/.zshrc"
 # Arch Linux Zsh Configuration
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
 
 # Deshabilitar aviso zsh-newuser-install
 zstyle :compinstall filename "$HOME/.zshrc"
@@ -1798,7 +1841,7 @@ fi
 BPROF
 
     cat << 'BASHRC' > "$USER_HOME/.bashrc"
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
 alias ls='ls --color=auto'
 alias ll='ls -la --color=auto'
 alias la='ls -A --color=auto'
@@ -1834,8 +1877,25 @@ MIME_CONF
     arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop x-scheme-handler/https 2>/dev/null || true"
     arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop text/html 2>/dev/null || true"
 
+    # Instalación de OpenCode y Antigravity CLI para el usuario instalado
+    set_phase "Instalando OpenCode y Antigravity CLI" 94
+    echo "==> Instalando herramientas de IA y desarrollo (OpenCode y Antigravity CLI)..."
+    arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://opencode.ai/install | bash" 2>/dev/null || {
+        echo "Aviso: Falló la descarga de opencode o no hay conexión a internet disponible."
+    }
+    arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://antigravity.google/cli/install.sh | bash" 2>/dev/null || {
+        echo "Aviso: Falló la descarga de Antigravity CLI o no hay conexión a internet disponible."
+    }
+    # Symlink antigravity -> agy para soporte de ambos comandos
+    if [ -f "$USER_HOME/.local/bin/agy" ]; then
+        ln -sf "$USER_HOME/.local/bin/agy" "$USER_HOME/.local/bin/antigravity" 2>/dev/null || true
+    fi
+
     # Propagar a /etc/skel para futuros usuarios creados en el sistema
     mkdir -p /mnt/etc/skel/.config /mnt/etc/skel/.local/bin
+    if [ -d "$USER_HOME/.opencode" ]; then
+        cp -a "$USER_HOME/.opencode" /mnt/etc/skel/ 2>/dev/null || true
+    fi
     cp -f "$USER_HOME/.zprofile" /mnt/etc/skel/
     cp -f "$USER_HOME/.zshrc" /mnt/etc/skel/
     cp -f "$USER_HOME/.zshenv" /mnt/etc/skel/

@@ -200,9 +200,9 @@ QtObject {
         {
             category: "system",
             categoryName: "Sistema y Sesión",
-            keys: ["SUPER", "M"],
-            title: "Menú de Apagado y Salida",
-            description: "Abre la ventana de cierre de sesión para apagar, reiniciar, suspender o cerrar sesión."
+            keys: ["SUPER", "ESC"],
+            title: "Menú de Apagado y Sesión",
+            description: "Abre la ventana de energía para apagar, reiniciar, suspender, bloquear, cerrar sesión o hibernar."
         }
     ]
 

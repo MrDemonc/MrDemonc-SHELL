@@ -86,17 +86,39 @@ paru -S --needed quickshell
 ### 9. Runtime de Scripts
 * **`python`**: Intérprete para los servicios de monitoreo de la barra (red, audio, batería, bluetooth y selector dinámico de temas).
 
+### 10. Servicios y Compatibilidad de Impresoras & Escáneres
+* **`cups`**: Servidor y demonio de impresión estándar de Linux (`cups.service`).
+* **`cups-filters`**: Filtros de conversión para procesamiento e impresión de documentos PDF/Raster.
+* **`cups-pdf`**: Impresora virtual PDF para generar documentos digitales desde cualquier app.
+* **`system-config-printer`**: Herramienta gráfica moderna para administrar impresoras, colas y trabajos de impresión.
+* **`avahi` & `nss-mdns`**: Demonio de descubrimiento de red ZeroConf/mDNS para detección automática sin controladores de impresoras de red (AirPrint / IPP Everywhere).
+* **`gutenprint`, `foomatic-db-engine`, `foomatic-db`, `hplip`**: Paquetes de controladores universales para impresoras HP, Canon, Epson, Brother y Lexmark.
+* **`sane` & `sane-airscan`**: Compatibilidad y controladores para escáneres físicos y multifuncionales en red.
+
+### 11. Compatibilidad de Cámara y Captura de Video
+* **`v4l-utils`**: Utilidades y herramientas de control Video4Linux (`v4l2-ctl`).
+* **`pipewire-v4l2`**: Capa de compatibilidad V4L2 nativa sobre PipeWire para acceso a cámaras web.
+* **`gst-plugin-pipewire` & `gst-plugins-good`**: Plugins de captura multimedia y codecs para cámaras UVC en navegadores, OBS y videollamadas.
+* **`libcamera`**: Framework moderno de soporte de cámaras en Linux.
+
+### 12. Herramientas de Desarrollo con Inteligencia Artificial (Instalación Automática)
+* **`opencode`**: Agente y asistente de desarrollo para terminal (`curl -fsSL https://opencode.ai/install | bash`).
+* **`antigravity` (`agy`)**: Entorno y herramientas CLI de programación agéntica (`curl -fsSL https://antigravity.google/cli/install.sh | bash`).
+
 ---
 
 ## ⚙️ Servicios Recomendados a Habilitar
 
-Para asegurar que el sonido, la red y el Bluetooth inicien automáticamente:
+Para asegurar que el sonido, la red, el Bluetooth y la impresión inicien automáticamente:
 
 ```bash
-# Red y Bluetooth:
+# Red, Bluetooth e Impresión:
 sudo systemctl enable --now NetworkManager
 sudo systemctl enable --now bluetooth
+sudo systemctl enable --now cups
+sudo systemctl enable --now avahi-daemon
 
-# Audio (nivel de usuario):
+# Audio y Video (nivel de usuario):
 systemctl --user enable --now pipewire wireplumber
 ```
+

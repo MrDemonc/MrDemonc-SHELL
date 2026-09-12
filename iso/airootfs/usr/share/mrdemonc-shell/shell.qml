@@ -124,4 +124,9 @@ ShellRoot {
             }
         }
     }
+
+    // 11. Modal flotante de Menú de Energía y Apagado (SUPER + ESC) - Única instancia global
+    PowerModal {
+        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    }
 }
