@@ -93,6 +93,7 @@
 • SUPER + X                 : Cortar (Portapapeles nativo Wayland)
 • SUPER + V                 : Pegar (Portapapeles nativo Wayland)
 • SUPER + W                 : Cerrar ventana activa
+• SUPER + F                 : Alternar pantalla completa (Fullscreen)
 • SUPER + T                 : Alternar ventana flotante (Float toggle)
 • SUPER + L                 : Bloquear pantalla (Hyprlock adaptable a temas)
 • SUPER + SHIFT + W         : Selector de Wallpapers

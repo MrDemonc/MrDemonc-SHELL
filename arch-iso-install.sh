@@ -1040,6 +1040,8 @@ perform_installation_worker() {
         zsh-autosuggestions
         zsh-syntax-highlighting
         starship
+        fastfetch
+        chafa
         curl
         wget
         neovim
@@ -1679,6 +1681,14 @@ THEME_TOML
         cp -f /usr/share/mrdemonc-shell/starship/starship.toml "$USER_HOME/.config/starship.toml"
     fi
 
+    # Configuración de Fastfetch y animación de pato.gif
+    mkdir -p "$USER_HOME/.config/fastfetch"
+    if [ -d "$DEST_REPO/fastfetch" ]; then
+        cp -a "$DEST_REPO/fastfetch/." "$USER_HOME/.config/fastfetch/"
+    elif [ -d "/usr/share/mrdemonc-shell/fastfetch" ]; then
+        cp -a /usr/share/mrdemonc-shell/fastfetch/. "$USER_HOME/.config/fastfetch/"
+    fi
+
     echo "==> Configurando perfiles de inicio y shells para $SYS_USER..."
 
     # ~/.zprofile: Se ejecuta en el login de tty1 (Seamless Login directo a Hyprland)
@@ -1744,6 +1754,11 @@ alias grep='grep --color=auto'
 export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 if command -v starship >/dev/null 2>&1; then
     eval "$(starship init zsh)"
+fi
+
+# Mostrar Fastfetch con pato.gif en terminal interactiva
+if [[ -o interactive ]] && command -v fastfetch >/dev/null 2>&1; then
+    fastfetch
 fi
 ZSHRC
 

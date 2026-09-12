@@ -82,6 +82,13 @@ QtObject {
         {
             category: "windows",
             categoryName: "Ventanas",
+            keys: ["SUPER", "F"],
+            title: "Pantalla Completa (Fullscreen)",
+            description: "Alterna la ventana o aplicación activa en pantalla completa."
+        },
+        {
+            category: "windows",
+            categoryName: "Ventanas",
             keys: ["SUPER", "W"],
             title: "Cerrar Ventana",
             description: "Cierra inmediatamente la ventana que tiene el foco activo."

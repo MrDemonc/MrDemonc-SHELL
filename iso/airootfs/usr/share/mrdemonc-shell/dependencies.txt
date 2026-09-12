@@ -53,9 +53,11 @@ polkit-gnome
 # --- Tipografías con Iconos Nerd Fonts ---
 ttf-jetbrains-mono-nerd
 
-# --- Shell Avanzada & Prompt ---
+# --- Shell Avanzada, Prompt & System Info ---
 zsh
 starship
+fastfetch
+chafa
 
 # --- Intérprete para Backend de Servicios ---
 python

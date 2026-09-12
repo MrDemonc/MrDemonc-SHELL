@@ -22,7 +22,7 @@ sudo pacman -S --needed \
     upower brightnessctl xdg-utils libnotify \
     grim slurp wl-clipboard wtype \
     kitty dolphin ttf-jetbrains-mono-nerd \
-    zsh starship python curl git
+    zsh starship fastfetch chafa python curl git
 ```
 
 ---

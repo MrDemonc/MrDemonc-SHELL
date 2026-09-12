@@ -128,6 +128,11 @@ FloatingWindow {
             } else if (event.key === Qt.Key_F11 || event.key === Qt.Key_F) {
                 toggleFullscreen();
                 event.accepted = true;
+            } else if (event.key === Qt.Key_Space) {
+                if (mainImage.frameCount > 1) {
+                    mainImage.paused = !mainImage.paused;
+                }
+                event.accepted = true;
             }
         }
     }
@@ -152,7 +157,7 @@ FloatingWindow {
             width: Math.max(flick.width, mainImage.width)
             height: Math.max(flick.height, mainImage.height)
 
-            Image {
+            AnimatedImage {
                 id: mainImage
                 anchors.centerIn: parent
                 source: win.currentPath ? ("file://" + win.currentPath) : ""
@@ -161,6 +166,8 @@ FloatingWindow {
                 mipmap: true
                 asynchronous: true
                 cache: true
+                playing: true
+                paused: false
 
                 width: Math.max(20, (sourceSize.width > 0 ? (sourceSize.width * win.baseFitScale) : flick.width) * win.zoomFactor)
                 height: Math.max(20, (sourceSize.height > 0 ? (sourceSize.height * win.baseFitScale) : flick.height) * win.zoomFactor)
@@ -238,7 +245,13 @@ FloatingWindow {
             }
 
             Text {
-                text: mainImage.sourceSize.width > 0 ? (mainImage.sourceSize.width + "×" + mainImage.sourceSize.height) : "--"
+                text: {
+                    let res = mainImage.sourceSize.width > 0 ? (mainImage.sourceSize.width + "×" + mainImage.sourceSize.height) : "--";
+                    if (mainImage.frameCount > 1) {
+                        return "GIF (" + mainImage.frameCount + "f) • " + res;
+                    }
+                    return res;
+                }
                 color: Theme.subtext
                 font.family: Theme.fontFamily
                 font.pixelSize: 10
@@ -326,6 +339,32 @@ FloatingWindow {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: { pingControls(); nextImage(); }
+                }
+            }
+
+            // Botón Reproducir / Pausar para GIF
+            Rectangle {
+                visible: mainImage.frameCount > 1
+                implicitWidth: visible ? 30 : 0
+                implicitHeight: 30
+                radius: 15
+                color: playHover.containsMouse ? Theme.bgHover : "transparent"
+                Text {
+                    anchors.centerIn: parent
+                    text: mainImage.paused ? "󰐊" : "󰏤"
+                    color: playHover.containsMouse ? Theme.primary : Theme.text
+                    font.family: Theme.iconFontFamily
+                    font.pixelSize: 13
+                }
+                MouseArea {
+                    id: playHover
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        pingControls();
+                        mainImage.paused = !mainImage.paused;
+                    }
                 }
             }
 

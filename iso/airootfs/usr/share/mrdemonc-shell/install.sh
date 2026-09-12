@@ -63,6 +63,8 @@ PACKAGES=(
     ttf-jetbrains-mono-nerd
     zsh
     starship
+    fastfetch
+    chafa
     curl
     git
     python
@@ -270,6 +272,13 @@ if [ -n "$STARSHIP_SRC" ]; then
     echo -e "  -> Configuración de Starship instalada en ~/.config/starship.toml"
 fi
 
+# 1.1 Instalar configuración de Fastfetch con pato.gif
+mkdir -p "$USER_HOME/.config/fastfetch"
+if [ -d "$REPO_DIR/fastfetch" ]; then
+    cp -af "$REPO_DIR/fastfetch/." "$USER_HOME/.config/fastfetch/"
+    echo -e "  -> Configuración de Fastfetch y pato.gif instalados en ~/.config/fastfetch/"
+fi
+
 # 2. Instalar Oh My Zsh de forma no interactiva (unattended)
 if [ ! -d "$USER_HOME/.oh-my-zsh" ]; then
     if command -v curl >/dev/null 2>&1; then
@@ -326,7 +335,16 @@ if [ -f "$ZSHRC" ]; then
         echo 'export STARSHIP_CONFIG="$HOME/.config/starship.toml"' >> "$ZSHRC"
         echo 'eval "$(starship init zsh)"' >> "$ZSHRC"
     fi
-    echo -e "${GREEN}[OK] ~/.zshrc configurado con Oh My Zsh y Starship.${NC}"
+
+    # Activar Fastfetch con pato.gif en terminal interactiva
+    if ! grep -q 'fastfetch' "$ZSHRC"; then
+        echo '' >> "$ZSHRC"
+        echo '# Mostrar información de sistema Fastfetch' >> "$ZSHRC"
+        echo 'if [[ -o interactive ]] && command -v fastfetch >/dev/null 2>&1; then' >> "$ZSHRC"
+        echo '    fastfetch' >> "$ZSHRC"
+        echo 'fi' >> "$ZSHRC"
+    fi
+    echo -e "${GREEN}[OK] ~/.zshrc configurado con Oh My Zsh, Starship y Fastfetch.${NC}"
 fi
 
 # 5. Configurar Seamless Login en ~/.zprofile para inicio automático en tty1 con zsh
