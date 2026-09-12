@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
-iso_name="mrdemonc-shell"
-iso_label="MRDEMONC_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
+iso_name="Arch-hyprland"
+iso_label="ARCH_HYPR_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
 iso_publisher="MrDemonc <https://github.com/MrDemonc/MrDemonc-SHELL>"
 iso_application="MrDemonc-SHELL Live & Install Media"
-iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
+iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y-%m-%d)"
 install_dir="arch"
 buildmodes=('iso')
 bootmodes=('bios.syslinux'

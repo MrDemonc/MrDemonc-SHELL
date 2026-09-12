@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Launcher CLI para el OSD estilo macOS (Volumen y Brillo)
+# ==============================================================================
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_DIRS=(
+    "$QUICKSHELL_DIR"
+    "$SCRIPT_DIR/.."
+    "$HOME/Documentos/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+)
+
+TARGET_SCRIPT=""
+for d in "${SEARCH_DIRS[@]}"; do
+    if [ -n "$d" ] && [ -f "$d/scripts/osd_action.sh" ]; then
+        TARGET_SCRIPT="$d/scripts/osd_action.sh"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: No se encontró scripts/osd_action.sh" >&2
+    exit 1
+fi
+
+exec bash "$TARGET_SCRIPT" "$@"

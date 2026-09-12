@@ -112,6 +112,21 @@ if command -v pacman >/dev/null 2>&1; then
     else
         echo -e "${GREEN}[OK] quickshell ya está instalado.${NC}"
     fi
+
+    # Verificar zen-browser (usando yay -S zen-browser-bin)
+    if ! command -v zen-browser >/dev/null 2>&1 && ! command -v zen >/dev/null 2>&1; then
+        echo -e "  Instalando zen-browser-bin desde AUR con yay..."
+        if command -v yay >/dev/null 2>&1; then
+            yay -S --needed --noconfirm zen-browser-bin || true
+        elif command -v paru >/dev/null 2>&1; then
+            paru -S --needed --noconfirm zen-browser-bin || true
+        else
+            echo -e "${YELLOW}[AVISO] No se encontró yay o paru para instalar 'zen-browser-bin'.${NC}"
+            echo -e "  Por favor instala 'zen-browser-bin' manualmente usando: yay -S zen-browser-bin"
+        fi
+    else
+        echo -e "${GREEN}[OK] Zen Browser ya está instalado.${NC}"
+    fi
 else
     echo -e "${YELLOW}[AVISO] No se detectó pacman. Asegúrate de instalar manualmente: ${PACKAGES[*]} quickshell${NC}"
 fi
@@ -146,20 +161,33 @@ create_cli_wrapper() {
     local script_rel="$2"
     local full_path="$BIN_DIR/$cmd_name"
 
-    cat << WRAPPER > "$full_path"
+    if [ -f "$REPO_DIR/bin/$cmd_name" ]; then
+        cp -f "$REPO_DIR/bin/$cmd_name" "$full_path"
+    else
+        cat << WRAPPER > "$full_path"
 #!/usr/bin/env bash
 TARGET_DIR="\${QUICKSHELL_DIR:-$REPO_DIR}"
 exec "\$TARGET_DIR/$script_rel" "\$@"
 WRAPPER
+    fi
     chmod +x "$full_path"
     echo -e "  -> Instalado comando: ${CYAN}$cmd_name${NC}"
 }
 
-create_cli_wrapper "shell-apps" "scripts/toggle_apps.sh"
-create_cli_wrapper "shell-wallpaper" "scripts/toggle_wallpaper.sh"
-create_cli_wrapper "shell-keybinds" "scripts/toggle_keybinds.sh"
-create_cli_wrapper "shell-monitors" "scripts/toggle_monitors.sh"
-create_cli_wrapper "clipboard-action" "scripts/clipboard_action.sh"
+# Copiar todos los binarios nativos de bin/
+if [ -d "$REPO_DIR/bin" ]; then
+    cp -f "$REPO_DIR/bin/"* "$BIN_DIR/" 2>/dev/null || true
+    chmod +x "$BIN_DIR"/* 2>/dev/null || true
+fi
+
+create_cli_wrapper "shell-apps" "bin/shell-apps"
+create_cli_wrapper "shell-wallpaper" "bin/shell-wallpaper"
+create_cli_wrapper "shell-theme" "bin/shell-theme"
+create_cli_wrapper "shell-popout" "bin/shell-popout"
+create_cli_wrapper "shell-bar" "bin/shell-bar"
+create_cli_wrapper "shell-keybinds" "bin/shell-keybinds"
+create_cli_wrapper "shell-monitors" "bin/shell-monitors"
+create_cli_wrapper "clipboard-action" "bin/clipboard-action"
 create_cli_wrapper "shell-image" "bin/shell-image"
 create_cli_wrapper "shell-video" "bin/shell-video"
 create_cli_wrapper "shell-pdf" "bin/shell-pdf"
@@ -170,6 +198,25 @@ create_cli_wrapper "shell-caffeine" "bin/shell-caffeine"
 create_cli_wrapper "shell-recorder" "bin/shell-recorder"
 create_cli_wrapper "shell-colorpicker" "bin/shell-colorpicker"
 create_cli_wrapper "shell-lock" "bin/shell-lock"
+create_cli_wrapper "shell-osd" "bin/shell-osd"
+create_cli_wrapper "shell-brightness" "bin/shell-brightness"
+create_cli_wrapper "shell-volume" "bin/shell-volume"
+
+# Instalar también en /usr/local/bin para disponibilidad global en el sistema
+if command -v sudo >/dev/null 2>&1; then
+    echo -e "  Registrando comandos globalmente en /usr/local/bin..."
+    sudo cp -f "$REPO_DIR/bin/"* /usr/local/bin/ 2>/dev/null || true
+    sudo chmod +x /usr/local/bin/shell-* /usr/local/bin/clipboard-action 2>/dev/null || true
+
+    # Configurar permisos de brillo para laptop (udev) y grupos de usuario
+    echo -e "  Configurando permisos de hardware para brillo de laptop y audio..."
+    sudo usermod -aG video,audio,input "$CURRENT_USER" 2>/dev/null || true
+    if [ ! -f /etc/udev/rules.d/90-backlight.rules ]; then
+        echo 'ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chmod a+rw /sys/class/backlight/%k/brightness"' | sudo tee /etc/udev/rules.d/90-backlight.rules >/dev/null 2>&1 || true
+        sudo udevadm control --reload-rules 2>/dev/null || true
+        sudo udevadm trigger --subsystem-match=backlight 2>/dev/null || true
+    fi
+fi
 
 # Instalar accesos directos .desktop
 mkdir -p "$USER_HOME/.local/share/applications"
@@ -177,45 +224,6 @@ cp -f "$REPO_DIR/desktop/"*.desktop "$USER_HOME/.local/share/applications/" 2>/d
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$USER_HOME/.local/share/applications" 2>/dev/null || true
 fi
-
-# Wrapper para shell-theme con soporte CLI ('set', 'list') y GUI
-cat << WRAPPER > "$BIN_DIR/shell-theme"
-#!/usr/bin/env bash
-TARGET_DIR="\${QUICKSHELL_DIR:-$REPO_DIR}"
-if [ "\$1" == "set" ] || [ "\$1" == "list" ]; then
-    exec python3 "\$TARGET_DIR/scripts/theme_manager.py" "\$@"
-else
-    exec "\$TARGET_DIR/scripts/toggle_theme_picker.sh" "\$@"
-fi
-WRAPPER
-chmod +x "$BIN_DIR/shell-theme"
-echo -e "  -> Instalado comando: ${CYAN}shell-theme${NC}"
-
-# Wrapper para shell-popout
-cat << WRAPPER > "$BIN_DIR/shell-popout"
-#!/usr/bin/env bash
-TARGET="\${1:-audio}"
-STATE="\${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle"
-echo "\$TARGET" > "\$STATE"
-WRAPPER
-chmod +x "$BIN_DIR/shell-popout"
-echo -e "  -> Instalado comando: ${CYAN}shell-popout${NC}"
-
-# Wrapper para shell-bar (cambiar posición de la barra: top, bottom, left, right)
-cat << WRAPPER > "$BIN_DIR/shell-bar"
-#!/usr/bin/env bash
-TARGET_DIR="\${QUICKSHELL_DIR:-$REPO_DIR}"
-if [ "\$1" == "pos" ] || [ "\$1" == "position" ]; then
-    shift
-    exec python3 "\$TARGET_DIR/scripts/manage_order.py" save_position "\$@"
-elif [ "\$1" == "get-pos" ]; then
-    exec python3 "\$TARGET_DIR/scripts/manage_order.py" get_position
-else
-    exec python3 "\$TARGET_DIR/scripts/manage_order.py" "\$@"
-fi
-WRAPPER
-chmod +x "$BIN_DIR/shell-bar"
-echo -e "  -> Instalado comando: ${CYAN}shell-bar${NC}"
 
 # Asegurar que ~/.local/bin y ~/.opencode/bin estén en el PATH del usuario
 for rc_file in "$USER_HOME/.bashrc" "$USER_HOME/.zshrc"; do
@@ -265,9 +273,9 @@ fi
 # ------------------------------------------------------------------------------
 echo -e "${YELLOW}[6/11] Configurando Kitty, MIME de archivos y Servicios...${NC}"
 
-if [ -f "$REPO_DIR/kitty/kitty.conf" ]; then
-    cp -f "$REPO_DIR/kitty/kitty.conf" "$KITTY_CONFIG_DIR/kitty.conf"
-    echo -e "${GREEN}[OK] Configuración de Kitty aplicada (~/.config/kitty/kitty.conf).${NC}"
+if [ -d "$REPO_DIR/kitty" ]; then
+    cp -a "$REPO_DIR/kitty/." "$KITTY_CONFIG_DIR/"
+    echo -e "${GREEN}[OK] Configuración y paleta de temas de Kitty aplicadas (~/.config/kitty/).${NC}"
 fi
 
 # Establecer Nautilus (Files) como explorador de carpetas por defecto

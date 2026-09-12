@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Script para alternar los menús popout de Quickshell (audio, network, bluetooth, etc.)
+
+TARGET="${1:-audio}"
+STATE="${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle"
+echo "$TARGET" > "$STATE"

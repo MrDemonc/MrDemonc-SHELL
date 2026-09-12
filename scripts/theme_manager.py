@@ -34,6 +34,26 @@ BUILTIN_THEMES = {
         "danger": "#bf616a",
         "cyan": "#81a1c1",
         "pink": "#b48ead"
+    },
+    "street": {
+        "name": "Street",
+        "description": "Tema atmosférico extraído de la carretera húmeda entre pinares con líneas doradas y niebla otoñal",
+        "author": "MrDemonc",
+        "isDark": True,
+        "wallpaper": "wallpaper.jpg",
+        "bg": "#14171a",
+        "bgSurface": "#1b1f23",
+        "bgHover": "#282e35",
+        "border": "#3a434c",
+        "text": "#ece5de",
+        "subtext": "#b8ab9f",
+        "overlay": "#707a84",
+        "primary": "#f5af19",
+        "success": "#6f9479",
+        "warning": "#e59b1f",
+        "danger": "#c85a42",
+        "cyan": "#77a2b2",
+        "pink": "#b67d8f"
     }
 }
 
@@ -241,6 +261,7 @@ bright7={(subtext if is_dark else fg).lstrip('#')}
         # Notificar a las instancias abiertas de Kitty para recargar colores en vivo
         import subprocess
         try:
+            # Recargar configuración con señal SIGUSR1 (Kitty recarga theme.conf instantáneamente)
             subprocess.run(["pkill", "-SIGUSR1", "kitty"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["killall", "-SIGUSR1", "kitty"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
@@ -269,10 +290,11 @@ return {{
         with open(theme_lua, "w", encoding="utf-8") as f:
             f.write(lua_content)
             
-        # 2. Aplicar bordes de ventana en caliente en Hyprland en tiempo real
+        # 2. Aplicar bordes de ventana en caliente en Hyprland en tiempo real e instantáneo
         import subprocess
-        lua_cmd = f'hl.config({{ general = {{ col = {{ active_border = {{ colors = {{"rgba({primary}ee)", "rgba({cyan}ee)"}}, angle = 45 }}, inactive_border = "rgba({border}aa)" }} }} }})'
-        subprocess.run(["hyprctl", "repl", lua_cmd], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=0.25)
+        lua_cmd = f'package.loaded["theme_colors"] = nil; hl.config({{ general = {{ col = {{ active_border = {{ colors = {{"rgba({primary}ee)", "rgba({cyan}ee)"}}, angle = 45 }}, inactive_border = "rgba({border}aa)" }} }} }})'
+        subprocess.run(["hyprctl", "eval", lua_cmd], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["hyprctl", "reload"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception:
         pass
 
@@ -808,7 +830,6 @@ def main():
             return
 
     current_th = get_theme()
-    sync_hyprlock_theme(current_th)
     print(json.dumps(current_th))
 
 if __name__ == '__main__':

@@ -106,6 +106,8 @@ QtObject {
                 if (String(data).indexOf("RELOAD") !== -1) {
                     theme.themeProc.running = false;
                     theme.themeProc.running = true;
+                    theme.themeListProc.running = false;
+                    theme.themeListProc.running = true;
                 }
             }
         }
@@ -182,14 +184,19 @@ QtObject {
 
     function setTheme(themeId) {
         if (!themeId) return;
-        // Aplicación inmediata si ya está cargado en la lista
+        theme.activeThemeId = themeId;
+        // Aplicación inmediata en memoria para reactividad instantánea
         if (availableThemes && Array.isArray(availableThemes)) {
+            let updatedList = [];
             for (let i = 0; i < availableThemes.length; i++) {
-                if (availableThemes[i].id === themeId) {
-                    applyThemeData(availableThemes[i]);
-                    break;
+                let item = Object.assign({}, availableThemes[i]);
+                item.isCurrent = (item.id === themeId);
+                updatedList.push(item);
+                if (item.id === themeId) {
+                    applyThemeData(item);
                 }
             }
+            theme.availableThemes = updatedList;
         }
         setThemeProc.command = [Quickshell.shellDir + "/scripts/theme_manager.py", "set", themeId];
         setThemeProc.running = false;

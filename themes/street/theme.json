@@ -1,0 +1,21 @@
+{
+  "id": "street",
+  "name": "Street",
+  "description": "Tema atmosférico extraído de la carretera húmeda entre pinares con líneas doradas y niebla otoñal",
+  "author": "MrDemonc",
+  "isDark": true,
+  "wallpaper": "wallpaper.jpg",
+  "bg": "#14171a",
+  "bgSurface": "#1b1f23",
+  "bgHover": "#282e35",
+  "border": "#3a434c",
+  "text": "#ece5de",
+  "subtext": "#b8ab9f",
+  "overlay": "#707a84",
+  "primary": "#f5af19",
+  "success": "#6f9479",
+  "warning": "#e59b1f",
+  "danger": "#c85a42",
+  "cyan": "#77a2b2",
+  "pink": "#b67d8f"
+}

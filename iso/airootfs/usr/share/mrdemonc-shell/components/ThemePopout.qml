@@ -55,11 +55,12 @@ Item {
 
             delegate: Rectangle {
                 required property var modelData
+                readonly property bool isSelected: modelData.id === Theme.activeThemeId
                 width: themeListView.width
                 implicitHeight: 32
                 radius: 7
-                color: modelData.isCurrent ? Theme.bgHover : (itemMouse.containsMouse ? Theme.bgSurface : "transparent")
-                border.color: modelData.isCurrent ? Theme.primary : "transparent"
+                color: isSelected ? Theme.bgHover : (itemMouse.containsMouse ? Theme.bgSurface : "transparent")
+                border.color: isSelected ? Theme.primary : "transparent"
                 border.width: 1
 
                 Behavior on color { ColorAnimation { duration: 120 } }
@@ -91,10 +92,10 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         text: modelData.name || modelData.id
-                        color: modelData.isCurrent ? Theme.primary : Theme.text
+                        color: isSelected ? Theme.primary : Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: 10
-                        font.bold: modelData.isCurrent
+                        font.bold: isSelected
                         elide: Text.ElideRight
                     }
 
@@ -106,7 +107,7 @@ Item {
                     }
 
                     Text {
-                        visible: modelData.isCurrent
+                        visible: isSelected
                         text: "󰄬"
                         color: Theme.primary
                         font.family: Theme.fontFamily

@@ -10,6 +10,7 @@ ShellRoot {
     property var _pickerMgr: ColorPickerManager
     property var _caffMgr: CaffeineManager
     property var _lockMgr: LockScreenManager
+    property var _osdMgr: OsdManager
 
     // 1. Fondo de pantalla integrado por pantalla
     Variants {
@@ -184,5 +185,17 @@ ShellRoot {
 
     // 17. Pantalla de Bloqueo Nativa Quickshell (SUPER + L / Inactividad)
     LockScreen {}
+
+    // 18. Indicador OSD de Volumen y Brillo
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            OsdModal {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
 }
 

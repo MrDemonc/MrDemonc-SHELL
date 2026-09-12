@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Control de Brillo para Laptops y Pantallas con OSD estilo macOS
+# ==============================================================================
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_DIRS=(
+    "$QUICKSHELL_DIR"
+    "$SCRIPT_DIR/.."
+    "$HOME/Documentos/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+)
+
+TARGET_SCRIPT=""
+for d in "${SEARCH_DIRS[@]}"; do
+    if [ -n "$d" ] && [ -f "$d/scripts/osd_action.sh" ]; then
+        TARGET_SCRIPT="$d/scripts/osd_action.sh"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: No se encontró scripts/osd_action.sh" >&2
+    exit 1
+fi
+
+ARG="$1"
+case "$ARG" in
+    help|-h|--help|"")
+        echo "Uso: shell-brightness [COMANDO|VALOR]"
+        echo ""
+        echo "Comandos:"
+        echo "  up, +5%          Aumenta el brillo de la pantalla en un 5% (o porcentaje indicado)"
+        echo "  down, -5%        Disminuye el brillo de la pantalla en un 5% (o porcentaje indicado)"
+        echo "  set <0-100>      Establece el brillo directamente al valor indicado (ej: shell-brightness set 80)"
+        echo "  <0-100>          Atajo directo para fijar porcentaje (ej: shell-brightness 60)"
+        echo "  get              Devuelve el porcentaje de brillo actual"
+        echo ""
+        echo "Nota: Activa automáticamente el indicador visual OSD estilo macOS en pantalla."
+        exit 0
+        ;;
+    up|+[0-9]*|--up)
+        STEP="${2:-${ARG#+}}"
+        [ -z "$STEP" ] && STEP="5%"
+        [[ "$STEP" != *% ]] && STEP="${STEP}%"
+        exec bash "$TARGET_SCRIPT" brightness-up "$STEP"
+        ;;
+    down|-[0-9]*|--down)
+        STEP="${2:-${ARG#-}}"
+        [ -z "$STEP" ] && STEP="5%"
+        [[ "$STEP" != *% ]] && STEP="${STEP}%"
+        exec bash "$TARGET_SCRIPT" brightness-down "$STEP"
+        ;;
+    get|status|--get)
+        exec bash "$TARGET_SCRIPT" get-brightness
+        ;;
+    set|[0-9]*)
+        VAL="$ARG"
+        [ "$ARG" = "set" ] && VAL="$2"
+        VAL="${VAL//%/}"
+        exec bash "$TARGET_SCRIPT" brightness-set "$VAL"
+        ;;
+    *)
+        exec bash "$TARGET_SCRIPT" brightness-set "$ARG"
+        ;;
+esac

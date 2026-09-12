@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Control de Volumen con OSD estilo macOS
+# ==============================================================================
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_DIRS=(
+    "$QUICKSHELL_DIR"
+    "$SCRIPT_DIR/.."
+    "$HOME/Documentos/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+)
+
+TARGET_SCRIPT=""
+for d in "${SEARCH_DIRS[@]}"; do
+    if [ -n "$d" ] && [ -f "$d/scripts/osd_action.sh" ]; then
+        TARGET_SCRIPT="$d/scripts/osd_action.sh"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: No se encontró scripts/osd_action.sh" >&2
+    exit 1
+fi
+
+ARG="$1"
+case "$ARG" in
+    help|-h|--help|"")
+        echo "Uso: shell-volume [COMANDO|VALOR]"
+        echo ""
+        echo "Comandos:"
+        echo "  up, +5%          Aumenta el volumen en un 5% (o porcentaje indicado)"
+        echo "  down, -5%        Disminuye el volumen en un 5% (o porcentaje indicado)"
+        echo "  mute             Alterna el silencio de salida de audio"
+        echo "  mic-mute         Alterna el silencio del micrófono"
+        echo "  set <0-150>      Establece el volumen directamente (ej: shell-volume set 50)"
+        echo "  <0-150>          Atajo directo para fijar porcentaje (ej: shell-volume 70)"
+        echo "  get              Devuelve el nivel de volumen actual"
+        echo ""
+        echo "Nota: Activa automáticamente el indicador visual OSD estilo macOS en pantalla."
+        exit 0
+        ;;
+    up|+[0-9]*|--up)
+        STEP="${2:-${ARG#+}}"
+        [ -z "$STEP" ] && STEP="5%"
+        [[ "$STEP" != *% ]] && STEP="${STEP}%"
+        exec bash "$TARGET_SCRIPT" volume-up "$STEP"
+        ;;
+    down|-[0-9]*|--down)
+        STEP="${2:-${ARG#-}}"
+        [ -z "$STEP" ] && STEP="5%"
+        [[ "$STEP" != *% ]] && STEP="${STEP}%"
+        exec bash "$TARGET_SCRIPT" volume-down "$STEP"
+        ;;
+    mute|toggle-mute|--mute)
+        exec bash "$TARGET_SCRIPT" volume-mute
+        ;;
+    mic-mute)
+        exec bash "$TARGET_SCRIPT" mic-mute
+        ;;
+    get|status|--get)
+        exec bash "$TARGET_SCRIPT" get-volume
+        ;;
+    set|[0-9]*)
+        VAL="$ARG"
+        [ "$ARG" = "set" ] && VAL="$2"
+        VAL="${VAL//%/}"
+        exec bash "$TARGET_SCRIPT" volume-set "$VAL"
+        ;;
+    *)
+        exec bash "$TARGET_SCRIPT" volume-set "$ARG"
+        ;;
+esac

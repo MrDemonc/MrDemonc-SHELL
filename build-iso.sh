@@ -70,10 +70,22 @@ mkdir -p "$OUT_DIR"
 echo -e "${YELLOW}[4/4] Compilando imagen ISO bootable con mkarchiso (esto puede tardar unos minutos)...${NC}"
 sudo mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" "$ISO_DIR"
 
+# Asegurar nombre exacto: Arch-hyprland-<date>.iso
+CURRENT_DATE="$(date +%Y-%m-%d)"
+TARGET_ISO="$OUT_DIR/Arch-hyprland-${CURRENT_DATE}.iso"
+LATEST_BUILT=$(ls -t "$OUT_DIR"/*.iso 2>/dev/null | head -n 1)
+if [ -n "$LATEST_BUILT" ] && [ -f "$LATEST_BUILT" ]; then
+    if [ "$LATEST_BUILT" != "$TARGET_ISO" ]; then
+        echo -e "${CYAN}Asegurando nombre final de la ISO: Arch-hyprland-${CURRENT_DATE}.iso...${NC}"
+        sudo mv -f "$LATEST_BUILT" "$TARGET_ISO"
+    fi
+fi
+
 echo ""
 echo -e "${GREEN}${BOLD}=================================================================="
 echo -e "      ¡IMAGEN ISO CREADA CON ÉXITO EN: $OUT_DIR/!                "
 echo -e "==================================================================${NC}"
+echo -e "Archivo ISO generado: ${CYAN}${BOLD}$(basename "${TARGET_ISO:-$LATEST_BUILT}")${NC}"
 echo -e "Puedes grabar la ISO en tu pendrive USB con:"
 echo -e "  ${CYAN}sudo dd bs=4M if=\$(ls -t \"$OUT_DIR\"/*.iso | head -n 1) of=/dev/sdX status=progress oflag=sync${NC}"
 echo -e "o usar herramientas gráficas como ${BOLD}Ventoy${NC}, ${BOLD}BalenaEtcher${NC} o ${BOLD}Rufus${NC}."

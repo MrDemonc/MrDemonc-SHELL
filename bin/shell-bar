@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Launcher CLI para gestionar la posición y widgets de la barra Quickshell
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_DIRS=(
+    "$QUICKSHELL_DIR"
+    "$SCRIPT_DIR/.."
+    "$HOME/Documentos/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+)
+
+TARGET_SCRIPT=""
+for d in "${SEARCH_DIRS[@]}"; do
+    if [ -n "$d" ] && [ -f "$d/scripts/manage_order.py" ]; then
+        TARGET_SCRIPT="$d/scripts/manage_order.py"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: No se encontró manage_order.py" >&2
+    exit 1
+fi
+
+if [ "$1" = "pos" ] || [ "$1" = "position" ]; then
+    shift
+    exec python3 "$TARGET_SCRIPT" save_position "$@"
+elif [ "$1" = "get-pos" ]; then
+    exec python3 "$TARGET_SCRIPT" get_position
+else
+    exec python3 "$TARGET_SCRIPT" "$@"
+fi

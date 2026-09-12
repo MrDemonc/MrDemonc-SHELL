@@ -732,24 +732,58 @@ user_form_wizard() {
         echo
 
         SYS_USER=""
+        local user_err=""
         while [[ -z "$SYS_USER" || ! "$SYS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; do
+            step "Configuración de la cuenta de usuario..."
+            say "Crea tu usuario personal. La contraseña maestra servirá para LUKS2, root y sudo."
+            echo
+            if [[ -n "$user_err" ]]; then
+                say --foreground 1 "$user_err"
+                echo
+            fi
             SYS_USER=$(g_input --placeholder "Solo minúsculas y números (ej: usuario)" --prompt.foreground="#845DF9" --prompt "Usuario> ")
-            if [[ -z "$SYS_USER" || ! "$SYS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
-                say --foreground 1 "El usuario debe contener únicamente letras minúsculas y números."
+            SYS_USER="${SYS_USER// /}"
+            if [[ -z "$SYS_USER" ]]; then
+                user_err="El nombre de usuario no puede estar vacío."
+            elif [[ "$SYS_USER" =~ [A-Z] ]]; then
+                user_err="El usuario no debe contener mayúsculas. Solo minúsculas y números (ej: ${SYS_USER,,})."
+            elif [[ ! "$SYS_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+                user_err="El usuario debe comenzar con letra minúscula y contener solo minúsculas, números o guiones."
+            else
+                user_err=""
             fi
         done
 
+        local pass_err=""
         while true; do
+            step "Configuración de la cuenta de usuario..."
+            say "Crea tu usuario personal. La contraseña maestra servirá para LUKS2, root y sudo."
+            echo
+            say --foreground 2 "✔ Usuario configurado: $SYS_USER"
+            echo
+            if [[ -n "$pass_err" ]]; then
+                say --foreground 1 "$pass_err"
+                echo
+            fi
             MASTER_PASS=$(g_input --placeholder "Contraseña maestra unificada" --password --prompt.foreground="#845DF9" --prompt "Contraseña Maestra> ")
             local pass_confirm
             pass_confirm=$(g_input --placeholder "Confirma la contraseña maestra" --password --prompt.foreground="#845DF9" --prompt "Confirmar> ")
-            if [[ -n "$MASTER_PASS" && "$MASTER_PASS" == "$pass_confirm" ]]; then
-                break
+            if [[ -z "$MASTER_PASS" ]]; then
+                pass_err="La contraseña no puede estar vacía. Inténtalo de nuevo."
+            elif [[ "$MASTER_PASS" != "$pass_confirm" ]]; then
+                pass_err="Las contraseñas no coinciden. Inténtalo de nuevo."
             else
-                say --foreground 1 "Las contraseñas no coinciden o están vacías. Inténtalo de nuevo."
-                echo
+                pass_err=""
+                break
             fi
         done
+
+        step "Configuración de la cuenta de usuario..."
+        say "Crea tu usuario personal. La contraseña maestra servirá para LUKS2, root y sudo."
+        echo
+        say --foreground 2 "✔ Usuario configurado: $SYS_USER"
+        say --foreground 2 "✔ Contraseña maestra configurada"
+        echo
 
         SYS_HOSTNAME=$(g_input --placeholder "Nombre de la máquina (o Enter para 'archlinux')" --prompt.foreground="#845DF9" --prompt "Hostname> ")
         SYS_HOSTNAME="${SYS_HOSTNAME:-archlinux}"
@@ -1075,6 +1109,8 @@ perform_installation_worker() {
         libnotify
         grim
         slurp
+        wf-recorder
+        hyprpicker
         wl-clipboard
         wtype
         python
@@ -1367,9 +1403,15 @@ cat << HOSTS > /etc/hosts
 HOSTS
 
 echo "root:$MASTER_PASS" | chpasswd
-id -u "$SYS_USER" &>/dev/null || useradd -m -g users -G wheel,video,audio,storage,optical,network,lp,scanner -s /usr/bin/zsh "$SYS_USER"
-usermod -aG lp,scanner "$SYS_USER" 2>/dev/null || true
+id -u "$SYS_USER" &>/dev/null || useradd -m -g users -G wheel,video,audio,input,storage,optical,network,lp,scanner -s /usr/bin/zsh "$SYS_USER"
+usermod -aG lp,scanner,video,audio,input "$SYS_USER" 2>/dev/null || true
 echo "$SYS_USER:$MASTER_PASS" | chpasswd
+
+# Permisos de hardware para brillo de pantalla de laptops sin sudo
+mkdir -p /etc/udev/rules.d
+cat << 'UDEV_BACKLIGHT' > /etc/udev/rules.d/90-backlight.rules
+ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chmod a+rw /sys/class/backlight/%k/brightness"
+UDEV_BACKLIGHT
 
 echo "%wheel ALL=(ALL:ALL) ALL" > /etc/sudoers.d/wheel
 chmod 440 /etc/sudoers.d/wheel
@@ -1472,49 +1514,52 @@ GETTY_CONF
 # Desinstalar cualquier otro navegador para mantener el sistema minimalista y limpio
 pacman -Rns --noconfirm firefox firefox-esr chromium epiphany midori 2>/dev/null || true
 
-# Descarga e instalación de Zen Browser (zen-browser-bin)
-echo "Instalando Zen Browser..."
-mkdir -p /opt/zen-browser-bin
-if curl -sL "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz" | tar -xJ -C /opt/zen-browser-bin --strip-components=1 2>/dev/null; then
-    cat << 'ZEN_SH' > /usr/bin/zen-browser
-#!/bin/bash
-exec /opt/zen-browser-bin/zen-bin "$@"
-ZEN_SH
-    chmod +x /usr/bin/zen-browser
-    ln -sf /usr/bin/zen-browser /usr/bin/zen
+# Configurar acceso temporal sudo para compilar paquetes AUR con makepkg
+echo "%wheel ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel
 
-    cat << 'ZEN_DESK' > /usr/share/applications/zen.desktop
-[Desktop Entry]
-Version=1.0
-Name=Zen Browser
-Comment=Experience tranquility while browsing the web without sacrificing speed or privacy.
-GenericName=Web Browser
-Keywords=Internet;WWW;Browser;Web;Explorer
-Exec=/usr/bin/zen-browser %u
-Terminal=false
-X-MultipleArgs=false
-Type=Application
-Icon=zen
-Categories=Network;WebBrowser;Internet;
-MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
-StartupNotify=true
-Actions=new-window;new-private-window;
+# Instalar yay (AUR helper) si no está presente
+if ! command -v yay >/dev/null 2>&1; then
+    echo "Instalando yay (AUR helper)..."
+    su - "$SYS_USER" -c "
+        rm -rf /tmp/yay-bin
+        git clone --depth 1 https://aur.archlinux.org/yay-bin.git /tmp/yay-bin && \
+        cd /tmp/yay-bin && \
+        makepkg -si --noconfirm
+        rm -rf /tmp/yay-bin
+    " || {
+        echo "Aviso: Intentando compilar yay desde fuentes..."
+        su - "$SYS_USER" -c "
+            rm -rf /tmp/yay
+            git clone --depth 1 https://aur.archlinux.org/yay.git /tmp/yay && \
+            cd /tmp/yay && \
+            makepkg -si --noconfirm
+            rm -rf /tmp/yay
+        " || true
+    }
+fi
 
-[Desktop Action new-window]
-Name=Open a New Window
-Exec=/usr/bin/zen-browser --new-window %u
+# Instalar la versión más reciente de Zen Browser desde AUR usando yay
+echo "Instalando Zen Browser con: yay -S zen-browser-bin..."
+su - "$SYS_USER" -c "yay -S --noconfirm --needed zen-browser-bin" || {
+    echo "Aviso: reintentando instalación manual de zen-browser-bin..."
+    su - "$SYS_USER" -c "
+        rm -rf /tmp/zen-browser-bin
+        git clone --depth 1 https://aur.archlinux.org/zen-browser-bin.git /tmp/zen-browser-bin && \
+        cd /tmp/zen-browser-bin && \
+        makepkg -si --noconfirm
+        rm -rf /tmp/zen-browser-bin
+    " || true
+}
 
-[Desktop Action new-private-window]
-Name=Open a New Private Window
-Exec=/usr/bin/zen-browser --private-window %u
-ZEN_DESK
-    chmod 644 /usr/share/applications/zen.desktop
+# Restaurar permisos normales de sudo (con contraseña obligatoria)
+echo "%wheel ALL=(ALL:ALL) ALL" > /etc/sudoers.d/wheel
+chmod 440 /etc/sudoers.d/wheel
 
-    for sz in 16 32 48 64 128; do
-        mkdir -p "/usr/share/icons/hicolor/${sz}x${sz}/apps"
-        ln -sf "/opt/zen-browser-bin/browser/chrome/icons/default/default${sz}.png" "/usr/share/icons/hicolor/${sz}x${sz}/apps/zen.png" 2>/dev/null || true
-    done
-    gtk-update-icon-cache -q /usr/share/icons/hicolor 2>/dev/null || true
+# Enlace simbólico de conveniencia /usr/bin/zen
+if [ -f /usr/bin/zen-browser ] && [ ! -f /usr/bin/zen ]; then
+    ln -sf /usr/bin/zen-browser /usr/bin/zen 2>/dev/null || true
+elif [ -f /usr/bin/zen ] && [ ! -f /usr/bin/zen-browser ]; then
+    ln -sf /usr/bin/zen /usr/bin/zen-browser 2>/dev/null || true
 fi
 
 CHROOT_SCRIPT
@@ -1627,64 +1672,32 @@ GTK4_CONF
         sed -i "s/kb_layout  = \".*\"/kb_layout  = \"$HYPR_KB\"/g" "$USER_HOME/.config/hypr/hyprland.lua"
     fi
 
-    cat << WRAP_APPS > "$USER_HOME/.local/bin/shell-apps"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_apps.sh "\$@"
-WRAP_APPS
+    # Desplegar comandos y utilidades CLI de MrDemonc-SHELL
+    mkdir -p "$USER_HOME/.local/bin"
+    mkdir -p "/mnt/usr/local/bin"
 
-    cat << WRAP_WALL > "$USER_HOME/.local/bin/shell-wallpaper"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_wallpaper.sh "\$@"
-WRAP_WALL
-
-    cat << WRAP_THEME > "$USER_HOME/.local/bin/shell-theme"
-#!/usr/bin/env bash
-TARGET_DIR="/home/$SYS_USER/Documentos/MrDemonc-SHELL"
-if [ "\$1" = "set" ] || [ "\$1" = "list" ]; then
-    exec python3 "\$TARGET_DIR/scripts/theme_manager.py" "\$@"
-else
-    exec "\$TARGET_DIR/scripts/toggle_theme_picker.sh" "\$@"
-fi
-WRAP_THEME
-
-    cat << WRAP_POPOUT > "$USER_HOME/.local/bin/shell-popout"
-#!/usr/bin/env bash
-TARGET="${1:-audio}"
-STATE="${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle"
-echo "$TARGET" > "$STATE"
-WRAP_POPOUT
-
-    cat << WRAP_POWER > "$USER_HOME/.local/bin/shell-power"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_power.sh "\$@"
-WRAP_POWER
-
-    cat << WRAP_KEYBINDS > "$USER_HOME/.local/bin/shell-keybinds"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_keybinds.sh "\$@"
-WRAP_KEYBINDS
-
-    cat << WRAP_MONITORS > "$USER_HOME/.local/bin/shell-monitors"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/toggle_monitors.sh "\$@"
-WRAP_MONITORS
-
-    cat << WRAP_SCREENSHOT > "$USER_HOME/.local/bin/shell-screenshot"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/bin/shell-screenshot "\$@"
-WRAP_SCREENSHOT
-
-    cat << WRAP_NOTIF > "$USER_HOME/.local/bin/shell-notifications"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/bin/shell-notifications "\$@"
-WRAP_NOTIF
-
-    cat << WRAP_CAFFEINE > "$USER_HOME/.local/bin/shell-caffeine"
-#!/usr/bin/env bash
-exec /home/$SYS_USER/Documentos/MrDemonc-SHELL/bin/shell-caffeine "\$@"
-WRAP_CAFFEINE
+    if [ -d "$DEST_REPO/bin" ]; then
+        cp -f "$DEST_REPO/bin/"* "$USER_HOME/.local/bin/" 2>/dev/null || true
+        cp -f "$DEST_REPO/bin/"* "/mnt/usr/local/bin/" 2>/dev/null || true
+    fi
 
     chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
+    chmod +x "/mnt/usr/local/bin"/shell-* "/mnt/usr/local/bin"/clipboard-action 2>/dev/null || true
+
+    # Asegurar ~/.local/bin y /usr/local/bin en el PATH del sistema y del usuario
+    mkdir -p /mnt/etc/profile.d
+    cat << 'PROF_BIN' > /mnt/etc/profile.d/local_bin.sh
+export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+PROF_BIN
+    chmod 644 /mnt/etc/profile.d/local_bin.sh
+
+    for rc_file in "$USER_HOME/.bashrc" "$USER_HOME/.zshrc"; do
+        if [ -f "$rc_file" ]; then
+            if ! grep -q '\.local/bin' "$rc_file"; then
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$rc_file"
+            fi
+        fi
+    done
 
     # Desactivar dunst para usar el sistema nativo de notificaciones de Quickshell
     mkdir -p "$USER_HOME/.config/systemd/user"
@@ -1692,11 +1705,49 @@ WRAP_CAFFEINE
     chown -R "$SYS_USER:$SYS_USER" "$USER_HOME/.config/systemd" 2>/dev/null || true
 
     if [ -d "$DEST_REPO/kitty" ]; then
-        cp -f "$DEST_REPO/kitty/kitty.conf" "$USER_HOME/.config/kitty/kitty.conf"
+        cp -a "$DEST_REPO/kitty/." "$USER_HOME/.config/kitty/"
     fi
 
-    # Inicializar tema default en configs del usuario
-    su - "$SYS_USER" -c "python3 '$DEST_REPO/scripts/theme_manager.py' set default" 2>/dev/null || true
+    cat << 'KITTY_THEME' > "$USER_HOME/.config/kitty/theme.conf"
+# Generado automáticamente por Quickshell Theme Manager
+foreground #eceff4
+background #1a1d24
+selection_foreground #eceff4
+selection_background #282d38
+
+cursor #88c0d0
+cursor_text_color #1a1d24
+
+active_border_color #88c0d0
+inactive_border_color #353b49
+active_tab_background #88c0d0
+active_tab_foreground #1a1d24
+inactive_tab_background #14161d
+inactive_tab_foreground #d8dee9
+
+# Paleta ANSI estándar
+color0 #14161d
+color1 #bf616a
+color2 #a3be8c
+color3 #ebcb8b
+color4 #81a1c1
+color5 #b48ead
+color6 #88c0d0
+color7 #eceff4
+
+# Paleta ANSI brillante
+color8 #7b889b
+color9 #bf616a
+color10 #a3be8c
+color11 #ebcb8b
+color12 #81a1c1
+color13 #b48ead
+color14 #88c0d0
+color15 #d8dee9
+KITTY_THEME
+
+    mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
+    cp -f "$USER_HOME/.config/kitty/theme.conf" "$USER_HOME/.local/state/mrdemonc/current/theme/kitty.conf" 2>/dev/null || true
 
     cat << QS_CONFIG > "$USER_HOME/.config/quickshell/shell.qml"
 import Quickshell
@@ -1728,8 +1779,11 @@ color15 = "#d8dee9"
 foreground = "#eceff4"
 THEME_TOML
 
+    # Asegurar propiedad en el directorio home antes de inicializar temas como usuario
+    arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER" 2>/dev/null || true
+
     if [ -f "$DEST_REPO/scripts/theme_manager.py" ]; then
-        arch-chroot /mnt su - "$SYS_USER" -c "python3 ~/Documentos/MrDemonc-SHELL/scripts/theme_manager.py apply default" 2>/dev/null || true
+        arch-chroot /mnt su - "$SYS_USER" -c "python3 /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/theme_manager.py set default" 2>/dev/null || true
     fi
 
     mkdir -p "$USER_HOME/.config"

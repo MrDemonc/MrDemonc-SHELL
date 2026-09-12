@@ -381,5 +381,36 @@
     - Píldoras flotantes superiores con información de hardware (Hostname, CPU %, RAM GB), contador de notificaciones pendientes, volumen de audio y estado de batería.
     - Desbloqueo rápido pulsando Enter o haciendo clic en la flecha de envío.
 
+19. CONTROL DE BRILLO Y VOLUMEN CON OSD ESTILO MACOS
+-----------------------------------------------------
+• Subir/Bajar Brillo de Pantalla (Laptop / Monitores):
+    shell-brightness up        (o +5%)
+    shell-brightness down      (o -5%)
+    shell-brightness set 70    (fija 70% de brillo)
+    shell-brightness get       (obtiene porcentaje actual)
+    Teclas Dedicadas de Hardware:
+        Tecla de Brillo Arriba   (XF86MonBrightnessUp)
+        Tecla de Brillo Abajo    (XF86MonBrightnessDown)
+
+• Subir/Bajar/Silenciar Volumen de Audio:
+    shell-volume up            (o +5%)
+    shell-volume down          (o -5%)
+    shell-volume mute          (alterna silencio)
+    shell-volume mic-mute      (alterna silencio de micrófono)
+    shell-volume set 50        (fija 50% de volumen)
+    shell-volume get           (obtiene volumen actual)
+    Teclas Dedicadas de Hardware:
+        Tecla de Volumen Arriba  (XF86AudioRaiseVolume)
+        Tecla de Volumen Abajo   (XF86AudioLowerVolume)
+        Tecla de Silencio        (XF86AudioMute)
+        Tecla de Silenciar Mic   (XF86AudioMicMute)
+
+• Indicador en Pantalla (OSD) Estilo macOS:
+    - Se activa de forma automática y directa al presionar las teclas dedicadas del teclado físico.
+    - Diseño icónico de tarjeta translúcida con esquinas redondeadas y efecto frosted glass.
+    - Iconografía dinámica que cambia según el nivel (sol brillante/tenue para brillo, ondas sonoras de 1 a 3 niveles para volumen, altavoz tachado para mute).
+    - Barra de progreso continua fluida con porcentaje y animaciones suaves de entrada y salida (scale + fade).
+    - Compatible con pantallas de laptops (soporte nativo de hardware /sys/class/backlight con reglas udev automáticas sin requerir contraseña sudo).
+
 =====================================================
 
