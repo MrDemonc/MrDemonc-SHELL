@@ -3,6 +3,12 @@ import os
 import json
 import sys
 import glob
+import shutil
+import tempfile
+import zipfile
+import tarfile
+import urllib.request
+import re
 
 THEMES_DIR = os.path.expanduser("~/.config/quickshell/themes")
 CONFIG_FILE = os.path.expanduser("~/.config/quickshell/current_theme.json")
@@ -410,10 +416,291 @@ def set_theme(name):
     sync_limine_theme(theme_obj)
     return True
 
+def sanitize_theme_id(name):
+    s = re.sub(r'[^a-zA-Z0-9_-]', '-', str(name).strip().lower())
+    s = re.sub(r'-+', '-', s).strip('-')
+    return s or "custom-theme"
+
+def validate_color(col, default="#ffffff"):
+    if not isinstance(col, str):
+        return default
+    c = col.strip()
+    if not c.startswith('#'):
+        c = '#' + c
+    if re.match(r'^#[0-9a-fA-F]{3}$', c) or re.match(r'^#[0-9a-fA-F]{6}$', c) or re.match(r'^#[0-9a-fA-F]{8}$', c):
+        return c.lower()
+    return default
+
+def install_theme(source, target_id=None, apply_after=False):
+    """
+    Instala un tema desde:
+    - Archivo .json local
+    - Carpeta local
+    - Archivo comprimido .zip / .tar.gz / .tar
+    - URL web (descarga directa de JSON, archivo comprimido o repositorio Git)
+    """
+    ensure_dirs()
+    temp_dir = None
+
+    try:
+        source_str = str(source).strip()
+
+        # 1. Si es URL remota
+        if source_str.startswith("http://") or source_str.startswith("https://"):
+            temp_dir = tempfile.mkdtemp(prefix="mrdemonc_theme_")
+            if source_str.endswith(".git") or ("github.com" in source_str and "/raw/" not in source_str and not source_str.endswith((".json", ".zip", ".tar.gz", ".tgz"))):
+                import subprocess
+                subprocess.run(["git", "clone", "--depth=1", source_str, temp_dir], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                source_path = temp_dir
+            else:
+                filename = os.path.basename(source_str.split("?")[0]) or "downloaded_theme"
+                local_file = os.path.join(temp_dir, filename)
+                req = urllib.request.Request(source_str, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as resp, open(local_file, 'wb') as out_f:
+                    out_f.write(resp.read())
+                source_path = local_file
+        else:
+            source_path = os.path.abspath(os.path.expanduser(source_str))
+
+        if not os.path.exists(source_path):
+            return {"success": False, "error": f"La ruta o archivo '{source_path}' no existe."}
+
+        # 2. Si es archivo comprimido (.zip o .tar.*)
+        if os.path.isfile(source_path) and (source_path.endswith((".zip", ".tar.gz", ".tgz", ".tar.xz", ".tar"))):
+            if not temp_dir:
+                temp_dir = tempfile.mkdtemp(prefix="mrdemonc_theme_")
+            extract_dir = os.path.join(temp_dir, "extracted")
+            os.makedirs(extract_dir, exist_ok=True)
+            
+            if source_path.endswith(".zip"):
+                with zipfile.ZipFile(source_path, 'r') as zf:
+                    zf.extractall(extract_dir)
+            else:
+                with tarfile.open(source_path, 'r:*') as tf:
+                    tf.extractall(extract_dir)
+            source_path = extract_dir
+
+        theme_data = None
+        theme_dir_to_copy = None
+
+        # 3. Analizar contenido
+        if os.path.isdir(source_path):
+            json_candidates = []
+            for root, dirs, files in os.walk(source_path):
+                if "theme.json" in files:
+                    json_candidates.insert(0, os.path.join(root, "theme.json"))
+                else:
+                    for f in files:
+                        if f.endswith(".json") and f not in ("package.json", "current_theme.json"):
+                            json_candidates.append(os.path.join(root, f))
+            if not json_candidates:
+                return {"success": False, "error": f"No se encontró un archivo 'theme.json' válido en '{source_path}'."}
+            
+            main_json = json_candidates[0]
+            with open(main_json, 'r', encoding='utf-8') as f:
+                theme_data = json.load(f)
+            theme_dir_to_copy = os.path.dirname(main_json)
+        elif os.path.isfile(source_path) and source_path.endswith(".json"):
+            with open(source_path, 'r', encoding='utf-8') as f:
+                theme_data = json.load(f)
+            theme_dir_to_copy = os.path.dirname(source_path)
+        else:
+            return {"success": False, "error": f"Formato no soportado: '{source_path}'"}
+
+        if not isinstance(theme_data, dict):
+            return {"success": False, "error": "El archivo de tema no contiene un objeto JSON válido."}
+
+        # 4. Determinar ID y validar metadatos
+        theme_id = target_id or theme_data.get("id") or theme_data.get("name") or os.path.basename(source_path).replace(".json", "")
+        theme_id = sanitize_theme_id(theme_id)
+
+        name = theme_data.get("name") or theme_id.replace("-", " ").title()
+        is_dark = bool(theme_data.get("isDark", True))
+
+        # Valores y colores normalizados con fallbacks consistentes
+        normalized_theme = {
+            "id": theme_id,
+            "name": name,
+            "description": theme_data.get("description", f"Tema {name} para MrDemonc-SHELL"),
+            "author": theme_data.get("author", os.environ.get("USER", "Personalizado")),
+            "isDark": is_dark,
+            "wallpaper": theme_data.get("wallpaper", "wallpaper.jpg"),
+            "bg": validate_color(theme_data.get("bg"), "#1a1d24" if is_dark else "#f5f7fb"),
+            "bgSurface": validate_color(theme_data.get("bgSurface"), "#14161d" if is_dark else "#e9edf5"),
+            "bgHover": validate_color(theme_data.get("bgHover"), "#282d38" if is_dark else "#dce2ee"),
+            "border": validate_color(theme_data.get("border"), "#353b49" if is_dark else "#c9d3e3"),
+            "text": validate_color(theme_data.get("text"), "#eceff4" if is_dark else "#242933"),
+            "subtext": validate_color(theme_data.get("subtext"), "#d8dee9" if is_dark else "#4c566a"),
+            "overlay": validate_color(theme_data.get("overlay"), "#7b889b" if is_dark else "#9aa5b8"),
+            "primary": validate_color(theme_data.get("primary"), "#88c0d0"),
+            "success": validate_color(theme_data.get("success"), "#a3be8c"),
+            "warning": validate_color(theme_data.get("warning"), "#ebcb8b"),
+            "danger": validate_color(theme_data.get("danger"), "#bf616a"),
+            "cyan": validate_color(theme_data.get("cyan"), "#81a1c1"),
+            "pink": validate_color(theme_data.get("pink"), "#b48ead")
+        }
+
+        # 5. Instalar en ~/.config/quickshell/themes/<theme_id>/
+        dest_dir = os.path.join(THEMES_DIR, theme_id)
+        os.makedirs(dest_dir, exist_ok=True)
+
+        # Copiar wallpapers u otros recursos si existen en el origen
+        if theme_dir_to_copy and os.path.isdir(theme_dir_to_copy):
+            for item in os.listdir(theme_dir_to_copy):
+                src_item = os.path.join(theme_dir_to_copy, item)
+                dst_item = os.path.join(dest_dir, item)
+                if item != "theme.json" and os.path.isfile(src_item) and item.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    shutil.copy2(src_item, dst_item)
+
+        # Guardar theme.json normalizado
+        target_json = os.path.join(dest_dir, "theme.json")
+        with open(target_json, 'w', encoding='utf-8') as f:
+            json.dump(normalized_theme, f, indent=2, ensure_ascii=False)
+
+        # 6. Si se solicita aplicar inmediatamente
+        if apply_after:
+            set_theme(theme_id)
+
+        return {
+            "success": True,
+            "id": theme_id,
+            "name": name,
+            "path": dest_dir,
+            "jsonPath": target_json,
+            "applied": apply_after
+        }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        if temp_dir and os.path.isdir(temp_dir):
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception:
+                pass
+
+def create_theme(theme_id, name=None, is_dark=True, primary_color="#88c0d0"):
+    """
+    Crea una plantilla estructurada de un nuevo tema en ~/.config/quickshell/themes/<theme_id>/
+    """
+    ensure_dirs()
+    tid = sanitize_theme_id(theme_id)
+    dest_dir = os.path.join(THEMES_DIR, tid)
+    if os.path.exists(dest_dir):
+        return {"success": False, "error": f"Ya existe un tema con el identificador '{tid}' en {dest_dir}."}
+
+    os.makedirs(dest_dir, exist_ok=True)
+    theme_name = name or tid.replace("-", " ").title()
+
+    template = {
+        "id": tid,
+        "name": theme_name,
+        "description": f"Tema personalizado {theme_name} para MrDemonc-SHELL",
+        "author": os.environ.get("USER", "usuario"),
+        "isDark": is_dark,
+        "wallpaper": "wallpaper.jpg",
+        "bg": "#1a1d24" if is_dark else "#f7f9fc",
+        "bgSurface": "#14161d" if is_dark else "#eef2f7",
+        "bgHover": "#282d38" if is_dark else "#dfe5f0",
+        "border": "#353b49" if is_dark else "#d1d9e6",
+        "text": "#eceff4" if is_dark else "#242933",
+        "subtext": "#d8dee9" if is_dark else "#4c566a",
+        "overlay": "#7b889b" if is_dark else "#9aa5b8",
+        "primary": validate_color(primary_color, "#88c0d0"),
+        "success": "#a3be8c",
+        "warning": "#ebcb8b",
+        "danger": "#bf616a",
+        "cyan": "#81a1c1",
+        "pink": "#b48ead"
+    }
+
+    target_json = os.path.join(dest_dir, "theme.json")
+    with open(target_json, 'w', encoding='utf-8') as f:
+        json.dump(template, f, indent=2, ensure_ascii=False)
+
+    return {
+        "success": True,
+        "id": tid,
+        "name": theme_name,
+        "path": dest_dir,
+        "jsonPath": target_json
+    }
+
+def export_theme(theme_id, output_path=None):
+    all_themes = get_all_themes()
+    if theme_id not in all_themes:
+        return {"success": False, "error": f"El tema '{theme_id}' no está instalado."}
+    th = all_themes[theme_id]
+    th_dir = th.get("_dir")
+    temp_dir = None
+    if not th_dir or not os.path.isdir(th_dir):
+        temp_dir = tempfile.mkdtemp()
+        th_dir = os.path.join(temp_dir, theme_id)
+        os.makedirs(th_dir, exist_ok=True)
+        with open(os.path.join(th_dir, "theme.json"), "w", encoding="utf-8") as f:
+            clean = dict(th)
+            clean.pop("_dir", None)
+            clean.pop("wallpaperPath", None)
+            json.dump(clean, f, indent=2)
+
+    out_file = os.path.abspath(os.path.expanduser(output_path or f"~/{theme_id}.zip"))
+    with zipfile.ZipFile(out_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(th_dir):
+            for file in files:
+                full = os.path.join(root, file)
+                rel = os.path.relpath(full, os.path.dirname(th_dir))
+                zf.write(full, rel)
+
+    if temp_dir and os.path.isdir(temp_dir):
+        try:
+            shutil.rmtree(temp_dir)
+        except Exception:
+            pass
+
+    return {"success": True, "output": out_file}
+
+def remove_theme(theme_id):
+    if theme_id == "default":
+        return {"success": False, "error": "No se puede eliminar el tema predeterminado 'default'."}
+    all_themes = get_all_themes()
+    if theme_id not in all_themes:
+        return {"success": False, "error": f"El tema '{theme_id}' no existe."}
+    th_dir = os.path.join(THEMES_DIR, theme_id)
+    if os.path.isdir(th_dir):
+        shutil.rmtree(th_dir)
+        if get_current_theme_name() == theme_id:
+            set_theme("default")
+        return {"success": True, "id": theme_id}
+    return {"success": False, "error": f"El tema está en una ubicación protegida del sistema: {all_themes[theme_id].get('_dir')}"}
+
+def print_help():
+    print("""Uso: shell-theme [COMANDO] [OPCIONES]
+
+Comandos disponibles:
+  (sin argumentos)              Abre el Selector Gráfico de Temas de Quickshell
+  list                          Lista todos los temas instalados en formato JSON
+  set, apply <id>               Aplica un tema inmediatamente en Quickshell, Hyprland y Kitty
+  install <origen> [--apply]    Instala un nuevo tema desde archivo, carpeta, .zip o URL
+  create <id> [--name <nombre>] Crea una plantilla para un nuevo tema en ~/.config/quickshell/themes/
+  export <id> [archivo.zip]     Empaqueta un tema en un archivo .zip para compartirlo
+  remove, delete <id>           Elimina un tema instalado por el usuario
+  info [id]                     Muestra los detalles y paleta de colores del tema
+  help, -h, --help              Muestra esta ayuda
+
+Ejemplos de instalación:
+  shell-theme install ~/Descargas/mi-tema.json
+  shell-theme install ~/Descargas/cyberpunk-theme.zip --apply
+  shell-theme install https://ejemplo.com/temas/nordic.tar.gz --apply
+  shell-theme create neon-sunset --name "Neon Sunset"
+""")
+
 def main():
     if len(sys.argv) > 1:
-        cmd = sys.argv[1]
-        if cmd == "list":
+        cmd = sys.argv[1].lower()
+        if cmd in ("help", "-h", "--help"):
+            print_help()
+            return
+        elif cmd == "list":
             all_themes = get_all_themes()
             res = []
             cur = get_current_theme_name()
@@ -450,7 +737,76 @@ def main():
             else:
                 sys.exit(1)
             return
-    
+        elif cmd == "install" and len(sys.argv) > 2:
+            src = sys.argv[2]
+            apply_now = "--apply" in sys.argv
+            target_id = None
+            if "--name" in sys.argv:
+                idx = sys.argv.index("--name")
+                if idx + 1 < len(sys.argv):
+                    target_id = sys.argv[idx + 1]
+            res = install_theme(src, target_id=target_id, apply_after=apply_now)
+            if res.get("success"):
+                if "--json" in sys.argv:
+                    print(json.dumps(res))
+                else:
+                    print(f"\033[1;32m✔ Tema '{res['name']}' [{res['id']}] instalado exitosamente en:\033[0m")
+                    print(f"  {res['path']}")
+                    if res.get("applied"):
+                        print(f"\033[1;36m➜ Tema aplicado en vivo en todo el sistema.\033[0m")
+                sys.exit(0)
+            else:
+                if "--json" in sys.argv:
+                    print(json.dumps(res))
+                else:
+                    print(f"\033[1;31m✖ Error al instalar tema:\033[0m {res.get('error')}", file=sys.stderr)
+                sys.exit(1)
+        elif cmd == "create" and len(sys.argv) > 2:
+            tid = sys.argv[2]
+            is_dark = "--light" not in sys.argv
+            name = None
+            if "--name" in sys.argv:
+                idx = sys.argv.index("--name")
+                if idx + 1 < len(sys.argv):
+                    name = sys.argv[idx + 1]
+            res = create_theme(tid, name=name, is_dark=is_dark)
+            if res.get("success"):
+                if "--json" in sys.argv:
+                    print(json.dumps(res))
+                else:
+                    print(f"\033[1;32m✔ Plantilla de tema '{res['name']}' creada en:\033[0m")
+                    print(f"  {res['jsonPath']}")
+                    print(f"\033[1;34mEdita el archivo para personalizar los colores y luego aplícalo con:\033[0m")
+                    print(f"  shell-theme set {res['id']}")
+                sys.exit(0)
+            else:
+                print(f"\033[1;31m✖ Error:\033[0m {res.get('error')}", file=sys.stderr)
+                sys.exit(1)
+        elif cmd == "export" and len(sys.argv) > 2:
+            tid = sys.argv[2]
+            out = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith("-") else None
+            res = export_theme(tid, out)
+            if res.get("success"):
+                print(f"\033[1;32m✔ Tema '{tid}' exportado exitosamente a:\033[0m {res['output']}")
+                sys.exit(0)
+            else:
+                print(f"\033[1;31m✖ Error al exportar:\033[0m {res.get('error')}", file=sys.stderr)
+                sys.exit(1)
+        elif cmd in ("remove", "delete") and len(sys.argv) > 2:
+            tid = sys.argv[2]
+            res = remove_theme(tid)
+            if res.get("success"):
+                print(f"\033[1;32m✔ Tema '{tid}' eliminado correctamente.\033[0m")
+                sys.exit(0)
+            else:
+                print(f"\033[1;31m✖ Error:\033[0m {res.get('error')}", file=sys.stderr)
+                sys.exit(1)
+        elif cmd == "info":
+            tid = sys.argv[2] if len(sys.argv) > 2 else get_current_theme_name()
+            th = get_theme(tid)
+            print(json.dumps(th, indent=2))
+            return
+
     current_th = get_theme()
     sync_hyprlock_theme(current_th)
     print(json.dumps(current_th))

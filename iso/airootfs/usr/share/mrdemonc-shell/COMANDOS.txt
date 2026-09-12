@@ -25,11 +25,27 @@
     shell-theme list
 
 • Cambiar tema directamente desde terminal/atajo:
-    shell-theme set catppuccin-mocha
     shell-theme set tokyo-night
     shell-theme set gruvbox-dark
-    shell-theme set oled-black
     shell-theme set catppuccin-latte
+
+• Instalar un tema nuevo (desde archivo JSON, carpeta, .zip o URL/Git):
+    shell-theme install ~/Descargas/mi-tema.json
+    shell-theme install ~/Descargas/tema-cyberpunk.zip --apply
+    shell-theme install https://ejemplo.com/temas/nordic.tar.gz --apply
+
+• Crear una plantilla para un nuevo tema en ~/.config/quickshell/themes/:
+    shell-theme create neon-sunset --name "Neon Sunset"
+    shell-theme create paper-white --name "Paper White" --light
+
+• Exportar o empaquetar un tema para compartirlo:
+    shell-theme export neon-sunset ~/Descargas/neon-sunset.zip
+
+• Eliminar un tema personalizado:
+    shell-theme remove neon-sunset
+
+• Ver guía completa de creación de temas:
+    cat GUIA_TEMAS.md
 
 • Atajos dentro de la ventana de Temas:
     ↑ / ↓ / ← / → : Navegar entre temas

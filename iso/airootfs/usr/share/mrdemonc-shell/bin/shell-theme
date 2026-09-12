@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Wrapper para shell-theme con soporte CLI (set, list, install, create, export, remove, info) y GUI
+
+TARGET_DIR="${QUICKSHELL_DIR:-/home/demonc-test/Documentos/MrDemonc-SHELL}"
+
+case "$1" in
+    set|apply|list|install|create|export|remove|delete|info|help|-h|--help)
+        exec python3 "$TARGET_DIR/scripts/theme_manager.py" "$@"
+        ;;
+    *)
+        exec "$TARGET_DIR/scripts/toggle_theme_picker.sh" "$@"
+        ;;
+esac
