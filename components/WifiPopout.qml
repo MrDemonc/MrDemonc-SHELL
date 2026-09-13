@@ -13,6 +13,17 @@ Item {
     implicitWidth: 320
     implicitHeight: layout.implicitHeight + 20
 
+    onConnectingSsidChanged: {
+        if (connectingSsid !== "") {
+            Qt.callLater(function() { passInput.forceActiveFocus(); });
+        }
+    }
+    onShowHiddenPromptChanged: {
+        if (showHiddenPrompt) {
+            Qt.callLater(function() { hiddenNameEdit.forceActiveFocus(); });
+        }
+    }
+
     ColumnLayout {
         id: layout
         anchors.fill: parent
@@ -39,22 +50,20 @@ Item {
                 implicitWidth: 28
                 implicitHeight: 28
                 radius: 7
-                color: addHiddenMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                border.color: root.showHiddenPrompt ? Theme.primary : "transparent"
-                border.width: 1
+                color: hiddenMouse.containsMouse ? Theme.bgHover : (root.showHiddenPrompt ? Theme.primary : Theme.bgSurface)
 
                 Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
 
                 Text {
                     anchors.centerIn: parent
-                    text: "󰤪"
-                    color: root.showHiddenPrompt ? Theme.primary : Theme.text
+                    text: root.showHiddenPrompt ? "󰅖" : "󰐕"
+                    color: root.showHiddenPrompt ? (Theme.isDark ? "#11111b" : "#ffffff") : Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
                 }
 
                 MouseArea {
-                    id: addHiddenMouse
+                    id: hiddenMouse
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
@@ -74,14 +83,21 @@ Item {
                 Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
 
                 Text {
+                    id: rescanIcon
                     anchors.centerIn: parent
                     text: "󰑐"
-                    color: (networkRef && networkRef.isScanning) ? Theme.primary : Theme.text
+                    color: (networkRef && networkRef.isManualScanning) ? Theme.primary : Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
-                    rotation: (networkRef && networkRef.isScanning) ? 360 : 0
-                    Behavior on rotation {
-                        NumberAnimation { duration: 600; loops: Animation.Infinite }
+
+                    RotationAnimation {
+                        target: rescanIcon
+                        property: "rotation"
+                        from: 0
+                        to: 360
+                        duration: 800
+                        loops: Animation.Infinite
+                        running: networkRef ? networkRef.isManualScanning : false
                     }
                 }
 
@@ -91,7 +107,7 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (networkRef) networkRef.rescan();
+                        if (networkRef) networkRef.manualRescan();
                     }
                 }
             }
@@ -189,6 +205,9 @@ Item {
                         font.family: Theme.fontFamily
                         font.pixelSize: 10
                         clip: true
+                        selectByMouse: true
+                        focus: true
+                        onAccepted: hiddenPassEdit.forceActiveFocus()
                         Text {
                             text: "Nombre de Red Oculta (SSID)..."
                             color: Theme.overlay
@@ -217,6 +236,8 @@ Item {
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             clip: true
+                            selectByMouse: true
+                            onAccepted: connectHiddenMouse.clicked(null)
                             Text {
                                 text: "Contraseña de la red..."
                                 color: Theme.overlay
@@ -366,9 +387,15 @@ Item {
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             clip: true
+                            selectByMouse: true
+                            focus: true
                             Keys.onEscapePressed: {
-                                root.connectingSsid = "";
-                                passInput.text = "";
+                                if (root.connectingSsid !== "") {
+                                    root.connectingSsid = "";
+                                    passInput.text = "";
+                                } else {
+                                    PopoutManager.close();
+                                }
                             }
                             onAccepted: connectBtnMouse.clicked(null)
                         }

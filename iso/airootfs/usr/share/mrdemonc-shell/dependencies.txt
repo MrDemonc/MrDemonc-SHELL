@@ -75,7 +75,6 @@ nss-mdns
 gutenprint
 foomatic-db-engine
 foomatic-db
-hplip
 sane
 sane-airscan
 

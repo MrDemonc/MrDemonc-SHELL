@@ -18,6 +18,7 @@ Item {
     property string securityType: ""
     property var networks: []
     property bool isScanning: false
+    property bool isManualScanning: false
 
     property bool isHovered: false
     readonly property bool isPopoutActive: PopoutManager.activePopout === "wifi"
@@ -44,6 +45,7 @@ Item {
             } catch (e) {}
             root.rawWifiOutput = "";
             root.isScanning = false;
+            root.isManualScanning = false;
         }
     }
 
@@ -82,6 +84,11 @@ Item {
         root.rawWifiOutput = "";
         scanProc.running = false;
         scanProc.running = true;
+    }
+
+    function manualRescan() {
+        root.isManualScanning = true;
+        rescan();
     }
 
     Timer {

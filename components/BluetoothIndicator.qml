@@ -32,7 +32,7 @@ Item {
             try {
                 let info = JSON.parse(root.rawBtOutput.trim());
                 root.isPowered = info.isPowered;
-                root.isConnected = info.isConnected;
+                root.isConnected = (info.connectedCount > 0) || !!info.isConnected;
                 root.hasAdapter = !!info.hasAdapter;
                 root.controllerName = info.controllerName || "";
                 root.connectedCount = info.connectedCount || 0;
@@ -53,7 +53,7 @@ Item {
     }
 
     function togglePower() {
-        actionProc.command = ["bluetoothctl", "power", root.isPowered ? "off" : "on"];
+        actionProc.command = ["sh", "-c", root.isPowered ? "bluetoothctl power off" : "rfkill unblock bluetooth 2>/dev/null; bluetoothctl power on"];
         actionProc.running = false;
         actionProc.running = true;
     }

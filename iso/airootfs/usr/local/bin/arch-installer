@@ -19,6 +19,7 @@ set_default_theme_colors() {
     echo -en "\033[0m"
 }
 set_default_theme_colors 2>/dev/null || true
+setfont ter-v16n 2>/dev/null || setfont Lat2-Terminus16 2>/dev/null || true
 
 ARCH_BLUE="\033[38;2;136;192;208m"
 CYAN="\033[38;2;129;161;193m"
@@ -759,7 +760,7 @@ user_form_wizard() {
             step "Configuración de la cuenta de usuario..."
             say "Crea tu usuario personal. La contraseña maestra servirá para LUKS2, root y sudo."
             echo
-            say --foreground 2 "✔ Usuario configurado: $SYS_USER"
+            say --foreground 2 "✓ Usuario configurado: $SYS_USER"
             echo
             if [[ -n "$pass_err" ]]; then
                 say --foreground 1 "$pass_err"
@@ -781,8 +782,8 @@ user_form_wizard() {
         step "Configuración de la cuenta de usuario..."
         say "Crea tu usuario personal. La contraseña maestra servirá para LUKS2, root y sudo."
         echo
-        say --foreground 2 "✔ Usuario configurado: $SYS_USER"
-        say --foreground 2 "✔ Contraseña maestra configurada"
+        say --foreground 2 "✓ Usuario configurado: $SYS_USER"
+        say --foreground 2 "✓ Contraseña maestra configurada"
         echo
 
         SYS_HOSTNAME=$(g_input --placeholder "Nombre de la máquina (o Enter para 'archlinux')" --prompt.foreground="#845DF9" --prompt "Hostname> ")
@@ -1140,7 +1141,6 @@ perform_installation_worker() {
         gutenprint
         foomatic-db-engine
         foomatic-db
-        hplip
         sane
         sane-airscan
         v4l-utils
@@ -1328,7 +1328,7 @@ EOF
 
         # Barra de carga de ancho 47 columnas (estilo bloque sólido fluido Omarchy)
         local total_w=47
-        local inner_w=$(( total_w - 2 )) # 45 bloques interiores
+        local inner_w=47
 
         # Lanzar verificación y apertura LUKS en segundo plano
         printf "%s" "$pass" | cryptsetup open --type luks --key-file - "${resolved}" "${cryptname}" >/dev/null 2>&1 &
@@ -1342,7 +1342,7 @@ EOF
             while [ "$j" -lt "$step" ]; do filled="${filled}█"; j=$((j + 1)); done
             while [ "$j" -lt "$inner_w" ]; do empty="${empty}░"; j=$((j + 1)); done
 
-            printf "\r%s\033[38;2;67;76;94m[\033[38;2;136;192;208m%s\033[38;2;46;51;64m%s\033[38;2;67;76;94m]\033[0m" "$logo_spaces" "$filled" "$empty"
+            printf "\r%s\033[38;2;136;192;208m%s\033[38;2;46;51;64m%s\033[0m" "$logo_spaces" "$filled" "$empty"
 
             # Avance progresivo natural sin retroceder ni hacer rebote
             if [ "$step" -lt $(( inner_w - 4 )) ]; then
@@ -1363,7 +1363,7 @@ EOF
             local full_bar=""
             local j=0
             while [ "$j" -lt "$inner_w" ]; do full_bar="${full_bar}█"; j=$((j + 1)); done
-            printf "\r%s\033[38;2;163;190;140m[%s]\033[0m\n" "$logo_spaces" "$full_bar"
+            printf "\r%s\033[38;2;163;190;140m%s\033[0m\n" "$logo_spaces" "$full_bar"
             sleep 0.5
             # Limpiar pantalla completamente para un arranque limpio sin rastro de mensajes
             printf "\033[H\033[2J"
@@ -1394,6 +1394,7 @@ sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen 2>/dev/null || 
 locale-gen
 echo "LANG=$SYS_LOCALE" > /etc/locale.conf
 echo "KEYMAP=$KEYMAP" > /etc/vconsole.conf
+echo "FONT=ter-v16n" >> /etc/vconsole.conf
 
 echo "$SYS_HOSTNAME" > /etc/hostname
 cat << HOSTS > /etc/hosts
@@ -1491,7 +1492,13 @@ efibootmgr --create --disk "$TARGET_DISK" --part 1 --label "Arch Linux" --loader
 limine bios-install "$TARGET_DISK" 2>/dev/null || true
 
 systemctl enable NetworkManager.service
+mkdir -p /etc/bluetooth
+cat << 'BT_CONF' > /etc/bluetooth/main.conf
+[Policy]
+AutoEnable=true
+BT_CONF
 systemctl enable bluetooth.service 2>/dev/null || true
+rfkill unblock bluetooth 2>/dev/null || true
 systemctl enable systemd-timesyncd.service 2>/dev/null || true
 systemctl enable cups.service 2>/dev/null || true
 systemctl enable avahi-daemon.service 2>/dev/null || true
@@ -2082,7 +2089,7 @@ run_install_with_dashboard() {
         for ((i=0; i<filled; i++)); do bar_str+="█"; done
         local empty_str=""
         for ((i=0; i<empty; i++)); do empty_str+="░"; done
-        center_text "\033[38;5;42m[$bar_str\033[38;5;238m$empty_str\033[38;5;42m]\033[0m  \033[1;37m$last_pct%\033[0m"
+        center_text "\033[38;5;42m$bar_str\033[38;5;238m$empty_str\033[0m  \033[1;37m$last_pct%\033[0m"
 
         # 3. Tip rotativo (Centrado)
         local tip_prefix="Tip: "

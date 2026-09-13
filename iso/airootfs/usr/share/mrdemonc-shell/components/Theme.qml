@@ -95,6 +95,12 @@ QtObject {
         theme.danger = parsed.danger || (theme.isDark ? "#f38ba8" : "#d20f39");
         theme.cyan = parsed.cyan || (theme.isDark ? "#89dceb" : "#04a5e5");
         theme.pink = parsed.pink || (theme.isDark ? "#f5c2e7" : "#ea76cb");
+
+        // Sincronizar inmediatamente el wallpaper del tema con WallpaperManager
+        let wp = parsed.wallpaperPath || (parsed.wallpaper && parsed._dir ? (parsed._dir + "/" + parsed.wallpaper) : "");
+        if (wp && WallpaperManager.currentWallpaper !== wp) {
+            WallpaperManager.currentWallpaper = wp;
+        }
     }
 
     // Observador para cambios externos de tema (vía shell-theme o script)
@@ -108,6 +114,7 @@ QtObject {
                     theme.themeProc.running = true;
                     theme.themeListProc.running = false;
                     theme.themeListProc.running = true;
+                    WallpaperManager.refreshList();
                 }
             }
         }
@@ -175,6 +182,7 @@ QtObject {
             theme.themeProc.running = true;
             theme.themeListProc.running = false;
             theme.themeListProc.running = true;
+            WallpaperManager.refreshList();
         }
     }
 
@@ -194,6 +202,10 @@ QtObject {
                 updatedList.push(item);
                 if (item.id === themeId) {
                     applyThemeData(item);
+                    let wp = item.wallpaperPath || (item.wallpaper && item._dir ? (item._dir + "/" + item.wallpaper) : "");
+                    if (wp) {
+                        WallpaperManager.setWallpaper(wp);
+                    }
                 }
             }
             theme.availableThemes = updatedList;

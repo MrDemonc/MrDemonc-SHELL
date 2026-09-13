@@ -275,7 +275,7 @@ GridLayout {
                 height: PopoutManager.isVertical ? parent.height : (wsItem.isFocused ? 20 : 6)
                 radius: wsItem.isFocused ? 6 : 3
                 color: {
-                    if (wsItem.isFocused) return Theme.bgHover;
+                    if (wsItem.isFocused) return "transparent";
                     if (wsItem.isHovered) return Theme.bgHover;
                     if (wsItem.isOccupied) return Theme.primary;
                     return Theme.overlay;
@@ -318,13 +318,14 @@ GridLayout {
                     // Punto indicador de foco (visible cuando no hay icono de app en foco)
                     Rectangle {
                         visible: !(!PopoutManager.isVertical && wsItem.isFocused && wsItem.hasApp && root.focusedAppIcon !== "")
-                        width: wsItem.isFocused ? 6 : (wsItem.isHovered ? 8 : 4)
-                        height: wsItem.isFocused ? 6 : 4
+                        width: PopoutManager.isVertical ? 6 : (wsItem.isFocused ? 14 : (wsItem.isHovered ? 8 : 4))
+                        height: PopoutManager.isVertical ? (wsItem.isFocused ? 14 : (wsItem.isHovered ? 8 : 4)) : (wsItem.isFocused ? 6 : 4)
                         radius: 3
                         color: wsItem.isFocused ? Theme.primary : (wsItem.isHovered ? Theme.text : "transparent")
                         Layout.alignment: Qt.AlignVCenter
 
                         Behavior on width { NumberAnimation { duration: 120 } }
+                        Behavior on height { NumberAnimation { duration: 120 } }
                         Behavior on color { ColorAnimation { duration: 120 } }
                     }
 

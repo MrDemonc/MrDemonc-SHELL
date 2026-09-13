@@ -84,7 +84,20 @@ PanelWindow {
         Shortcut {
             sequence: "Escape"
             enabled: MonitorManager.monitorsOpen
-            onActivated: MonitorManager.monitorsOpen = false
+            onActivated: {
+                if (resPopup.visible) {
+                    resPopup.visible = false;
+                } else {
+                    MonitorManager.monitorsOpen = false;
+                }
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            z: 80
+            visible: resPopup.visible
+            onClicked: resPopup.visible = false
         }
 
         ColumnLayout {
@@ -441,6 +454,7 @@ PanelWindow {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 6
+                        z: resPopup.visible ? 100 : 1
 
                         RowLayout {
                             Layout.fillWidth: true

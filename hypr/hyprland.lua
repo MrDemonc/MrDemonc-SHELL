@@ -23,12 +23,14 @@
 ------------------
 
 -- See https://wiki.hypr.land/Configuring/Basics/Monitors/
-hl.monitor({
-    output   = "",
-    mode     = "preferred",
-    position = "auto",
-    scale    = "auto",
-})
+if not pcall(require, "monitors") then
+    hl.monitor({
+        output   = "",
+        mode     = "preferred",
+        position = "auto",
+        scale    = "auto",
+    })
+end
 
 
 ---------------------

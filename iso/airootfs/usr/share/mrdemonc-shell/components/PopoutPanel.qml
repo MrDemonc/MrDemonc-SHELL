@@ -55,11 +55,19 @@ PanelWindow {
     color: "transparent"
 
     WlrLayershell.namespace: "shell-popout"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: PopoutManager.hasPopout ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: PopoutManager.hasPopout || popout.animProgress > 0.001
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: PopoutManager.hasPopout
+        onActivated: {
+            PopoutManager.close();
+        }
+    }
 
     LiquidPopout {
         id: popout

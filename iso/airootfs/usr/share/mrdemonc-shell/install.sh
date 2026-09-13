@@ -79,7 +79,6 @@ PACKAGES=(
     gutenprint
     foomatic-db-engine
     foomatic-db
-    hplip
     sane
     sane-airscan
     v4l-utils

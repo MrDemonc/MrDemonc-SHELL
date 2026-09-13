@@ -17,17 +17,21 @@ QtObject {
         return null;
     }
 
-    // Monitoreo de archivo para alternar el selector de wallpapers por CLI / atajo
+    // Monitoreo de archivo para alternar el selector de wallpapers o recargar por cambio de tema
     property var watchToggleProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_wallpaper_picker.toggle\"; while true; do if [ -f \"$STATE\" ]; then rm -f \"$STATE\"; echo 'TOGGLE'; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_wallpaper_picker.toggle\"; WP_RELOAD=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_wallpaper_reload.toggle\"; while true; do if [ -f \"$STATE\" ]; then rm -f \"$STATE\"; echo 'TOGGLE'; fi; if [ -f \"$WP_RELOAD\" ]; then rm -f \"$WP_RELOAD\"; echo 'RELOAD'; fi; sleep 0.15; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
-                if (String(data).indexOf("TOGGLE") !== -1) {
+                let s = String(data);
+                if (s.indexOf("TOGGLE") !== -1) {
                     wallMgr.wallpaperModalOpen = !wallMgr.wallpaperModalOpen;
                     if (wallMgr.wallpaperModalOpen) {
                         wallMgr.refreshList();
                     }
+                }
+                if (s.indexOf("RELOAD") !== -1) {
+                    wallMgr.refreshList();
                 }
             }
         }

@@ -414,6 +414,17 @@ def set_theme(name):
 
     # Sincronizar automáticamente el wallpaper vinculado al tema si existe
     wall_path = theme_obj.get("wallpaperPath")
+    if not wall_path or not os.path.exists(wall_path):
+        for base_dir in THEME_SEARCH_DIRS:
+            for ext in [".jpg", ".jpeg", ".png", ".webp"]:
+                cand = os.path.join(base_dir, name, f"wallpaper{ext}")
+                if os.path.exists(cand):
+                    wall_path = cand
+                    theme_obj["wallpaperPath"] = cand
+                    break
+            if wall_path and os.path.exists(wall_path):
+                break
+
     if wall_path and os.path.exists(wall_path):
         try:
             scripts_dir = os.path.dirname(os.path.abspath(__file__))
@@ -423,12 +434,15 @@ def set_theme(name):
         except Exception:
             pass
 
-    # Notificar a Quickshell para recarga instantánea
+    # Notificar a Quickshell para recarga instantánea de tema y wallpaper
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
     trigger = os.path.join(runtime_dir, "quickshell_theme_reload.toggle")
+    wp_trigger = os.path.join(runtime_dir, "quickshell_wallpaper_reload.toggle")
     try:
         with open(trigger, 'w') as f:
             f.write(name)
+        with open(wp_trigger, 'w') as f:
+            f.write(wall_path or name)
     except Exception:
         pass
 

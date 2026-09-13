@@ -95,7 +95,7 @@ paru -S --needed quickshell
 * **`cups-pdf`**: Impresora virtual PDF para generar documentos digitales desde cualquier app.
 * **`system-config-printer`**: Herramienta gráfica moderna para administrar impresoras, colas y trabajos de impresión.
 * **`avahi` & `nss-mdns`**: Demonio de descubrimiento de red ZeroConf/mDNS para detección automática sin controladores de impresoras de red (AirPrint / IPP Everywhere).
-* **`gutenprint`, `foomatic-db-engine`, `foomatic-db`, `hplip`**: Paquetes de controladores universales para impresoras HP, Canon, Epson, Brother y Lexmark.
+* **`gutenprint`, `foomatic-db-engine`, `foomatic-db`**: Paquetes de controladores universales para impresoras Canon, Epson, Brother y Lexmark.
 * **`sane` & `sane-airscan`**: Compatibilidad y controladores para escáneres físicos y multifuncionales en red.
 
 ### 11. Compatibilidad de Cámara y Captura de Video

@@ -29,19 +29,55 @@ def get_bluetooth_data():
     controller_name = ""
     devices = {}
 
+    has_adapter = False
     try:
         show_out = subprocess.check_output(["bluetoothctl", "show"], stderr=subprocess.DEVNULL, timeout=2).decode("utf-8", errors="ignore")
         for line in show_out.splitlines():
             line = line.strip()
             if line.startswith("Powered: yes"):
                 is_powered = True
+                has_adapter = True
             elif line.startswith("Discovering: yes"):
                 is_scanning = True
             elif line.startswith("Name:") or line.startswith("Alias:"):
                 if not controller_name:
                     controller_name = line.split(":", 1)[1].strip()
+                    has_adapter = True
+            elif line.startswith("Controller"):
+                has_adapter = True
     except Exception:
         pass
+
+    if not has_adapter:
+        try:
+            list_out = subprocess.check_output(["bluetoothctl", "list"], stderr=subprocess.DEVNULL, timeout=2).decode("utf-8", errors="ignore")
+            for line in list_out.splitlines():
+                line = line.strip()
+                if line.startswith("Controller"):
+                    has_adapter = True
+                    if not controller_name:
+                        parts = line.split(" ", 2)
+                        if len(parts) >= 3:
+                            controller_name = parts[2].replace("[default]", "").strip()
+        except Exception:
+            pass
+
+    if not has_adapter:
+        import os
+        if os.path.exists("/sys/class/bluetooth") and os.listdir("/sys/class/bluetooth"):
+            has_adapter = True
+            if not controller_name:
+                controller_name = "Adaptador Bluetooth"
+
+    if not has_adapter:
+        try:
+            rf_out = subprocess.check_output(["rfkill", "list", "bluetooth"], stderr=subprocess.DEVNULL, timeout=2).decode("utf-8", errors="ignore")
+            if "bluetooth" in rf_out.lower():
+                has_adapter = True
+                if not controller_name:
+                    controller_name = "Adaptador Bluetooth"
+        except Exception:
+            pass
 
     if is_powered:
         try:
@@ -91,11 +127,12 @@ def get_bluetooth_data():
 
     connected_count = sum(1 for d in dev_list if d["isConnected"])
 
-    has_adapter = bool(controller_name or is_powered)
+    has_adapter = bool(has_adapter or controller_name or is_powered)
 
     return {
         "hasAdapter": has_adapter,
         "isPowered": is_powered,
+        "isConnected": connected_count > 0,
         "isScanning": is_scanning,
         "controllerName": controller_name if controller_name else ("Sin adaptador" if not has_adapter else "Bluetooth"),
         "connectedCount": connected_count,

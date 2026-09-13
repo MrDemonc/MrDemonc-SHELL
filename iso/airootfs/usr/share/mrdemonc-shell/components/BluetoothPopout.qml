@@ -42,14 +42,21 @@ Item {
                 Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
 
                 Text {
+                    id: btScanIcon
                     anchors.centerIn: parent
                     text: "󰑐"
                     color: (bluetoothRef && bluetoothRef.isScanning) ? Theme.primary : Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 12
-                    rotation: (bluetoothRef && bluetoothRef.isScanning) ? 360 : 0
-                    Behavior on rotation {
-                        NumberAnimation { duration: 600; loops: Animation.Infinite }
+
+                    RotationAnimation {
+                        target: btScanIcon
+                        property: "rotation"
+                        from: 0
+                        to: 360
+                        duration: 800
+                        loops: Animation.Infinite
+                        running: bluetoothRef ? bluetoothRef.isScanning : false
                     }
                 }
 

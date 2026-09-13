@@ -36,6 +36,18 @@ ShellRoot {
         }
     }
 
+    // 3.0 Scrim transparente para cerrar popout al hacer clic fuera
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            PopoutScrim {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
+
     // 3. Overlay desplegable fluido (Liquid Popout)
     Variants {
         model: Quickshell.screens
