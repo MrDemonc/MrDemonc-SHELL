@@ -404,6 +404,7 @@ PanelWindow {
             anchors.fill: parent
             z: 0
             hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: PopoutManager.isBarDragging ? Qt.ClosedHandCursor : Qt.ArrowCursor
 
             property real pressLocalX: 0
@@ -411,6 +412,9 @@ PanelWindow {
             property bool isDraggingBar: false
 
             onPressed: mouse => {
+                if (mouse.button === Qt.RightButton) {
+                    return;
+                }
                 pressLocalX = mouse.x;
                 pressLocalY = mouse.y;
                 isDraggingBar = false;
@@ -431,7 +435,12 @@ PanelWindow {
                 }
             }
 
-            onReleased: {
+            onReleased: mouse => {
+                if (mouse.button === Qt.RightButton) {
+                    let coords = barWindow.getScreenCoords(mouse.x, mouse.y);
+                    PopoutManager.openBarMenu(coords.x, coords.y);
+                    return;
+                }
                 if (isDraggingBar) {
                     isDraggingBar = false;
                     PopoutManager.isBarDragging = false;
@@ -445,9 +454,13 @@ PanelWindow {
 
             onCanceled: {
                 if (isDraggingBar) {
+                    let edge = PopoutManager.candidateBarPosition;
                     isDraggingBar = false;
                     PopoutManager.isBarDragging = false;
                     PopoutManager.candidateBarPosition = "";
+                    if (edge && edge !== PopoutManager.barPosition) {
+                        PopoutManager.setBarPosition(edge);
+                    }
                 }
             }
         }
@@ -1018,7 +1031,7 @@ PanelWindow {
                     }
                     color: (btIndicator && btIndicator.isConnected) ? Theme.primary : ((btIndicator && btIndicator.isPowered) ? Theme.text : Theme.overlay)
                     font.family: Theme.fontFamily
-                    font.pixelSize: 12
+                    font.pixelSize: 10
                 }
                 Text {
                     visible: !PopoutManager.isVertical && btIndicator && btIndicator.isConnected && btIndicator.connectedCount > 0
@@ -1152,7 +1165,7 @@ PanelWindow {
                     }
                     color: (netIndicator && netIndicator.isConnected) ? Theme.cyan : Theme.overlay
                     font.family: Theme.fontFamily
-                    font.pixelSize: 12
+                    font.pixelSize: 13.5
                 }
                 Text {
                     visible: !PopoutManager.isVertical && netIndicator && netIndicator.isConnected && netIndicator.ssid.length > 0

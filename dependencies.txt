@@ -19,6 +19,7 @@ pipewire-alsa
 pipewire-jack
 wireplumber
 sof-firmware
+alsa-firmware
 alsa-ucm-conf
 alsa-utils
 pavucontrol
@@ -35,6 +36,7 @@ bluez-utils
 upower
 brightnessctl
 xdg-utils
+xdg-user-dirs
 libnotify
 
 # --- Captura, Grabación de Pantalla & Selector de Color Wayland ---

@@ -158,3 +158,5 @@ gst-plugins-good
 libcamera
 bluez
 bluez-utils
+alsa-firmware
+xdg-user-dirs

@@ -20,6 +20,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
+    mask: Region {}
 
     Item {
         anchors.fill: parent

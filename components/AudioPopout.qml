@@ -245,8 +245,17 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 Text {
-                    text: audioRef ? (audioRef.sourceMuted ? "Silenciado" : (audioRef.sourceVolume + "%")) : "0%"
-                    color: (audioRef && audioRef.sourceMuted) ? Theme.danger : Theme.cyan
+                    text: {
+                        if (!audioRef) return "0%";
+                        let muted = audioRef.micMuted !== undefined ? audioRef.micMuted : audioRef.sourceMuted;
+                        let vol = audioRef.micVolume !== undefined ? audioRef.micVolume : audioRef.sourceVolume;
+                        return muted ? "Silenciado" : (vol + "%");
+                    }
+                    color: {
+                        if (!audioRef) return Theme.cyan;
+                        let muted = audioRef.micMuted !== undefined ? audioRef.micMuted : audioRef.sourceMuted;
+                        return muted ? Theme.danger : Theme.cyan;
+                    }
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                     font.bold: true
@@ -265,9 +274,17 @@ Item {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    width: audioRef ? (parent.width * (Math.min(100, audioRef.sourceVolume) / 100)) : 0
+                    width: {
+                        if (!audioRef) return 0;
+                        let vol = audioRef.micVolume !== undefined ? audioRef.micVolume : audioRef.sourceVolume;
+                        return parent.width * (Math.min(100, vol || 0) / 100);
+                    }
                     radius: 7
-                    color: (audioRef && audioRef.sourceMuted) ? Theme.overlay : Theme.cyan
+                    color: {
+                        if (!audioRef) return Theme.cyan;
+                        let muted = audioRef.micMuted !== undefined ? audioRef.micMuted : audioRef.sourceMuted;
+                        return muted ? Theme.overlay : Theme.cyan;
+                    }
 
                     Behavior on width {
                         enabled: !sourceMouse.drag.active

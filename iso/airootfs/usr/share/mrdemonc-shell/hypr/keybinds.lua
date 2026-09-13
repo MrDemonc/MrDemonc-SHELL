@@ -173,7 +173,7 @@ hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = tr
 -- GESTIÓN DE TAPA DE LAPTOP (LID SWITCH)
 -------------------------------------------------------------
 -- Al cerrar la tapa de la laptop con pantalla externa conectada, conmuta automáticamente a sólo pantalla externa
-hl.bind("switch:on:Lid Switch",  hl.dsp.exec_cmd(binDir .. "/shell-monitors preset external_only"), { locked = true })
--- Al abrir la tapa de la laptop, reactiva y extiende el escritorio
-hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd(binDir .. "/shell-monitors preset extend"),        { locked = true })
+hl.bind("switch:on:Lid Switch",  hl.dsp.exec_cmd(binDir .. "/shell-monitors lid_close"), { locked = true })
+-- Al abrir la tapa de la laptop, reactiva la pantalla y restaura el escritorio extendido
+hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd(binDir .. "/shell-monitors lid_open"),  { locked = true })
 

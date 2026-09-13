@@ -217,12 +217,42 @@ def save_monitors_lua(monitors):
 
 def apply_monitor_rule(output, mode="preferred", position="auto", scale=1.0, transform=0, disabled=False, mirror=""):
     if disabled:
+        run_cmd(["hyprctl", "keyword", "monitor", f"{output},disable"])
         lua = f'hl.monitor({{ output = "{output}", disabled = true }})'
     elif mirror and mirror != "none":
-        lua = f'hl.monitor({{ output = "{output}", mirror = "{mirror}" }})'
+        run_cmd(["hyprctl", "keyword", "monitor", f"{output},preferred,auto,1,mirror,{mirror}"])
+        lua = f'hl.monitor({{ output = "{output}", mode = "preferred", position = "auto", scale = 1.0, mirror = "{mirror}", disabled = false }})'
     else:
+        run_cmd(["hyprctl", "keyword", "monitor", f"{output},{mode},{position},{scale},transform,{transform}"])
         lua = f'hl.monitor({{ output = "{output}", mode = "{mode}", position = "{position}", scale = {scale}, transform = {transform}, disabled = false }})'
     eval_hyprland_lua(lua)
+
+def handle_lid_close():
+    data = get_monitors()
+    monitors = data.get("monitors", [])
+    externals = [m for m in monitors if m.get("is_external", False)]
+    if externals:
+        return apply_preset("external_only")
+    else:
+        run_cmd(["hyprctl", "dispatch", "dpms", "off"])
+        return {"status": "ok", "action": "dpms_off"}
+
+def handle_lid_open():
+    run_cmd(["hyprctl", "dispatch", "dpms", "on"])
+    data = get_monitors()
+    monitors = data.get("monitors", [])
+    laptop = next((m for m in monitors if m.get("is_laptop", False)), None)
+    externals = [m for m in monitors if m.get("is_external", False)]
+    if externals:
+        res = apply_preset("extend")
+    else:
+        if laptop:
+            apply_monitor_rule(laptop["name"], mode="preferred", position="0x0", scale=1.0, disabled=False)
+            save_monitors_lua([{"name": laptop["name"], "mode": "preferred", "pos": "0x0", "scale": 1.0, "disabled": False}])
+            run_cmd(["hyprctl", "dispatch", "focusmonitor", laptop["name"]])
+        res = {"status": "ok", "action": "laptop_active"}
+    run_cmd(["hyprctl", "dispatch", "dpms", "on"])
+    return res
 
 def apply_preset(preset_name):
     data = get_monitors()
@@ -290,6 +320,14 @@ def main():
 
     if action == "get":
         print(json.dumps(get_monitors()))
+        return
+
+    if action == "lid_close":
+        print(json.dumps(handle_lid_close()))
+        return
+
+    if action == "lid_open":
+        print(json.dumps(handle_lid_open()))
         return
 
     if action == "preset":

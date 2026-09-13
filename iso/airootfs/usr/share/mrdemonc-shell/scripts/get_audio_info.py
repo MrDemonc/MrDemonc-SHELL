@@ -72,17 +72,29 @@ def get_audio_data():
     except Exception:
         pass
 
-    mic_vol = 0
+    mic_vol = 100
     mic_muted = False
     try:
-        sources_json = json.loads(subprocess.check_output(["pactl", "-f", "json", "list", "sources"], stderr=subprocess.DEVNULL, timeout=2))
-        for s in sources_json:
-            name = s.get("name", "")
-            if "monitor" in name:
-                continue
-            is_default = (name == default_source) or (not default_source)
-            if is_default:
-                vol_obj = s.get("volume", {})
+        wp_out = subprocess.check_output(["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"], stderr=subprocess.DEVNULL, timeout=2).decode("utf-8").strip()
+        if "Volume:" in wp_out:
+            parts = wp_out.split()
+            if len(parts) >= 2:
+                try:
+                    mic_vol = int(round(float(parts[1]) * 100))
+                except Exception:
+                    pass
+            mic_muted = "[MUTED]" in wp_out
+    except Exception:
+        try:
+            sources_json = json.loads(subprocess.check_output(["pactl", "-f", "json", "list", "sources"], stderr=subprocess.DEVNULL, timeout=2))
+            non_monitors = [s for s in sources_json if "monitor" not in s.get("name", "").lower()]
+            cand = None
+            if non_monitors:
+                cand = next((s for s in non_monitors if s.get("name") == default_source), non_monitors[0])
+            elif sources_json:
+                cand = sources_json[0]
+            if cand:
+                vol_obj = cand.get("volume", {})
                 vol_vals = []
                 for ch, val in vol_obj.items():
                     pct = val.get("value_percent", "0%").rstrip("%")
@@ -90,11 +102,11 @@ def get_audio_data():
                         vol_vals.append(int(pct))
                     except Exception:
                         pass
-                mic_vol = int(sum(vol_vals) / len(vol_vals)) if vol_vals else 0
-                mic_muted = s.get("mute", False)
-                break
-    except Exception:
-        pass
+                if vol_vals:
+                    mic_vol = int(sum(vol_vals) / len(vol_vals))
+                mic_muted = cand.get("mute", False)
+        except Exception:
+            pass
 
     apps = []
     try:

@@ -122,6 +122,19 @@ QtObject {
     readonly property bool isVertical: barPosition === "left" || barPosition === "right"
     property bool isBarDragging: false
     property string candidateBarPosition: ""
+    property bool barMenuOpen: false
+    property real barMenuX: 0
+    property real barMenuY: 0
+
+    function openBarMenu(x, y) {
+        barMenuX = x;
+        barMenuY = y;
+        barMenuOpen = true;
+    }
+
+    function closeBarMenu() {
+        barMenuOpen = false;
+    }
 
     property var loadPositionProc: Process {
         command: [Quickshell.shellDir + "/scripts/manage_order.py", "get_position"]

@@ -108,6 +108,18 @@ ShellRoot {
         }
     }
 
+    // 7.1 Menú contextual para mover la barra
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            BarContextMenu {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
+
     // 8. Modal flotante de Atajos de Teclado y Comandos del Sistema (SUPER + K)
     Variants {
         model: Quickshell.screens

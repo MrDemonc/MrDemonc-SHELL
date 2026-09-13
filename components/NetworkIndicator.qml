@@ -123,7 +123,7 @@ Item {
                 }
                 color: root.isConnected ? Theme.cyan : Theme.overlay
                 font.family: Theme.fontFamily
-                font.pixelSize: 12
+                font.pixelSize: 13.5
             }
 
             Text {

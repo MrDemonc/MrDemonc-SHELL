@@ -760,7 +760,7 @@ user_form_wizard() {
             step "Configuración de la cuenta de usuario..."
             say "Crea tu usuario personal. La contraseña maestra servirá para LUKS2, root y sudo."
             echo
-            say --foreground 2 "✓ Usuario configurado: $SYS_USER"
+            say --foreground 2 "  [OK] Usuario configurado: $SYS_USER"
             echo
             if [[ -n "$pass_err" ]]; then
                 say --foreground 1 "$pass_err"
@@ -782,8 +782,8 @@ user_form_wizard() {
         step "Configuración de la cuenta de usuario..."
         say "Crea tu usuario personal. La contraseña maestra servirá para LUKS2, root y sudo."
         echo
-        say --foreground 2 "✓ Usuario configurado: $SYS_USER"
-        say --foreground 2 "✓ Contraseña maestra configurada"
+        say --foreground 2 "  [OK] Usuario configurado: $SYS_USER"
+        say --foreground 2 "  [OK] Contraseña maestra configurada"
         echo
 
         SYS_HOSTNAME=$(g_input --placeholder "Nombre de la máquina (o Enter para 'archlinux')" --prompt.foreground="#845DF9" --prompt "Hostname> ")
@@ -1097,6 +1097,7 @@ perform_installation_worker() {
         pipewire-jack
         wireplumber
         sof-firmware
+        alsa-firmware
         alsa-ucm-conf
         alsa-utils
         pavucontrol
@@ -1107,6 +1108,7 @@ perform_installation_worker() {
         upower
         brightnessctl
         xdg-utils
+        xdg-user-dirs
         libnotify
         grim
         slurp
@@ -1569,6 +1571,16 @@ elif [ -f /usr/bin/zen ] && [ ! -f /usr/bin/zen-browser ]; then
     ln -sf /usr/bin/zen /usr/bin/zen-browser 2>/dev/null || true
 fi
 
+# Inicializar directorios estándar de usuario con xdg-user-dirs
+if command -v xdg-user-dirs-update >/dev/null 2>&1; then
+    su - "$SYS_USER" -c "xdg-user-dirs-update --force" 2>/dev/null || true
+fi
+for d in Desktop Documents Downloads Music Pictures Videos Escritorio Documentos Descargas Música Imágenes Vídeos; do
+    mkdir -p "/home/$SYS_USER/$d" 2>/dev/null || true
+done
+rm -rf "/home/$SYS_USER/Documentos/MrDemonc-SHELL"
+chown -R "$SYS_USER:users" "/home/$SYS_USER"
+
 CHROOT_SCRIPT
 
     chmod +x /mnt/root/setup_chroot.sh
@@ -1576,20 +1588,21 @@ CHROOT_SCRIPT
     rm -f /mnt/root/setup_chroot.sh
 
     set_phase "Desplegando entorno gráfico y configuraciones" 88
-    echo "==> Desplegando configuraciones en el directorio de usuario..."
-    DEST_REPO="/mnt/home/$SYS_USER/Documentos/MrDemonc-SHELL"
-    mkdir -p "$DEST_REPO"
+    echo "==> Desplegando configuraciones del sistema MrDemonc-SHELL..."
+    SYSTEM_SHELL="/mnt/usr/share/mrdemonc-shell"
+    mkdir -p "$SYSTEM_SHELL"
 
     if [ -d "/usr/share/mrdemonc-shell" ]; then
-        cp -a /usr/share/mrdemonc-shell/. "$DEST_REPO/"
+        cp -a /usr/share/mrdemonc-shell/. "$SYSTEM_SHELL/"
     elif [ -d "/home/demonc-test/Documentos/MrDemonc-SHELL" ]; then
-        cp -a "/home/demonc-test/Documentos/MrDemonc-SHELL/." "$DEST_REPO/"
-    else
-        git clone https://github.com/MrDemonc/MrDemonc-SHELL.git "$DEST_REPO" 2>/dev/null || true
+        cp -a "/home/demonc-test/Documentos/MrDemonc-SHELL/." "$SYSTEM_SHELL/"
     fi
 
-    chmod +x "$DEST_REPO"/scripts/*.sh 2>/dev/null || true
-    chmod +x "$DEST_REPO"/scripts/*.py 2>/dev/null || true
+    chmod +x "$SYSTEM_SHELL"/scripts/*.sh 2>/dev/null || true
+    chmod +x "$SYSTEM_SHELL"/scripts/*.py 2>/dev/null || true
+
+    # Limpiar cualquier residuo de la carpeta clonada en Documentos del usuario
+    rm -rf "/mnt/home/$SYS_USER/Documentos/MrDemonc-SHELL"
 
     USER_HOME="/mnt/home/$SYS_USER"
     mkdir -p "$USER_HOME/.config/hypr"
@@ -1601,15 +1614,13 @@ CHROOT_SCRIPT
     mkdir -p "$USER_HOME/.config/quickshell/themes"
 
     # Copiar temas predeterminados a la configuración de Quickshell
-    if [ -d "$DEST_REPO/themes" ]; then
-        cp -a "$DEST_REPO"/themes/. "$USER_HOME/.config/quickshell/themes/" 2>/dev/null || true
-    elif [ -d "/usr/share/mrdemonc-shell/themes" ]; then
-        cp -a /usr/share/mrdemonc-shell/themes/. "$USER_HOME/.config/quickshell/themes/" 2>/dev/null || true
+    if [ -d "$SYSTEM_SHELL/themes" ]; then
+        cp -a "$SYSTEM_SHELL"/themes/. "$USER_HOME/.config/quickshell/themes/" 2>/dev/null || true
     fi
 
     # Asegurar copia del wallpaper predeterminado (default.jpg)
     WALL_SRC=""
-    for cand in "$DEST_REPO/themes/default/wallpaper.jpg" "$DEST_REPO/wallpapers/default.jpg" "/usr/share/mrdemonc-shell/themes/default/wallpaper.jpg" "/usr/share/mrdemonc-shell/wallpapers/default.jpg" "/home/demonc-test/Descargas/default.jpg"; do
+    for cand in "$SYSTEM_SHELL/themes/default/wallpaper.jpg" "$SYSTEM_SHELL/wallpapers/default.jpg" "/usr/share/mrdemonc-shell/themes/default/wallpaper.jpg" "/usr/share/mrdemonc-shell/wallpapers/default.jpg" "/home/demonc-test/Descargas/default.jpg"; do
         if [ -f "$cand" ]; then
             WALL_SRC="$cand"
             break
@@ -1619,12 +1630,8 @@ CHROOT_SCRIPT
     if [ -n "$WALL_SRC" ]; then
         mkdir -p "$USER_HOME/Pictures/Wallpapers"
         mkdir -p "$USER_HOME/.config/quickshell/themes/default"
-        mkdir -p "$DEST_REPO/themes/default"
-        mkdir -p "$DEST_REPO/wallpapers"
         cp -f "$WALL_SRC" "$USER_HOME/Pictures/Wallpapers/default.jpg" 2>/dev/null || true
         cp -f "$WALL_SRC" "$USER_HOME/.config/quickshell/themes/default/wallpaper.jpg" 2>/dev/null || true
-        cp -f "$WALL_SRC" "$DEST_REPO/themes/default/wallpaper.jpg" 2>/dev/null || true
-        cp -f "$WALL_SRC" "$DEST_REPO/wallpapers/default.jpg" 2>/dev/null || true
     fi
 
     cat << WALL_JSON > "$USER_HOME/.config/quickshell/current_wallpaper.json"
@@ -1666,16 +1673,16 @@ gtk-theme-name=Adwaita-dark
 gtk-application-prefer-dark-theme=true
 GTK4_CONF
 
-    if [ -d "$DEST_REPO/hypr" ]; then
-        cp -f "$DEST_REPO/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
-        cp -f "$DEST_REPO/hypr/keybinds.lua" "$USER_HOME/.config/hypr/keybinds.lua"
-        cp -f "$DEST_REPO/hypr/theme_colors.lua" "$USER_HOME/.config/hypr/theme_colors.lua" 2>/dev/null || true
-        cp -f "$DEST_REPO/hypr/hyprlock.conf" "$USER_HOME/.config/hypr/hyprlock.conf" 2>/dev/null || true
-        cp -f "$DEST_REPO/hypr/hyprlock_colors.conf" "$USER_HOME/.config/hypr/hyprlock_colors.conf" 2>/dev/null || true
-        cp -f "$DEST_REPO/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf" 2>/dev/null || true
+    if [ -d "$SYSTEM_SHELL/hypr" ]; then
+        cp -f "$SYSTEM_SHELL/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
+        cp -f "$SYSTEM_SHELL/hypr/keybinds.lua" "$USER_HOME/.config/hypr/keybinds.lua"
+        cp -f "$SYSTEM_SHELL/hypr/theme_colors.lua" "$USER_HOME/.config/hypr/theme_colors.lua" 2>/dev/null || true
+        cp -f "$SYSTEM_SHELL/hypr/hyprlock.conf" "$USER_HOME/.config/hypr/hyprlock.conf" 2>/dev/null || true
+        cp -f "$SYSTEM_SHELL/hypr/hyprlock_colors.conf" "$USER_HOME/.config/hypr/hyprlock_colors.conf" 2>/dev/null || true
+        cp -f "$SYSTEM_SHELL/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf" 2>/dev/null || true
 
-        sed "s|userHome .. \"/Documentos/MrDemonc-SHELL\"|\"/home/$SYS_USER/Documentos/MrDemonc-SHELL\"|g" \
-            "$DEST_REPO/hypr/hyprland.lua" > "$USER_HOME/.config/hypr/hyprland.lua"
+        sed "s|userHome .. \"/Documentos/MrDemonc-SHELL\"|\"/usr/share/mrdemonc-shell\"|g" \
+            "$SYSTEM_SHELL/hypr/hyprland.lua" > "$USER_HOME/.config/hypr/hyprland.lua"
         sed -i "s/kb_layout  = \".*\"/kb_layout  = \"$HYPR_KB\"/g" "$USER_HOME/.config/hypr/hyprland.lua"
     fi
 
@@ -1683,9 +1690,9 @@ GTK4_CONF
     mkdir -p "$USER_HOME/.local/bin"
     mkdir -p "/mnt/usr/local/bin"
 
-    if [ -d "$DEST_REPO/bin" ]; then
-        cp -f "$DEST_REPO/bin/"* "$USER_HOME/.local/bin/" 2>/dev/null || true
-        cp -f "$DEST_REPO/bin/"* "/mnt/usr/local/bin/" 2>/dev/null || true
+    if [ -d "$SYSTEM_SHELL/bin" ]; then
+        cp -f "$SYSTEM_SHELL/bin/"* "$USER_HOME/.local/bin/" 2>/dev/null || true
+        cp -f "$SYSTEM_SHELL/bin/"* "/mnt/usr/local/bin/" 2>/dev/null || true
     fi
 
     chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
@@ -1711,8 +1718,8 @@ PROF_BIN
     ln -sf /dev/null "$USER_HOME/.config/systemd/user/dunst.service"
     chown -R "$SYS_USER:$SYS_USER" "$USER_HOME/.config/systemd" 2>/dev/null || true
 
-    if [ -d "$DEST_REPO/kitty" ]; then
-        cp -a "$DEST_REPO/kitty/." "$USER_HOME/.config/kitty/"
+    if [ -d "$SYSTEM_SHELL/kitty" ]; then
+        cp -a "$SYSTEM_SHELL/kitty/." "$USER_HOME/.config/kitty/"
     fi
 
     cat << 'KITTY_THEME' > "$USER_HOME/.config/kitty/theme.conf"
@@ -1758,7 +1765,7 @@ KITTY_THEME
 
     cat << QS_CONFIG > "$USER_HOME/.config/quickshell/shell.qml"
 import Quickshell
-import "/home/$SYS_USER/Documentos/MrDemonc-SHELL"
+import "/usr/share/mrdemonc-shell"
 
 ShellRoot {
 }
@@ -1789,24 +1796,28 @@ THEME_TOML
     # Asegurar propiedad en el directorio home antes de inicializar temas como usuario
     arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER" 2>/dev/null || true
 
-    if [ -f "$DEST_REPO/scripts/theme_manager.py" ]; then
-        arch-chroot /mnt su - "$SYS_USER" -c "python3 /home/$SYS_USER/Documentos/MrDemonc-SHELL/scripts/theme_manager.py set default" 2>/dev/null || true
+    if [ -f "$SYSTEM_SHELL/scripts/theme_manager.py" ]; then
+        arch-chroot /mnt su - "$SYS_USER" -c "python3 /usr/share/mrdemonc-shell/scripts/theme_manager.py set default" 2>/dev/null || true
     fi
 
     mkdir -p "$USER_HOME/.config"
-    if [ -f "$DEST_REPO/starship/starship.toml" ]; then
-        cp -f "$DEST_REPO/starship/starship.toml" "$USER_HOME/.config/starship.toml"
+    if [ -f "$SYSTEM_SHELL/starship/starship.toml" ]; then
+        cp -f "$SYSTEM_SHELL/starship/starship.toml" "$USER_HOME/.config/starship.toml"
     elif [ -f "/usr/share/mrdemonc-shell/starship/starship.toml" ]; then
         cp -f /usr/share/mrdemonc-shell/starship/starship.toml "$USER_HOME/.config/starship.toml"
     fi
 
     # Configuración de Fastfetch y animación de pato.gif
     mkdir -p "$USER_HOME/.config/fastfetch"
-    if [ -d "$DEST_REPO/fastfetch" ]; then
-        cp -a "$DEST_REPO/fastfetch/." "$USER_HOME/.config/fastfetch/"
+    if [ -d "$SYSTEM_SHELL/fastfetch" ]; then
+        cp -a "$SYSTEM_SHELL/fastfetch/." "$USER_HOME/.config/fastfetch/"
     elif [ -d "/usr/share/mrdemonc-shell/fastfetch" ]; then
         cp -a /usr/share/mrdemonc-shell/fastfetch/. "$USER_HOME/.config/fastfetch/"
     fi
+
+    # Limpiar cualquier remanente del repo en el home del usuario
+    rm -rf "$USER_HOME/Documentos/MrDemonc-SHELL"
+    chown -R "$SYS_USER:users" "$USER_HOME" 2>/dev/null || true
 
     echo "==> Configurando perfiles de inicio y shells para $SYS_USER..."
 

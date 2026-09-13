@@ -112,7 +112,7 @@ Item {
                 }
                 color: root.isConnected ? Theme.primary : (root.isPowered ? Theme.text : Theme.overlay)
                 font.family: Theme.fontFamily
-                font.pixelSize: 12
+                font.pixelSize: 10
             }
 
             Text {

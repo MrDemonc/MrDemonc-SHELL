@@ -13,6 +13,8 @@ Item {
     property bool masterMuted: false
     property int micVolume: 100
     property bool micMuted: false
+    property alias sourceVolume: root.micVolume
+    property alias sourceMuted: root.micMuted
     property var sinks: []
     property var apps: []
     property string rawAudioOutput: ""
