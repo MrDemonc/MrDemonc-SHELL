@@ -49,8 +49,8 @@ hl.config({
         rounding       = 0,
         rounding_power = 1,
 
-        -- Opacidad y transparencia sutil para ventanas (efecto glass)
-        active_opacity   = 0.93,
+        -- Opacidad y transparencia sutil y legible para ventanas (efecto glass)
+        active_opacity   = 0.92,
         inactive_opacity = 0.85,
 
         -- Sombras sutiles y elegantes
@@ -61,12 +61,14 @@ hl.config({
             color        = 0xaa101014,
         },
 
-        -- Desenfoque (blur) de fondo con suavizado
+        -- Desenfoque (blur) de fondo con suavizado y soporte para opacidad de ventanas
         blur = {
-            enabled   = true,
-            size      = 5,
-            passes    = 3,
-            vibrancy  = 0.2,
+            enabled           = true,
+            size              = 6,
+            passes            = 3,
+            vibrancy          = 0.2,
+            ignore_opacity    = true,
+            new_optimizations = true,
         },
     },
 })

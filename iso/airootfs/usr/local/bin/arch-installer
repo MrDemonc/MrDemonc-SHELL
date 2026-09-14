@@ -1709,17 +1709,28 @@ CURSOR_THEME
 [Settings]
 gtk-cursor-theme-name=capitaine-cursors
 gtk-cursor-theme-size=24
-gtk-theme-name=Adwaita-dark
-gtk-application-prefer-dark-theme=true
+gtk-theme-name=Adwaita
+gtk-icon-theme-name=Adwaita-Teal
+gtk-application-prefer-dark-theme=1
+gtk-font-name=Sans 10
 GTK3_CONF
 
     cat << GTK4_CONF > "$USER_HOME/.config/gtk-4.0/settings.ini"
 [Settings]
 gtk-cursor-theme-name=capitaine-cursors
 gtk-cursor-theme-size=24
-gtk-theme-name=Adwaita-dark
-gtk-application-prefer-dark-theme=true
+gtk-theme-name=Adwaita
+gtk-icon-theme-name=Adwaita-Teal
+gtk-application-prefer-dark-theme=1
+gtk-font-name=Sans 10
 GTK4_CONF
+
+    # Desplegar temas de iconos de acento oficiales Adwaita
+    if [ -d "$SYSTEM_SHELL/icons" ]; then
+        mkdir -p "/mnt/usr/share/icons" "$USER_HOME/.local/share/icons"
+        cp -rf "$SYSTEM_SHELL"/icons/Adwaita-* "/mnt/usr/share/icons/" 2>/dev/null || true
+        cp -rf "$SYSTEM_SHELL"/icons/Adwaita-* "$USER_HOME/.local/share/icons/" 2>/dev/null || true
+    fi
 
     if [ -d "$SYSTEM_SHELL/hypr" ]; then
         cp -f "$SYSTEM_SHELL/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
@@ -1833,6 +1844,24 @@ color14 = "#88c0d0"
 color15 = "#d8dee9"
 foreground = "#eceff4"
 THEME_TOML
+
+    # Configurar modo oscuro a nivel de sistema mediante dconf/gsettings (GTK3, GTK4 y Libadwaita)
+    mkdir -p /mnt/etc/dconf/profile /mnt/etc/dconf/db/local.d
+    cat << 'DCONF_PROF' > /mnt/etc/dconf/profile/user
+user-db:user
+system-db:local
+DCONF_PROF
+    cat << 'DCONF_APPEAR' > /mnt/etc/dconf/db/local.d/00-appearance
+[org/gnome/desktop/interface]
+color-scheme='prefer-dark'
+accent-color='teal'
+gtk-theme='Adwaita'
+icon-theme='Adwaita-Teal'
+cursor-theme='capitaine-cursors'
+cursor-size=24
+font-name='Sans 10'
+DCONF_APPEAR
+    arch-chroot /mnt dconf update 2>/dev/null || true
 
     # Asegurar propiedad en el directorio home antes de inicializar temas como usuario
     arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER" 2>/dev/null || true
@@ -2057,6 +2086,8 @@ MIME_CONF
     cp -f "$USER_HOME/.bash_profile" /mnt/etc/skel/
     cp -f "$USER_HOME/.bashrc" /mnt/etc/skel/
     cp -f "$USER_HOME/.config/starship.toml" /mnt/etc/skel/.config/ 2>/dev/null || true
+    cp -rf "$USER_HOME/.config/gtk-3.0" /mnt/etc/skel/.config/ 2>/dev/null || true
+    cp -rf "$USER_HOME/.config/gtk-4.0" /mnt/etc/skel/.config/ 2>/dev/null || true
     cp -r "$USER_HOME/.local/bin/." /mnt/etc/skel/.local/bin/ 2>/dev/null || true
 
     # Corregir rutas hardcodeadas en configs hacia el usuario actual

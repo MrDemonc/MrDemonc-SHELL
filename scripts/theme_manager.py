@@ -300,6 +300,191 @@ return {{
 
 
 
+def get_nearest_gnome_accent(hex_color):
+    try:
+        hexstr = str(hex_color).lstrip('#')
+        if len(hexstr) < 6:
+            return "blue"
+        r, g, b = (int(hexstr[i:i + 2], 16) for i in (0, 2, 4))
+        mx, mn = max(r, g, b), min(r, g, b)
+        if mx == 0 or (mx - mn) / mx < 0.20:
+            return "slate"
+        d = mx - mn
+        if mx == r:
+            hue = (60 * ((g - b) / d)) % 360
+        elif mx == g:
+            hue = 60 * ((b - r) / d) + 120
+        else:
+            hue = 60 * ((r - g) / d) + 240
+        names = ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink"]
+        refs = [0, 28, 52, 125, 185, 215, 275, 330]
+        best, best_d = "blue", 999
+        for name, ref in zip(names, refs):
+            diff = abs(hue - ref)
+            diff = min(diff, 360 - diff)
+            if diff < best_d:
+                best, best_d = name, diff
+        return best
+    except Exception:
+        return "blue"
+
+
+def sync_gtk_theme(theme_data):
+    try:
+        import subprocess
+        is_dark = theme_data.get("isDark", True)
+        mode = "dark" if is_dark else "light"
+        bg = theme_data.get("bg", "#1a1d24").lstrip('#')
+        bg_surface = theme_data.get("bgSurface", "#14161d").lstrip('#')
+        fg = theme_data.get("text", "#eceff4").lstrip('#')
+        subtext = theme_data.get("subtext", "#d8dee9").lstrip('#')
+        primary = theme_data.get("primary", "#88c0d0").lstrip('#')
+        danger = theme_data.get("danger", "#bf616a").lstrip('#')
+        success = theme_data.get("success", "#a3be8c").lstrip('#')
+        warning = theme_data.get("warning", "#ebcb8b").lstrip('#')
+
+        color_scheme = "prefer-dark" if is_dark else "prefer-light"
+        accent_enum = get_nearest_gnome_accent(primary)
+
+        # Mapear el acento al tema de iconos oficial de Adwaita correspondiente
+        accent_icons = {
+            "blue": "Adwaita-Blue-Default",
+            "teal": "Adwaita-Teal",
+            "green": "Adwaita-Green",
+            "yellow": "Adwaita-Yellow",
+            "orange": "Adwaita-Orange",
+            "red": "Adwaita-Red",
+            "pink": "Adwaita-Pink",
+            "purple": "Adwaita-Purple",
+            "slate": "Adwaita-Slate",
+        }
+        icon_theme = accent_icons.get(accent_enum, "Adwaita-Teal")
+
+        # 1. Configuración oficial en GSettings (Libadwaita / GTK4 / XDG Portals / Navegadores)
+        for key, val in [
+            ("color-scheme", color_scheme),
+            ("accent-color", accent_enum),
+            ("gtk-theme", "Adwaita"),
+            ("icon-theme", icon_theme),
+            ("cursor-theme", "capitaine-cursors"),
+            ("cursor-size", "24"),
+        ]:
+            try:
+                subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", key, str(val)],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
+        # 2. Configuración para aplicaciones GTK-3.0 y GTK-4.0 clásicas (settings.ini)
+        settings_content = f"""[Settings]
+gtk-application-prefer-dark-theme={1 if is_dark else 0}
+gtk-theme-name=Adwaita
+gtk-icon-theme-name={icon_theme}
+gtk-cursor-theme-name=capitaine-cursors
+gtk-cursor-theme-size=24
+gtk-font-name=Sans 10
+"""
+        for gtk_ver in ["gtk-3.0", "gtk-4.0"]:
+            d = os.path.expanduser(f"~/.config/{gtk_ver}")
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, "settings.ini"), "w", encoding="utf-8") as f:
+                f.write(settings_content)
+
+        # 3. Paleta oficial Libadwaita / GTK4 sin sobreescrituras destructivas (Método Omarchy / Caelestia)
+        # Se usan sombras transparentes rgba(0,0,0,...) para garantizar botones planos originales sin bordes blancos
+        def luminance(hexstr):
+            try:
+                def chan(i):
+                    v = int(hexstr[i:i + 2], 16) / 255
+                    return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+                return 0.2126 * chan(0) + 0.7152 * chan(2) + 0.0722 * chan(4)
+            except Exception:
+                return 0.5
+
+        accent_fg = "#ffffff" if luminance(primary) < 0.45 else f"#{bg}"
+        card_bg = "rgba(255, 255, 255, 0.05)" if is_dark else "rgba(0, 0, 0, 0.04)"
+        dialog_bg = f"#{bg_surface}"
+        shade_alpha = 0.25 if is_dark else 0.12
+
+        gtk4_css = f"""/* Generado automáticamente por Quickshell Theme Manager */
+/* Paleta del tema adaptada a Libadwaita / GTK4 preservando el diseño original */
+@define-color window_bg_color #{bg};
+@define-color window_fg_color #{fg};
+@define-color view_bg_color #{bg};
+@define-color view_fg_color #{fg};
+@define-color headerbar_bg_color #{bg};
+@define-color headerbar_fg_color #{fg};
+@define-color headerbar_backdrop_color #{bg_surface};
+@define-color headerbar_shade_color rgba(0, 0, 0, 0.15);
+@define-color headerbar_darker_shade_color rgba(0, 0, 0, 0.35);
+@define-color sidebar_bg_color #{bg_surface};
+@define-color sidebar_fg_color #{fg};
+@define-color sidebar_backdrop_color #{bg_surface};
+@define-color sidebar_shade_color rgba(0, 0, 0, 0.10);
+@define-color sidebar_border_color rgba(0, 0, 0, 0.25);
+@define-color secondary_sidebar_bg_color #{bg_surface};
+@define-color secondary_sidebar_fg_color #{fg};
+@define-color card_bg_color {card_bg};
+@define-color card_fg_color #{fg};
+@define-color card_shade_color rgba(0, 0, 0, 0.15);
+@define-color dialog_bg_color {dialog_bg};
+@define-color dialog_fg_color #{fg};
+@define-color popover_bg_color {dialog_bg};
+@define-color popover_fg_color #{fg};
+@define-color thumbnail_bg_color {dialog_bg};
+@define-color thumbnail_fg_color #{subtext};
+@define-color accent_bg_color #{primary};
+@define-color accent_fg_color {accent_fg};
+@define-color accent_color #{primary};
+@define-color destructive_bg_color #{danger};
+@define-color destructive_fg_color #ffffff;
+@define-color destructive_color #{danger};
+@define-color success_bg_color #{success};
+@define-color success_fg_color #ffffff;
+@define-color success_color #{success};
+@define-color warning_bg_color #{warning};
+@define-color warning_fg_color #{bg};
+@define-color warning_color #{warning};
+@define-color error_bg_color #{danger};
+@define-color error_fg_color #ffffff;
+@define-color error_color #{danger};
+@define-color shade_color rgba(0, 0, 0, {shade_alpha});
+@define-color scrollbar_outline_color rgba(255, 255, 255, 0.10);
+"""
+
+        gtk3_css = f"""/* Generado automáticamente por Quickshell Theme Manager */
+/* Compatibilidad para GTK3 */
+@define-color theme_bg_color #{bg};
+@define-color theme_fg_color #{fg};
+@define-color theme_base_color #{bg_surface};
+@define-color theme_text_color #{fg};
+@define-color theme_selected_bg_color #{primary};
+@define-color theme_selected_fg_color {accent_fg};
+@define-color accent_bg_color #{primary};
+@define-color accent_fg_color {accent_fg};
+@define-color accent_color #{primary};
+"""
+        gtk4_dir = os.path.expanduser("~/.config/gtk-4.0")
+        os.makedirs(gtk4_dir, exist_ok=True)
+        with open(os.path.join(gtk4_dir, "gtk.css"), "w", encoding="utf-8") as f:
+            f.write(gtk4_css)
+
+        gtk3_dir = os.path.expanduser("~/.config/gtk-3.0")
+        os.makedirs(gtk3_dir, exist_ok=True)
+        with open(os.path.join(gtk3_dir, "gtk.css"), "w", encoding="utf-8") as f:
+            f.write(gtk3_css)
+
+        # Sincronizar en directorio de estado mrdemonc
+        mrdemonc_theme_dir = os.path.expanduser("~/.local/state/mrdemonc/current/theme")
+        os.makedirs(mrdemonc_theme_dir, exist_ok=True)
+        with open(os.path.join(mrdemonc_theme_dir, "gtk-4.0.css"), "w", encoding="utf-8") as f:
+            f.write(gtk4_css)
+        with open(os.path.join(mrdemonc_theme_dir, "gtk-3.0.css"), "w", encoding="utf-8") as f:
+            f.write(gtk3_css)
+    except Exception:
+        pass
+
+
 def sync_limine_theme(theme_data):
     try:
         limine_candidates = ["/boot/limine.conf", "/boot/limine/limine.conf", "/boot/EFI/BOOT/limine.conf"]
@@ -402,6 +587,7 @@ def set_theme(name):
 
     sync_terminal_theme(theme_obj)
     sync_hyprland_theme(theme_obj)
+    sync_gtk_theme(theme_obj)
     sync_limine_theme(theme_obj)
     return True
 
