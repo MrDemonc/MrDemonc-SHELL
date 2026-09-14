@@ -89,7 +89,7 @@ PanelWindow {
                     readonly property bool isCurrent: PopoutManager.barPosition === modelData.id
                     readonly property bool isHovered: itemMouse.containsMouse
 
-                    color: isHovered ? Theme.bgHover : (isCurrent ? Theme.surface : "transparent")
+                    color: isHovered ? Theme.bgHover : (isCurrent ? Theme.bgSurface : "transparent")
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 

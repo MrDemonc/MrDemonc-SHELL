@@ -638,7 +638,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.runSysCmd(["hyprlock"])
+                        onClicked: { PopoutManager.close(); LockScreenManager.lock(); }
                     }
                 }
 
@@ -1235,7 +1235,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.runSysCmd(["hyprlock"])
+                        onClicked: { PopoutManager.close(); LockScreenManager.lock(); }
                     }
                 }
 

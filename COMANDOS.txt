@@ -274,7 +274,7 @@
     1 / P : Apagar el sistema por completo (con confirmación de seguridad)
     2 / R : Reiniciar el equipo (con confirmación de seguridad)
     3 / S : Suspender el equipo a memoria RAM (inmediato)
-    4 / L : Bloquear pantalla activa con Hyprlock (inmediato)
+    4 / L : Bloquear pantalla activa con Quickshell Lock Screen (inmediato)
     5 / E : Cerrar sesión de Hyprland (con confirmación de seguridad)
     6 / H : Hibernar el sistema en disco (con confirmación de seguridad)
 

@@ -24,24 +24,23 @@ echo -e "${NC}"
 echo -e "${BLUE}[INFO]${NC} Configurando para el usuario: ${BOLD}$CURRENT_USER${NC}"
 echo ""
 
-# 1. Asegurar que hyprlock y hypridle estén instalados
-echo -e "${YELLOW}[1/5] Verificando e instalando hyprlock y hypridle...${NC}"
-if ! command -v hyprlock >/dev/null 2>&1 || ! command -v hypridle >/dev/null 2>&1; then
-    sudo pacman -S --needed --noconfirm hyprlock hypridle
-    echo -e "${GREEN}[OK] hyprlock y hypridle instalados.${NC}"
+# 1. Asegurar que hypridle esté instalado
+echo -e "${YELLOW}[1/5] Verificando e instalando hypridle...${NC}"
+if ! command -v hypridle >/dev/null 2>&1; then
+    sudo pacman -S --needed --noconfirm hypridle
+    echo -e "${GREEN}[OK] hypridle instalado.${NC}"
 else
-    echo -e "${GREEN}[OK] hyprlock y hypridle ya están instalados.${NC}"
+    echo -e "${GREEN}[OK] hypridle ya está instalado.${NC}"
 fi
 
-# 2. Desplegar configuraciones de hyprlock y hypridle
-echo -e "${YELLOW}[2/5] Desplegando archivos de configuración de Hyprlock y Hypridle...${NC}"
+# 2. Desplegar configuración de Hypridle y limpiar hyprlock
+echo -e "${YELLOW}[2/5] Desplegando archivo de configuración de Hypridle...${NC}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mkdir -p "$USER_HOME/.config/hypr"
-cp -f "$REPO_DIR/hypr/hyprlock.conf" "$USER_HOME/.config/hypr/hyprlock.conf"
 cp -f "$REPO_DIR/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf"
-cp -f "$REPO_DIR/hypr/hyprlock_colors.conf" "$USER_HOME/.config/hypr/hyprlock_colors.conf" 2>/dev/null || true
+rm -f "$USER_HOME/.config/hypr/hyprlock"*.conf 2>/dev/null || true
 chown -R "$CURRENT_USER:$CURRENT_USER" "$USER_HOME/.config/hypr"
-echo -e "${GREEN}[OK] Configuraciones desplegadas en $USER_HOME/.config/hypr/${NC}"
+echo -e "${GREEN}[OK] Configuración desplegada en $USER_HOME/.config/hypr/${NC}"
 
 # 3. Configurar Autologin en tty1 con systemd (Seamless Login)
 echo -e "${YELLOW}[3/5] Configurando Autologin en tty1 (systemd agetty drop-in)...${NC}"
@@ -94,7 +93,7 @@ echo "Al encender la máquina virtual o reiniciar:"
 echo "1. El sistema arrancará e iniciará sesión automáticamente en tty1"
 echo "   con tu usuario (${BOLD}$CURRENT_USER${NC}) sin mostrar GDM."
 echo "2. Hyprland y MrDemonc-SHELL se abrirán directamente."
-echo "3. Tu pantalla se bloqueará con Hyprlock usando:"
+echo "3. Tu pantalla se bloqueará con el Lock Screen nativo de Quickshell usando:"
 echo "   - Atajo de teclado: ${BOLD}SUPER + L${NC}"
 echo "   - Inactividad automática: ${BOLD}hypridle${NC} (a los 10 minutos)"
 echo "------------------------------------------------------------------"

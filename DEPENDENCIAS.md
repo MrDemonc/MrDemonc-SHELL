@@ -16,7 +16,7 @@ O instalando individualmente desde el archivo de texto:
 
 ```bash
 sudo pacman -S --needed \
-    hyprland hyprlock hypridle \
+    hyprland hypridle \
     pipewire wireplumber libpulse playerctl \
     networkmanager bluez bluez-utils \
     upower brightnessctl xdg-utils libnotify \
@@ -29,7 +29,7 @@ sudo pacman -S --needed \
 
 ## 💎 Dependencia de AUR (Quickshell)
 
-Quickshell es el motor de la barra, popouts y widgets:
+Quickshell es el motor de la barra, popouts, lock screen nativo y widgets:
 
 ```bash
 # Con yay:
@@ -43,10 +43,9 @@ paru -S --needed quickshell
 
 ## 📋 Detalle de cada Dependencia por Categoría
 
-### 1. Entorno de Ventanas y Bloqueo de Pantalla
+### 1. Entorno de Ventanas y Gestión de Inactividad
 * **`hyprland`**: Compositor dinámico en mosaico Wayland.
-* **`hyprlock`**: Bloqueador de pantalla con aceleración GPU, soporte nativo de PAM y efecto de cristal desenfocado (*frosted glass*). Accionado con `SUPER + L`.
-* **`hypridle`**: Demonio de inactividad que atenúa la pantalla a los 5m, bloquea con `hyprlock` a los 10m y apaga el monitor a los 15m.
+* **`hypridle`**: Demonio de inactividad que atenúa la pantalla a los 5m, bloquea con Quickshell Lock Screen a los 10m y apaga el monitor a los 15m.
 
 ### 2. Audio y Multimedia
 * **`pipewire`**: Servidor de audio moderno y de baja latencia.

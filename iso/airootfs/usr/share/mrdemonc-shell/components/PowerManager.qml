@@ -64,8 +64,7 @@ QtObject {
             color: Theme.primary,
             needsConfirm: false,
             confirmTitle: "¿Bloquear pantalla?",
-            confirmDesc: "Se activará la pantalla de bloqueo del sistema.",
-            command: ["sh", "-c", "command -v shell-lock >/dev/null 2>&1 && shell-lock || (command -v hyprlock >/dev/null 2>&1 && hyprlock || notify-send 'Sistema' 'No se encontró shell-lock')"]
+            command: ["sh", "-c", "command -v shell-lock >/dev/null 2>&1 && shell-lock || notify-send 'Sistema' 'No se encontró shell-lock'"]
         },
         {
             id: "logout",

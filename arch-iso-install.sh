@@ -928,7 +928,7 @@ tips=(
     "Super + E abre el gestor de archivos Dolphin"
     "Super + Shift + W abre el selector dinámico de fondos de pantalla"
     "Super + Shift + T cambia rápidamente entre temas oscuros y claros"
-    "Super + L bloquea tu sesión de forma segura mediante Hyprlock"
+    "Super + L bloquea tu sesión de forma segura con Quickshell Lock Screen"
     "Super + T conmuta la ventana activa entre modo flotante y mosaico"
     "Super + V abre el gestor de portapapeles nativo de Wayland"
     "Super + 1..9 permite alternar rápidamente entre escritorios virtuales"
@@ -1081,7 +1081,6 @@ perform_installation_worker() {
         wget
         neovim
         hyprland
-        hyprlock
         hypridle
         quickshell
         kitty
@@ -1677,12 +1676,10 @@ GTK4_CONF
         cp -f "$SYSTEM_SHELL/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
         cp -f "$SYSTEM_SHELL/hypr/keybinds.lua" "$USER_HOME/.config/hypr/keybinds.lua"
         cp -f "$SYSTEM_SHELL/hypr/theme_colors.lua" "$USER_HOME/.config/hypr/theme_colors.lua" 2>/dev/null || true
-        cp -f "$SYSTEM_SHELL/hypr/hyprlock.conf" "$USER_HOME/.config/hypr/hyprlock.conf" 2>/dev/null || true
-        cp -f "$SYSTEM_SHELL/hypr/hyprlock_colors.conf" "$USER_HOME/.config/hypr/hyprlock_colors.conf" 2>/dev/null || true
         cp -f "$SYSTEM_SHELL/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf" 2>/dev/null || true
+        rm -f "$USER_HOME/.config/hypr/hyprlock"*.conf 2>/dev/null || true
 
-        sed "s|userHome .. \"/Documentos/MrDemonc-SHELL\"|\"/usr/share/mrdemonc-shell\"|g" \
-            "$SYSTEM_SHELL/hypr/hyprland.lua" > "$USER_HOME/.config/hypr/hyprland.lua"
+        cp -f "$SYSTEM_SHELL/hypr/hyprland.lua" "$USER_HOME/.config/hypr/hyprland.lua"
         sed -i "s/kb_layout  = \".*\"/kb_layout  = \"$HYPR_KB\"/g" "$USER_HOME/.config/hypr/hyprland.lua"
     fi
 
@@ -1763,13 +1760,8 @@ KITTY_THEME
     mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
     cp -f "$USER_HOME/.config/kitty/theme.conf" "$USER_HOME/.local/state/mrdemonc/current/theme/kitty.conf" 2>/dev/null || true
 
-    cat << QS_CONFIG > "$USER_HOME/.config/quickshell/shell.qml"
-import Quickshell
-import "/usr/share/mrdemonc-shell"
-
-ShellRoot {
-}
-QS_CONFIG
+    # Enlace a la configuración principal de Quickshell
+    ln -sf /usr/share/mrdemonc-shell/shell.qml "$USER_HOME/.config/quickshell/shell.qml"
 
     cat << 'THEME_TOML' > "$USER_HOME/.local/state/mrdemonc/current/theme/colors.toml"
 accent = "#88c0d0"

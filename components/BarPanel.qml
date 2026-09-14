@@ -1165,7 +1165,7 @@ PanelWindow {
                     }
                     color: (netIndicator && netIndicator.isConnected) ? Theme.cyan : Theme.overlay
                     font.family: Theme.fontFamily
-                    font.pixelSize: 13.5
+                    font.pixelSize: 13
                 }
                 Text {
                     visible: !PopoutManager.isVertical && netIndicator && netIndicator.isConnected && netIndicator.ssid.length > 0

@@ -9,11 +9,14 @@ if [ "$1" = "unlock" ]; then
     exit 0
 fi
 
-if pgrep -f "quickshell" >/dev/null 2>&1; then
-    touch "$LOCK_FILE"
-else
-    # Red de seguridad si Quickshell no está en ejecución
-    if command -v hyprlock >/dev/null 2>&1; then
-        exec hyprlock "$@"
+touch "$LOCK_FILE"
+
+if ! pgrep -f "quickshell" >/dev/null 2>&1; then
+    if [ -f "/usr/share/mrdemonc-shell/shell.qml" ]; then
+        quickshell -p /usr/share/mrdemonc-shell &
+    elif [ -f "$HOME/Documentos/MrDemonc-SHELL/shell.qml" ]; then
+        quickshell -p "$HOME/Documentos/MrDemonc-SHELL" &
+    else
+        quickshell &
     fi
 fi

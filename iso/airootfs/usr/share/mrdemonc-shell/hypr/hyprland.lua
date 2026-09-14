@@ -54,7 +54,14 @@ local menu        = binDir .. "/shell-apps"
 -- Autostart necessary processes (like notifications daemons, status bars, etc.)
 -- Or execute your favorite apps at launch like this:
 hl.on("hyprland.start", function () 
-    hl.exec_cmd("quickshell -p " .. userHome .. "/Documentos/MrDemonc-SHELL")
+    local shellPath = "/usr/share/mrdemonc-shell"
+    local f = io.open(shellPath .. "/shell.qml", "r")
+    if f then
+        f:close()
+    else
+        shellPath = userHome .. "/Documentos/MrDemonc-SHELL"
+    end
+    hl.exec_cmd("quickshell -p " .. shellPath)
     hl.exec_cmd("hypridle")
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1")
     hl.exec_cmd("hyprctl setcursor capitaine-cursors 24")

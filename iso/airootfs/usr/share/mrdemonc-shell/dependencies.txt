@@ -8,8 +8,7 @@
 # --- Entorno de Ventanas & Compositor ---
 hyprland
 
-# --- Bloqueador de Pantalla & Gestión de Inactividad (Lock Screen) ---
-hyprlock
+# --- Gestión de Inactividad (Idle Daemon) ---
 hypridle
 
 # --- Servidor de Sonido & Control Multimedia ---

@@ -39,7 +39,6 @@ echo -e "${YELLOW}[1/11] Verificando dependencias del sistema...${NC}"
 
 PACKAGES=(
     hyprland
-    hyprlock
     hypridle
     pipewire
     wireplumber
@@ -239,9 +238,9 @@ for rc_file in "$USER_HOME/.bashrc" "$USER_HOME/.zshrc"; do
 done
 
 # ------------------------------------------------------------------------------
-# 5. Configuración de Hyprland Modular y Pantalla de Bloqueo
+# 5. Configuración de Hyprland Modular e Hypridle
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[5/11] Desplegando configuración modular de Hyprland, Hyprlock e Hypridle...${NC}"
+echo -e "${YELLOW}[5/11] Desplegando configuración modular de Hyprland e Hypridle...${NC}"
 
 # Respaldar configuración previa si no se ha respaldado
 if [ -f "$HYPR_CONFIG_DIR/hyprland.lua" ] && [ ! -f "$HYPR_CONFIG_DIR/hyprland.lua.bak" ]; then
@@ -254,15 +253,14 @@ if [ -d "$REPO_DIR/hypr" ]; then
     cp -f "$REPO_DIR/hypr/windows.lua" "$HYPR_CONFIG_DIR/windows.lua"
     cp -f "$REPO_DIR/hypr/keybinds.lua" "$HYPR_CONFIG_DIR/keybinds.lua"
     cp -f "$REPO_DIR/hypr/theme_colors.lua" "$HYPR_CONFIG_DIR/theme_colors.lua" 2>/dev/null || true
-    cp -f "$REPO_DIR/hypr/hyprlock.conf" "$HYPR_CONFIG_DIR/hyprlock.conf" 2>/dev/null || true
-    cp -f "$REPO_DIR/hypr/hyprlock_colors.conf" "$HYPR_CONFIG_DIR/hyprlock_colors.conf" 2>/dev/null || true
     cp -f "$REPO_DIR/hypr/hypridle.conf" "$HYPR_CONFIG_DIR/hypridle.conf" 2>/dev/null || true
+    rm -f "$HYPR_CONFIG_DIR/hyprlock"*.conf 2>/dev/null || true
     
     # Generar hyprland.lua con la ruta exacta del repositorio
     sed "s|userHome .. \"/Documentos/MrDemonc-SHELL\"|\"$REPO_DIR\"|g" \
         "$REPO_DIR/hypr/hyprland.lua" > "$HYPR_CONFIG_DIR/hyprland.lua"
     
-    echo -e "${GREEN}[OK] Archivos de Hyprland instalados (windows.lua, keybinds.lua, hyprland.lua, hyprlock.conf, hypridle.conf).${NC}"
+    echo -e "${GREEN}[OK] Archivos de Hyprland instalados (windows.lua, keybinds.lua, hyprland.lua, hypridle.conf).${NC}"
 else
     echo -e "${YELLOW}[AVISO] No se encontró carpeta hypr/ en el repo, omitiendo copia de archivos lua.${NC}"
 fi

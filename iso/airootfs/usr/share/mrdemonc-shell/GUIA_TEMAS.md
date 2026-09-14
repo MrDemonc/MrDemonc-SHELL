@@ -6,7 +6,7 @@ El sistema de temas de **MrDemonc-SHELL** es unificado y reactivo: al cambiar o 
 - **Quickshell**: Barra superior, menús emergentes (*popouts* de audio, brillo, wifi, bluetooth, batería, reloj), lanzador de aplicaciones, selector de fondos y pantalla de bloqueo.
 - **Hyprland**: Colores y degradados de los bordes de ventanas activas e inactivas.
 - **Terminales (Kitty y Foot)**: Paleta ANSI completa de 16 colores y fondo del terminal recargados en caliente (`SIGUSR1`).
-- **Pantalla de Bloqueo (Quickshell Lock Screen & Hyprlock)**: Controles, tarjeta y textos coordinados.
+- **Pantalla de Bloqueo (Quickshell Lock Screen)**: Controles multimedia, tarjeta de desbloqueo, avatar y textos coordinados.
 - **Cargador de Arranque Limine**: Paleta del menú de inicio (`/boot/limine.conf`).
 - **Fondo de Pantalla**: Si el tema incluye una imagen de fondo, se aplica automáticamente al activarlo.
 
