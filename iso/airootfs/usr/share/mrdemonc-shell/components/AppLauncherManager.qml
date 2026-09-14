@@ -11,6 +11,8 @@ QtObject {
     property var allApps: []
     property var filteredApps: []
     property var recentApps: []
+    property var defaultApps: []
+    property var displayApps: []
     property int selectedIndex: 0
 
     // Monitoreo de toggle por atajo o comando CLI
@@ -62,14 +64,50 @@ QtObject {
         listProc.running = true;
     }
 
+    // Construye la lista por defecto: 4 favoritas/recientes primero, y luego todas las demás instaladas sin separación
+    function buildDefaultApps() {
+        let recents = recentApps || [];
+        let all = allApps || [];
+        let list = [];
+        let seen = {};
+
+        // 1. Añadir hasta 4 aplicaciones favoritas / recientes al inicio
+        for (let i = 0; i < recents.length; i++) {
+            let app = recents[i];
+            if (!app) continue;
+            let key = (app.exec || app.name || "").toLowerCase();
+            if (key && !seen[key]) {
+                seen[key] = true;
+                list.push(app);
+            }
+            if (list.length >= 4) break;
+        }
+
+        // 2. Añadir todas las demás aplicaciones instaladas a continuación sin separación
+        for (let j = 0; j < all.length; j++) {
+            let app = all[j];
+            if (!app) continue;
+            let key = (app.exec || app.name || "").toLowerCase();
+            if (key && !seen[key]) {
+                seen[key] = true;
+                list.push(app);
+            }
+        }
+
+        defaultApps = list;
+    }
+
     function filterApps() {
+        buildDefaultApps();
         let q = searchQuery.trim().toLowerCase();
         if (q === "") {
             filteredApps = [];
+            displayApps = defaultApps;
         } else {
             let res = [];
             for (let i = 0; i < allApps.length; i++) {
                 let app = allApps[i];
+                if (!app) continue;
                 let nameMatch = (app.name || "").toLowerCase().indexOf(q) !== -1;
                 let commentMatch = (app.comment || "").toLowerCase().indexOf(q) !== -1;
                 let execMatch = (app.exec || "").toLowerCase().indexOf(q) !== -1;
@@ -79,6 +117,7 @@ QtObject {
                 }
             }
             filteredApps = res;
+            displayApps = filteredApps;
         }
         selectedIndex = 0;
     }
@@ -88,7 +127,7 @@ QtObject {
     }
 
     function launchCurrent() {
-        let list = (searchQuery.trim() === "") ? recentApps : filteredApps;
+        let list = displayApps;
         if (list && list.length > 0 && selectedIndex >= 0 && selectedIndex < list.length) {
             let app = list[selectedIndex];
             launchApp(app.exec, app.terminal, app.name);
@@ -119,6 +158,7 @@ QtObject {
                 }
             }
             recentApps = updated.slice(0, 4);
+            filterApps();
         }
 
         launchProc.command = [Quickshell.shellDir + "/scripts/app_launcher.py", "launch", execCmd, isTerminal ? "true" : "false", id];

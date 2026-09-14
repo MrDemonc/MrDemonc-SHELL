@@ -30,35 +30,41 @@ def get_bluetooth_data():
     devices = {}
 
     has_adapter = False
+    bt_available = False
     try:
-        show_out = subprocess.check_output(["bluetoothctl", "show"], stderr=subprocess.DEVNULL, timeout=2).decode("utf-8", errors="ignore")
-        for line in show_out.splitlines():
-            line = line.strip()
-            if line.startswith("Powered: yes"):
-                is_powered = True
-                has_adapter = True
-            elif line.startswith("Discovering: yes"):
-                is_scanning = True
-            elif line.startswith("Name:") or line.startswith("Alias:"):
-                if not controller_name:
-                    controller_name = line.split(":", 1)[1].strip()
+        res = subprocess.run(["bluetoothctl", "show"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=2)
+        if res.returncode == 0:
+            bt_available = True
+            show_out = res.stdout.decode("utf-8", errors="ignore")
+            for line in show_out.splitlines():
+                line = line.strip()
+                if line.startswith("Powered: yes"):
+                    is_powered = True
                     has_adapter = True
-            elif line.startswith("Controller"):
-                has_adapter = True
+                elif line.startswith("Discovering: yes"):
+                    is_scanning = True
+                elif line.startswith("Name:") or line.startswith("Alias:"):
+                    if not controller_name:
+                        controller_name = line.split(":", 1)[1].strip()
+                        has_adapter = True
+                elif line.startswith("Controller"):
+                    has_adapter = True
     except Exception:
         pass
 
-    if not has_adapter:
+    if not has_adapter and bt_available:
         try:
-            list_out = subprocess.check_output(["bluetoothctl", "list"], stderr=subprocess.DEVNULL, timeout=2).decode("utf-8", errors="ignore")
-            for line in list_out.splitlines():
-                line = line.strip()
-                if line.startswith("Controller"):
-                    has_adapter = True
-                    if not controller_name:
-                        parts = line.split(" ", 2)
-                        if len(parts) >= 3:
-                            controller_name = parts[2].replace("[default]", "").strip()
+            res = subprocess.run(["bluetoothctl", "list"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=2)
+            if res.returncode == 0:
+                list_out = res.stdout.decode("utf-8", errors="ignore")
+                for line in list_out.splitlines():
+                    line = line.strip()
+                    if line.startswith("Controller"):
+                        has_adapter = True
+                        if not controller_name:
+                            parts = line.split(" ", 2)
+                            if len(parts) >= 3:
+                                controller_name = parts[2].replace("[default]", "").strip()
         except Exception:
             pass
 
@@ -79,7 +85,7 @@ def get_bluetooth_data():
         except Exception:
             pass
 
-    if is_powered:
+    if is_powered and bt_available:
         try:
             dev_out = subprocess.check_output(["bluetoothctl", "devices"], stderr=subprocess.DEVNULL, timeout=2).decode("utf-8", errors="ignore")
             for line in dev_out.splitlines():

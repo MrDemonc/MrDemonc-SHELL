@@ -6,6 +6,6 @@ Icon=application-pdf
 Terminal=false
 Type=Application
 Categories=Office;Viewer;
-MimeType=application/pdf;application/x-pdf;
+MimeType=application/pdf;application/x-pdf;application/x-bzpdf;application/x-gzpdf;
 StartupNotify=true
 StartupWMClass=shell-pdf

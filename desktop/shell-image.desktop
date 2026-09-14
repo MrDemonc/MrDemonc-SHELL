@@ -6,6 +6,6 @@ Icon=image-viewer
 Terminal=false
 Type=Application
 Categories=Graphics;Viewer;
-MimeType=image/bmp;image/gif;image/jpeg;image/jpg;image/pjpeg;image/png;image/tiff;image/webp;image/x-bmp;image/x-portable-anymap;image/x-portable-bitmap;image/x-portable-graymap;image/x-portable-pixmap;image/x-xbitmap;image/x-xpixmap;image/svg+xml;image/avif;
+MimeType=image/bmp;image/gif;image/jpeg;image/jpg;image/pjpeg;image/png;image/tiff;image/webp;image/x-bmp;image/x-portable-anymap;image/x-portable-bitmap;image/x-portable-graymap;image/x-portable-pixmap;image/x-xbitmap;image/x-xpixmap;image/svg+xml;image/avif;image/heic;image/heif;image/jxl;
 StartupNotify=true
 StartupWMClass=shell-image

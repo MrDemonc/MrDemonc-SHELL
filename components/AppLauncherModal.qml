@@ -28,6 +28,7 @@ PanelWindow {
             searchInput.text = "";
             searchInput.forceActiveFocus();
             AppLauncherManager.refreshApps();
+            appListView.positionViewAtIndex(0, ListView.Beginning);
         }
     }
 
@@ -60,8 +61,9 @@ PanelWindow {
         readonly property bool hasSearch: AppLauncherManager.searchQuery.trim().length > 0
         readonly property int targetHeight: {
             if (!hasSearch) {
-                let recCount = AppLauncherManager.recentApps ? AppLauncherManager.recentApps.length : 0;
-                return recCount > 0 ? (95 + recCount * 50) : 74;
+                let dispCount = AppLauncherManager.displayApps ? AppLauncherManager.displayApps.length : 0;
+                let visibleCount = Math.min(4, dispCount);
+                return visibleCount > 0 ? (95 + visibleCount * 50) : 74;
             }
             let count = AppLauncherManager.filteredApps ? AppLauncherManager.filteredApps.length : 0;
             if (count === 0) return 130;
@@ -159,18 +161,22 @@ PanelWindow {
                     }
 
                     Keys.onUpPressed: {
-                        let activeList = modalCard.hasSearch ? AppLauncherManager.filteredApps : AppLauncherManager.recentApps;
-                        if (activeList && activeList.length > 0) {
-                            AppLauncherManager.selectedIndex = (AppLauncherManager.selectedIndex - 1 + activeList.length) % activeList.length;
-                            appListView.positionViewAtIndex(AppLauncherManager.selectedIndex, ListView.Contain);
+                        let activeList = AppLauncherManager.displayApps;
+                        if (activeList && activeList.length > 0 && AppLauncherManager.selectedIndex > 0) {
+                            AppLauncherManager.selectedIndex--;
+                            if (appListView.count > 0) {
+                                appListView.positionViewAtIndex(AppLauncherManager.selectedIndex, ListView.Contain);
+                            }
                         }
                     }
 
                     Keys.onDownPressed: {
-                        let activeList = modalCard.hasSearch ? AppLauncherManager.filteredApps : AppLauncherManager.recentApps;
-                        if (activeList && activeList.length > 0) {
-                            AppLauncherManager.selectedIndex = (AppLauncherManager.selectedIndex + 1) % activeList.length;
-                            appListView.positionViewAtIndex(AppLauncherManager.selectedIndex, ListView.Contain);
+                        let activeList = AppLauncherManager.displayApps;
+                        if (activeList && activeList.length > 0 && AppLauncherManager.selectedIndex < activeList.length - 1) {
+                            AppLauncherManager.selectedIndex++;
+                            if (appListView.count > 0) {
+                                appListView.positionViewAtIndex(AppLauncherManager.selectedIndex, ListView.Contain);
+                            }
                         }
                     }
 
@@ -208,8 +214,13 @@ PanelWindow {
                     anchors.fill: parent
                     clip: true
                     spacing: 4
-                    model: modalCard.hasSearch ? AppLauncherManager.filteredApps : AppLauncherManager.recentApps
+                    model: AppLauncherManager.displayApps
                     currentIndex: AppLauncherManager.selectedIndex
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    ScrollBar.vertical: ScrollBar {
+                        width: 4
+                    }
 
                     delegate: Item {
                         id: appDelegate
@@ -329,7 +340,7 @@ PanelWindow {
                     // Mensaje cuando no hay resultados para la búsqueda
                     Item {
                         anchors.fill: parent
-                        visible: modalCard.hasSearch && (!AppLauncherManager.filteredApps || AppLauncherManager.filteredApps.length === 0)
+                        visible: modalCard.hasSearch && (!AppLauncherManager.displayApps || AppLauncherManager.displayApps.length === 0)
 
                         Text {
                             anchors.centerIn: parent

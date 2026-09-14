@@ -4,6 +4,7 @@
 #  Diseño de interfaz TUI inspirado en Omarchy (Charm gum, Tokyo Night, Box TUI)
 # ==============================================================================
 set -eo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ------------------------------------------------------------------------------
 # 1. Configuración de Terminal, Paleta Tokyo Night y Logo
@@ -1117,6 +1118,9 @@ perform_installation_worker() {
         curl
         wget
         neovim
+        ripgrep
+        fd
+        unzip
         hyprland
         hypridle
         quickshell
@@ -1642,8 +1646,8 @@ CHROOT_SCRIPT
 
     if [ -d "/usr/share/mrdemonc-shell" ]; then
         cp -a /usr/share/mrdemonc-shell/. "$SYSTEM_SHELL/"
-    elif [ -d "/home/demonc-test/Documentos/MrDemonc-SHELL" ]; then
-        cp -a "/home/demonc-test/Documentos/MrDemonc-SHELL/." "$SYSTEM_SHELL/"
+    elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/shell.qml" ]; then
+        cp -a "$SCRIPT_DIR/." "$SYSTEM_SHELL/"
     fi
 
     chmod +x "$SYSTEM_SHELL"/scripts/*.sh 2>/dev/null || true
@@ -1668,7 +1672,7 @@ CHROOT_SCRIPT
 
     # Asegurar copia del wallpaper predeterminado (default.jpg)
     WALL_SRC=""
-    for cand in "$SYSTEM_SHELL/themes/default/wallpaper.jpg" "$SYSTEM_SHELL/wallpapers/default.jpg" "/usr/share/mrdemonc-shell/themes/default/wallpaper.jpg" "/usr/share/mrdemonc-shell/wallpapers/default.jpg" "/home/demonc-test/Descargas/default.jpg"; do
+    for cand in "$SYSTEM_SHELL/themes/default/wallpaper.jpg" "$SYSTEM_SHELL/wallpapers/default.jpg" "/usr/share/mrdemonc-shell/themes/default/wallpaper.jpg" "/usr/share/mrdemonc-shell/wallpapers/default.jpg" "$SCRIPT_DIR/wallpapers/default.jpg"; do
         if [ -f "$cand" ]; then
             WALL_SRC="$cand"
             break
@@ -1709,17 +1713,28 @@ CURSOR_THEME
 [Settings]
 gtk-cursor-theme-name=capitaine-cursors
 gtk-cursor-theme-size=24
-gtk-theme-name=Adwaita-dark
-gtk-application-prefer-dark-theme=true
+gtk-theme-name=Adwaita
+gtk-icon-theme-name=Adwaita-Teal
+gtk-application-prefer-dark-theme=1
+gtk-font-name=Sans 10
 GTK3_CONF
 
     cat << GTK4_CONF > "$USER_HOME/.config/gtk-4.0/settings.ini"
 [Settings]
 gtk-cursor-theme-name=capitaine-cursors
 gtk-cursor-theme-size=24
-gtk-theme-name=Adwaita-dark
-gtk-application-prefer-dark-theme=true
+gtk-theme-name=Adwaita
+gtk-icon-theme-name=Adwaita-Teal
+gtk-application-prefer-dark-theme=1
+gtk-font-name=Sans 10
 GTK4_CONF
+
+    # Desplegar temas de iconos de acento oficiales Adwaita
+    if [ -d "$SYSTEM_SHELL/icons" ]; then
+        mkdir -p "/mnt/usr/share/icons" "$USER_HOME/.local/share/icons"
+        cp -rf "$SYSTEM_SHELL"/icons/Adwaita-* "/mnt/usr/share/icons/" 2>/dev/null || true
+        cp -rf "$SYSTEM_SHELL"/icons/Adwaita-* "$USER_HOME/.local/share/icons/" 2>/dev/null || true
+    fi
 
     if [ -d "$SYSTEM_SHELL/hypr" ]; then
         cp -f "$SYSTEM_SHELL/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
@@ -1743,6 +1758,25 @@ GTK4_CONF
 
     chmod +x "$USER_HOME/.local/bin"/* 2>/dev/null || true
     chmod +x "/mnt/usr/local/bin"/shell-* "/mnt/usr/local/bin"/clipboard-action 2>/dev/null || true
+
+    # Desplegar accesos directos y asociaciones de escritorio (.desktop)
+    mkdir -p "/mnt/usr/share/applications" "$USER_HOME/.local/share/applications" "/mnt/etc/skel/.local/share/applications"
+    if [ -d "$SYSTEM_SHELL/desktop" ]; then
+        cp -f "$SYSTEM_SHELL/desktop/"*.desktop "/mnt/usr/share/applications/" 2>/dev/null || true
+        cp -f "$SYSTEM_SHELL/desktop/"*.desktop "$USER_HOME/.local/share/applications/" 2>/dev/null || true
+        cp -f "$SYSTEM_SHELL/desktop/"*.desktop "/mnt/etc/skel/.local/share/applications/" 2>/dev/null || true
+    elif [ -d "/usr/share/applications" ]; then
+        for dt in shell-image.desktop shell-pdf.desktop shell-video.desktop shell-screenshot.desktop; do
+            if [ -f "/usr/share/applications/$dt" ]; then
+                cp -f "/usr/share/applications/$dt" "/mnt/usr/share/applications/" 2>/dev/null || true
+                cp -f "/usr/share/applications/$dt" "$USER_HOME/.local/share/applications/" 2>/dev/null || true
+                cp -f "/usr/share/applications/$dt" "/mnt/etc/skel/.local/share/applications/" 2>/dev/null || true
+            fi
+        done
+    fi
+    chmod 644 "/mnt/usr/share/applications"/shell-*.desktop 2>/dev/null || true
+    chmod 644 "$USER_HOME/.local/share/applications"/shell-*.desktop 2>/dev/null || true
+    chmod 644 "/mnt/etc/skel/.local/share/applications"/shell-*.desktop 2>/dev/null || true
 
     # Asegurar ~/.local/bin y /usr/local/bin en el PATH del sistema y del usuario
     mkdir -p /mnt/etc/profile.d
@@ -1834,12 +1868,45 @@ color15 = "#d8dee9"
 foreground = "#eceff4"
 THEME_TOML
 
+    # Configurar modo oscuro a nivel de sistema mediante dconf/gsettings (GTK3, GTK4 y Libadwaita)
+    mkdir -p /mnt/etc/dconf/profile /mnt/etc/dconf/db/local.d
+    cat << 'DCONF_PROF' > /mnt/etc/dconf/profile/user
+user-db:user
+system-db:local
+DCONF_PROF
+    cat << 'DCONF_APPEAR' > /mnt/etc/dconf/db/local.d/00-appearance
+[org/gnome/desktop/interface]
+color-scheme='prefer-dark'
+accent-color='teal'
+gtk-theme='Adwaita'
+icon-theme='Adwaita-Teal'
+cursor-theme='capitaine-cursors'
+cursor-size=24
+font-name='Sans 10'
+DCONF_APPEAR
+    arch-chroot /mnt dconf update 2>/dev/null || true
+
+    # Desplegar configuración de Neovim con LazyVim y sincronización de temas
+    mkdir -p "$USER_HOME/.config/nvim"
+    if [ -d "$SYSTEM_SHELL/nvim" ]; then
+        cp -a "$SYSTEM_SHELL/nvim/." "$USER_HOME/.config/nvim/"
+    elif [ -d "/usr/share/mrdemonc-shell/nvim" ]; then
+        cp -a /usr/share/mrdemonc-shell/nvim/. "$USER_HOME/.config/nvim/"
+    fi
+
     # Asegurar propiedad en el directorio home antes de inicializar temas como usuario
     arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER" 2>/dev/null || true
 
     if [ -f "$SYSTEM_SHELL/scripts/theme_manager.py" ]; then
         arch-chroot /mnt su - "$SYS_USER" -c "python3 /usr/share/mrdemonc-shell/scripts/theme_manager.py set default" 2>/dev/null || true
     fi
+
+    # Pre-sincronizar plugins de LazyVim para el usuario de forma headless
+    echo "==> Inicializando y sincronizando plugins de LazyVim..."
+    arch-chroot /mnt su - "$SYS_USER" -c 'nvim --headless "+Lazy! sync" +qa' 2>/dev/null || true
+
+    mkdir -p "/mnt/root/.config/nvim"
+    cp -a "$USER_HOME/.config/nvim/." "/mnt/root/.config/nvim/" 2>/dev/null || true
 
     mkdir -p "$USER_HOME/.config"
     if [ -f "$SYSTEM_SHELL/starship/starship.toml" ]; then
@@ -2007,11 +2074,8 @@ if command -v starship >/dev/null 2>&1; then
 fi
 BASHRC
 
-    # Establecer Nautilus como explorador por defecto
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default org.gnome.Nautilus.desktop inode/directory" 2>/dev/null || true
-
-    # Establecer Zen Browser como navegador por defecto
-    mkdir -p "$USER_HOME/.config" "/mnt/etc/skel/.config"
+    # Establecer asociaciones MIME predeterminadas (Imágenes, PDF, Videos, Navegador y Gestor de archivos)
+    mkdir -p "$USER_HOME/.config" "/mnt/etc/skel/.config" "/mnt/usr/share/applications" "/mnt/etc/xdg"
     cat << 'MIME_CONF' > "$USER_HOME/.config/mimeapps.list"
 [Default Applications]
 text/html=zen.desktop
@@ -2019,17 +2083,111 @@ x-scheme-handler/http=zen.desktop
 x-scheme-handler/https=zen.desktop
 x-scheme-handler/about=zen.desktop
 x-scheme-handler/unknown=zen.desktop
+inode/directory=org.gnome.Nautilus.desktop
+application/pdf=shell-pdf.desktop
+application/x-pdf=shell-pdf.desktop
+application/x-bzpdf=shell-pdf.desktop
+application/x-gzpdf=shell-pdf.desktop
+image/bmp=shell-image.desktop
+image/gif=shell-image.desktop
+image/jpeg=shell-image.desktop
+image/jpg=shell-image.desktop
+image/pjpeg=shell-image.desktop
+image/png=shell-image.desktop
+image/tiff=shell-image.desktop
+image/webp=shell-image.desktop
+image/x-bmp=shell-image.desktop
+image/x-portable-anymap=shell-image.desktop
+image/x-portable-bitmap=shell-image.desktop
+image/x-portable-graymap=shell-image.desktop
+image/x-portable-pixmap=shell-image.desktop
+image/x-xbitmap=shell-image.desktop
+image/x-xpixmap=shell-image.desktop
+image/svg+xml=shell-image.desktop
+image/avif=shell-image.desktop
+image/heic=shell-image.desktop
+image/heif=shell-image.desktop
+image/jxl=shell-image.desktop
+video/mp4=shell-video.desktop
+video/webm=shell-video.desktop
+video/x-matroska=shell-video.desktop
+video/quicktime=shell-video.desktop
+video/x-msvideo=shell-video.desktop
+video/ogg=shell-video.desktop
+video/mpeg=shell-video.desktop
+video/avi=shell-video.desktop
+video/x-flv=shell-video.desktop
+video/x-ms-wmv=shell-video.desktop
+video/3gpp=shell-video.desktop
+video/3gpp2=shell-video.desktop
+video/mp2t=shell-video.desktop
 
 [Added Associations]
 text/html=zen.desktop;
 x-scheme-handler/http=zen.desktop;
 x-scheme-handler/https=zen.desktop;
+x-scheme-handler/about=zen.desktop;
+x-scheme-handler/unknown=zen.desktop;
+inode/directory=org.gnome.Nautilus.desktop;
+application/pdf=shell-pdf.desktop;
+application/x-pdf=shell-pdf.desktop;
+application/x-bzpdf=shell-pdf.desktop;
+application/x-gzpdf=shell-pdf.desktop;
+image/bmp=shell-image.desktop;
+image/gif=shell-image.desktop;
+image/jpeg=shell-image.desktop;
+image/jpg=shell-image.desktop;
+image/pjpeg=shell-image.desktop;
+image/png=shell-image.desktop;
+image/tiff=shell-image.desktop;
+image/webp=shell-image.desktop;
+image/x-bmp=shell-image.desktop;
+image/x-portable-anymap=shell-image.desktop;
+image/x-portable-bitmap=shell-image.desktop;
+image/x-portable-graymap=shell-image.desktop;
+image/x-portable-pixmap=shell-image.desktop;
+image/x-xbitmap=shell-image.desktop;
+image/x-xpixmap=shell-image.desktop;
+image/svg+xml=shell-image.desktop;
+image/avif=shell-image.desktop;
+image/heic=shell-image.desktop;
+image/heif=shell-image.desktop;
+image/jxl=shell-image.desktop;
+video/mp4=shell-video.desktop;
+video/webm=shell-video.desktop;
+video/x-matroska=shell-video.desktop;
+video/quicktime=shell-video.desktop;
+video/x-msvideo=shell-video.desktop;
+video/ogg=shell-video.desktop;
+video/mpeg=shell-video.desktop;
+video/avi=shell-video.desktop;
+video/x-flv=shell-video.desktop;
+video/x-ms-wmv=shell-video.desktop;
+video/3gpp=shell-video.desktop;
+video/3gpp2=shell-video.desktop;
+video/mp2t=shell-video.desktop;
 MIME_CONF
+
     cp -f "$USER_HOME/.config/mimeapps.list" /mnt/etc/skel/.config/mimeapps.list 2>/dev/null || true
+    cp -f "$USER_HOME/.config/mimeapps.list" /mnt/usr/share/applications/mimeapps.list 2>/dev/null || true
+    cp -f "$USER_HOME/.config/mimeapps.list" /mnt/etc/xdg/mimeapps.list 2>/dev/null || true
+
+    # Actualizar bases de datos de aplicaciones y aplicar configuraciones xdg-mime
+    arch-chroot /mnt update-desktop-database /usr/share/applications 2>/dev/null || true
+    arch-chroot /mnt su - "$SYS_USER" -c "update-desktop-database ~/.local/share/applications" 2>/dev/null || true
+
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default org.gnome.Nautilus.desktop inode/directory" 2>/dev/null || true
     arch-chroot /mnt su - "$SYS_USER" -c "xdg-settings set default-web-browser zen.desktop 2>/dev/null || true"
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop x-scheme-handler/http 2>/dev/null || true"
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop x-scheme-handler/https 2>/dev/null || true"
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop text/html 2>/dev/null || true"
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop x-scheme-handler/http x-scheme-handler/https text/html" 2>/dev/null || true
+
+    # Asociar visor de imágenes por defecto
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-image.desktop image/png image/jpeg image/jpg image/webp image/gif image/svg+xml image/avif image/bmp image/tiff image/heic image/heif image/jxl" 2>/dev/null || true
+
+    # Asociar visor de PDF por defecto
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-pdf.desktop application/pdf application/x-pdf application/x-bzpdf application/x-gzpdf" 2>/dev/null || true
+
+    # Asociar reproductor de video por defecto
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-video.desktop video/mp4 video/webm video/x-matroska video/quicktime video/x-msvideo video/ogg video/mpeg video/avi video/x-flv video/x-ms-wmv video/3gpp video/3gpp2 video/mp2t" 2>/dev/null || true
 
     # Instalación de OpenCode y Antigravity CLI para el usuario instalado
     set_phase "Instalando OpenCode y Antigravity CLI" 94
@@ -2057,6 +2215,8 @@ MIME_CONF
     cp -f "$USER_HOME/.bash_profile" /mnt/etc/skel/
     cp -f "$USER_HOME/.bashrc" /mnt/etc/skel/
     cp -f "$USER_HOME/.config/starship.toml" /mnt/etc/skel/.config/ 2>/dev/null || true
+    cp -rf "$USER_HOME/.config/gtk-3.0" /mnt/etc/skel/.config/ 2>/dev/null || true
+    cp -rf "$USER_HOME/.config/gtk-4.0" /mnt/etc/skel/.config/ 2>/dev/null || true
     cp -r "$USER_HOME/.local/bin/." /mnt/etc/skel/.local/bin/ 2>/dev/null || true
 
     # Corregir rutas hardcodeadas en configs hacia el usuario actual

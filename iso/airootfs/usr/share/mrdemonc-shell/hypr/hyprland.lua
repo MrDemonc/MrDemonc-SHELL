@@ -61,7 +61,7 @@ hl.on("hyprland.start", function ()
     else
         shellPath = userHome .. "/Documentos/MrDemonc-SHELL"
     end
-    hl.exec_cmd("quickshell -p " .. shellPath)
+    hl.exec_cmd("quickshell -d -p " .. shellPath)
     hl.exec_cmd("hypridle")
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1")
     hl.exec_cmd("hyprctl setcursor capitaine-cursors 24")
