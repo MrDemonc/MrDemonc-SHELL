@@ -9,6 +9,7 @@ Item {
     property string connectingSsid: ""
     property string passwordInput: ""
     property bool showHiddenPrompt: false
+    readonly property bool wantsKeyboard: connectingSsid !== "" || showHiddenPrompt
 
     implicitWidth: 320
     implicitHeight: layout.implicitHeight + 20
@@ -20,7 +21,13 @@ Item {
     }
     onShowHiddenPromptChanged: {
         if (showHiddenPrompt) {
-            Qt.callLater(function() { hiddenNameEdit.forceActiveFocus(); });
+            if (hiddenNameEdit.text === "" && PopoutManager.lastHiddenSsid !== "") {
+                hiddenNameEdit.text = PopoutManager.lastHiddenSsid;
+            }
+            Qt.callLater(function() {
+                hiddenNameEdit.forceActiveFocus();
+                hiddenNameEdit.selectAll();
+            });
         }
     }
 
@@ -267,7 +274,9 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                hiddenNameEdit.text = "";
+                                if (hiddenNameEdit.text.trim().length > 0) {
+                                    PopoutManager.saveHiddenSsid(hiddenNameEdit.text.trim());
+                                }
                                 hiddenPassEdit.text = "";
                                 root.showHiddenPrompt = false;
                             }
@@ -293,9 +302,10 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                if (hiddenNameEdit.text.trim().length > 0 && networkRef) {
-                                    networkRef.connectToNetwork(hiddenNameEdit.text.trim(), hiddenPassEdit.text, true);
-                                    hiddenNameEdit.text = "";
+                                let name = hiddenNameEdit.text.trim();
+                                if (name.length > 0 && networkRef) {
+                                    PopoutManager.saveHiddenSsid(name);
+                                    networkRef.connectToNetwork(name, hiddenPassEdit.text, true);
                                     hiddenPassEdit.text = "";
                                     root.showHiddenPrompt = false;
                                 }

@@ -22,6 +22,8 @@ Item {
         return null;
     }
 
+    readonly property bool wantsKeyboard: activeChildItem && activeChildItem.wantsKeyboard ? true : false
+
     readonly property real preferredWidth: {
         if (effectiveTab === "clock") return PopoutManager.isVertical ? 320 : 600;
         if (activeChildItem && activeChildItem.implicitWidth > 0) {

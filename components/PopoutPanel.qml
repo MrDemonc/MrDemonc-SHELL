@@ -56,7 +56,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-popout"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: PopoutManager.hasPopout ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (PopoutManager.hasPopout && popout.wantsKeyboard) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: PopoutManager.hasPopout || popout.animProgress > 0.001

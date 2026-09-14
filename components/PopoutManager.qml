@@ -85,6 +85,26 @@ QtObject {
         }
     }
 
+    // Memoria para reintentos de red Wi-Fi oculta (compartida entre intentos y persistente)
+    property string lastHiddenSsid: ""
+    property var loadHiddenSsidProc: Process {
+        command: ["sh", "-c", "FILE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_last_hidden_ssid\"; if [ ! -f \"$FILE\" ]; then FILE=\"$HOME/.config/quickshell/last_hidden_ssid\"; fi; if [ -f \"$FILE\" ]; then cat \"$FILE\"; fi"]
+        running: true
+        stdout: SplitParser {
+            onRead: function(data) {
+                let s = String(data).trim();
+                if (s.length > 0) popoutMgr.lastHiddenSsid = s;
+            }
+        }
+    }
+    property var saveHiddenSsidProc: Process {}
+    function saveHiddenSsid(ssid) {
+        if (!ssid) return;
+        lastHiddenSsid = ssid;
+        saveHiddenSsidProc.command = ["sh", "-c", "echo -n \"$1\" > \"${XDG_RUNTIME_DIR:-/tmp}/quickshell_last_hidden_ssid\"; mkdir -p \"$HOME/.config/quickshell\"; echo -n \"$1\" > \"$HOME/.config/quickshell/last_hidden_ssid\"", "sh", ssid];
+        saveHiddenSsidProc.running = true;
+    }
+
     // Configuración de las 3 secciones principales de la barra: left, center, right
     property var barSections: ({
         "left": ["workspaces", "cava"],

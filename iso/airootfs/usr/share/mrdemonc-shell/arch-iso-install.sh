@@ -311,13 +311,14 @@ g_input() {
     if command -v gum >/dev/null 2>&1; then
         gum input "$@"
     else
-        local prompt="> " is_pw=0 placeholder=""
+        local prompt="> " is_pw=0 placeholder="" value=""
         while [[ $# -gt 0 ]]; do
             case "$1" in
                 --prompt) prompt="$2"; shift 2 ;;
                 --prompt.foreground=*) shift ;;
                 --password) is_pw=1; shift ;;
                 --placeholder) placeholder="$2"; shift 2 ;;
+                --value) value="$2"; shift 2 ;;
                 *) shift ;;
             esac
         done
@@ -327,7 +328,11 @@ g_input() {
             read -s -r val </dev/tty || read -s -r val || true
             echo ""
         else
-            read -r val </dev/tty || read -r val || true
+            if [ -n "$value" ]; then
+                read -e -i "$value" -r val </dev/tty || read -r val || true
+            else
+                read -r val </dev/tty || read -r val || true
+            fi
         fi
         echo "$val"
     fi
@@ -535,6 +540,12 @@ network_wizard() {
     rfkill unblock all 2>/dev/null || true
     nmcli radio wifi on 2>/dev/null || true
 
+    local last_hidden_ssid=""
+    local runtime_ssid_file="${XDG_RUNTIME_DIR:-/tmp}/quickshell_last_hidden_ssid"
+    if [ -f "$runtime_ssid_file" ]; then
+        last_hidden_ssid=$(cat "$runtime_ssid_file" 2>/dev/null || true)
+    fi
+
     while true; do
         step "Configuración de red e Internet..."
 
@@ -583,10 +594,22 @@ network_wizard() {
                     wifi_choice=$(printf '%s\n' "${FOUND_SSIDS[@]}" "Escribir SSID manualmente" | \
                         g_choose --height 8 --header "Selecciona tu red Wi-Fi:")
                     if [ "$wifi_choice" == "Escribir SSID manualmente" ]; then
-                        wifi_choice=$(g_input --placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
+                        local man_args=(--placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
+                        if [ -n "$last_hidden_ssid" ]; then
+                            man_args+=(--value "$last_hidden_ssid")
+                        fi
+                        wifi_choice=$(g_input "${man_args[@]}")
+                        [ -n "$wifi_choice" ] && last_hidden_ssid="$wifi_choice"
+                        [ -n "$wifi_choice" ] && echo -n "$wifi_choice" > "$runtime_ssid_file" 2>/dev/null || true
                     fi
                 else
-                    wifi_choice=$(g_input --placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
+                    local man_args=(--placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
+                    if [ -n "$last_hidden_ssid" ]; then
+                        man_args+=(--value "$last_hidden_ssid")
+                    fi
+                    wifi_choice=$(g_input "${man_args[@]}")
+                    [ -n "$wifi_choice" ] && last_hidden_ssid="$wifi_choice"
+                    [ -n "$wifi_choice" ] && echo -n "$wifi_choice" > "$runtime_ssid_file" 2>/dev/null || true
                 fi
 
                 if [ -n "$wifi_choice" ]; then
@@ -594,9 +617,9 @@ network_wizard() {
                     wifi_pass=$(g_input --placeholder "Contraseña (dejar vacío si es abierta)" --password --prompt.foreground="#845DF9" --prompt "Contraseña> ")
                     step "Conectando a $wifi_choice..."
                     if [ -n "$wifi_pass" ]; then
-                        nmcli dev wifi connect "$wifi_choice" password "$wifi_pass" || say --foreground 1 "Falló la conexión."
+                        nmcli dev wifi connect "$wifi_choice" password "$wifi_pass" || say --foreground 1 "Falló la conexión a $wifi_choice."
                     else
-                        nmcli dev wifi connect "$wifi_choice" || true
+                        nmcli dev wifi connect "$wifi_choice" || say --foreground 1 "Falló la conexión a $wifi_choice."
                     fi
                     sleep 2
                 fi
@@ -607,8 +630,14 @@ network_wizard() {
                 iwctl station "$wlan_dev" scan 2>/dev/null || true
                 sleep 1
                 local wifi_choice
-                wifi_choice=$(g_input --placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
+                local man_args=(--placeholder "Nombre de la red" --prompt.foreground="#845DF9" --prompt "SSID> ")
+                if [ -n "$last_hidden_ssid" ]; then
+                    man_args+=(--value "$last_hidden_ssid")
+                fi
+                wifi_choice=$(g_input "${man_args[@]}")
                 if [ -n "$wifi_choice" ]; then
+                    last_hidden_ssid="$wifi_choice"
+                    echo -n "$wifi_choice" > "$runtime_ssid_file" 2>/dev/null || true
                     iwctl station "$wlan_dev" connect "$wifi_choice" || true
                 fi
                 sleep 2
@@ -616,15 +645,21 @@ network_wizard() {
         elif [[ "$sel" =~ OCULTA ]]; then
             step "Conectar a red Wi-Fi OCULTA..."
             local hidden_ssid hidden_pass
-            hidden_ssid=$(g_input --placeholder "Nombre exacto de la red oculta" --prompt.foreground="#845DF9" --prompt "SSID> ")
+            local hid_args=(--placeholder "Nombre exacto de la red oculta" --prompt.foreground="#845DF9" --prompt "SSID> ")
+            if [ -n "$last_hidden_ssid" ]; then
+                hid_args+=(--value "$last_hidden_ssid")
+            fi
+            hidden_ssid=$(g_input "${hid_args[@]}")
             if [ -n "$hidden_ssid" ]; then
-                hidden_pass=$(g_input --placeholder "Contraseña" --password --prompt.foreground="#845DF9" --prompt "Contraseña> ")
+                last_hidden_ssid="$hidden_ssid"
+                echo -n "$hidden_ssid" > "$runtime_ssid_file" 2>/dev/null || true
+                hidden_pass=$(g_input --placeholder "Contraseña (dejar vacío si es abierta)" --password --prompt.foreground="#845DF9" --prompt "Contraseña> ")
                 step "Conectando a red oculta $hidden_ssid..."
                 if command -v nmcli >/dev/null 2>&1; then
                     if [ -n "$hidden_pass" ]; then
-                        nmcli dev wifi connect "$hidden_ssid" password "$hidden_pass" hidden yes || true
+                        nmcli dev wifi connect "$hidden_ssid" password "$hidden_pass" hidden yes || say --foreground 1 "Falló la conexión a $hidden_ssid. Puedes reintentar."
                     else
-                        nmcli dev wifi connect "$hidden_ssid" hidden yes || true
+                        nmcli dev wifi connect "$hidden_ssid" hidden yes || say --foreground 1 "Falló la conexión a $hidden_ssid. Puedes reintentar."
                     fi
                 fi
                 sleep 2
@@ -1988,6 +2023,33 @@ MIME_CONF
     arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER"
     arch-chroot /mnt chmod 700 "/home/$SYS_USER"
     arch-chroot /mnt chsh -s /usr/bin/zsh "$SYS_USER" 2>/dev/null || true
+
+    # --------------------------------------------------------------------------
+    # Preservar conexiones de red configuradas en el entorno Live (Wi-Fi, redes ocultas, etc.)
+    # --------------------------------------------------------------------------
+    echo "==> Transfiriendo perfiles de red Wi-Fi configurados al sistema instalado..."
+    if [ -d "/etc/NetworkManager/system-connections" ]; then
+        mkdir -p "/mnt/etc/NetworkManager/system-connections"
+        # Copiar todos los perfiles de red generados en la ISO
+        cp -a /etc/NetworkManager/system-connections/* "/mnt/etc/NetworkManager/system-connections/" 2>/dev/null || true
+        # Quitar amarre estricto de nombre de interfaz para compatibilidad total con cualquier hardware Wi-Fi
+        sed -i '/^interface-name=/d' /mnt/etc/NetworkManager/system-connections/* 2>/dev/null || true
+        chmod 600 /mnt/etc/NetworkManager/system-connections/* 2>/dev/null || true
+        chown root:root /mnt/etc/NetworkManager/system-connections/* 2>/dev/null || true
+    fi
+
+    if [ -d "/var/lib/iwd" ]; then
+        mkdir -p "/mnt/var/lib/iwd"
+        cp -a /var/lib/iwd/* "/mnt/var/lib/iwd/" 2>/dev/null || true
+        chmod 600 /mnt/var/lib/iwd/* 2>/dev/null || true
+    fi
+
+    # Preservar el último SSID para el autocompletado en el nuevo sistema
+    if [ -f "${XDG_RUNTIME_DIR:-/tmp}/quickshell_last_hidden_ssid" ]; then
+        mkdir -p "$USER_HOME/.config/quickshell"
+        cp -f "${XDG_RUNTIME_DIR:-/tmp}/quickshell_last_hidden_ssid" "$USER_HOME/.config/quickshell/last_hidden_ssid" 2>/dev/null || true
+        chown -R "$SYS_USER:users" "$USER_HOME/.config/quickshell" 2>/dev/null || true
+    fi
 
     set_phase "Finalizando instalación y sincronizando almacenamiento" 98
     echo "==> Sincronizando datos a disco y desmontando particiones..."
