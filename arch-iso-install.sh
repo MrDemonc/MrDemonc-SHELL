@@ -1107,8 +1107,10 @@ perform_installation_worker() {
         sudo
         git
         zsh
+        zsh-completions
         zsh-autosuggestions
         zsh-syntax-highlighting
+        bash-completion
         starship
         fastfetch
         chafa
@@ -1187,8 +1189,17 @@ perform_installation_worker() {
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
+    # Habilitar repositorio multilib en el entorno de instalación para pacstrap
+    sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf 2>/dev/null || true
+
     pacstrap -K /mnt "${BASE_PACKAGES[@]}"
     genfstab -U /mnt >> /mnt/etc/fstab
+
+    # Habilitar repositorio multilib, Color, ILoveCandy y descargas paralelas en el sistema instalado
+    sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /mnt/etc/pacman.conf 2>/dev/null || true
+    sed -i 's/^#Color/Color\nILoveCandy/' /mnt/etc/pacman.conf 2>/dev/null || true
+    sed -i 's/^#ParallelDownloads = .*/ParallelDownloads = 5/' /mnt/etc/pacman.conf 2>/dev/null || true
+    sed -i 's/^#VerbosePkgLists/VerbosePkgLists/' /mnt/etc/pacman.conf 2>/dev/null || true
 
     set_phase "Configurando sistema interno, usuarios e initramfs" 75
 
@@ -1560,6 +1571,9 @@ pacman -Rns --noconfirm firefox firefox-esr chromium epiphany midori 2>/dev/null
 # Configurar acceso temporal sudo para compilar paquetes AUR con makepkg
 echo "%wheel ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel
 
+# Sincronizar bases de datos de pacman (incluyendo multilib recién habilitado)
+pacman -Sy --noconfirm 2>/dev/null || true
+
 # Instalar yay (AUR helper) si no está presente
 if ! command -v yay >/dev/null 2>&1; then
     echo "Instalando yay (AUR helper)..."
@@ -1883,7 +1897,7 @@ if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ];
 fi
 ZPROF
 
-    # ~/.zshrc: Configuración interactiva, historial, plugins y Starship
+    # ~/.zshrc: Configuración interactiva, historial, autocompletado avanzado y Starship
     cat << 'ZSHRC' > "$USER_HOME/.zshrc"
 # Arch Linux Zsh Configuration
 export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
@@ -1896,6 +1910,30 @@ HISTFILE="$HOME/.zsh_history"
 HISTSIZE=10000
 SAVEHIST=10000
 setopt APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_DUPS
+
+# ------------------------------------------------------------------------------
+# Sistema de Autocompletado ZSH y Sugerencias de Paquetes (Pacman / Yay)
+# ------------------------------------------------------------------------------
+autoload -Uz compinit
+compinit -d "$HOME/.cache/zsh/zcompdump-$ZSH_VERSION"
+
+# Menú interactivo navegable con Tab y flechas
+zstyle ':completion:*' menu select
+# Autocompletado insensible a mayúsculas/minúsculas y coincidencias parciales
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+# Colores de listado idénticos a LS_COLORS
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+# Caché de autocompletado en disco para consultas instantáneas en pacman y yay
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "$HOME/.cache/zsh/zcompcache"
+# Formato visual organizado por categorías
+zstyle ':completion:*:descriptions' format '%F{cyan}-- %d --%f'
+zstyle ':completion:*:messages' format '%F{purple}-- %d --%f'
+zstyle ':completion:*:warnings' format '%F{red}-- No se encontraron coincidencias --%f'
+
+# Asociar completado de paquetes a yay y paru mediante el módulo oficial de pacman
+compdef yay=pacman 2>/dev/null || true
+compdef paru=pacman 2>/dev/null || true
 
 # Plugins instalados por pacman
 [ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
@@ -1951,6 +1989,13 @@ BPROF
 
     cat << 'BASHRC' > "$USER_HOME/.bashrc"
 export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
+
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+fi
+complete -F _pacman yay 2>/dev/null || true
+complete -F _pacman paru 2>/dev/null || true
+
 alias ls='ls --color=auto'
 alias ll='ls -la --color=auto'
 alias la='ls -A --color=auto'

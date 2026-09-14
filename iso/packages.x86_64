@@ -127,6 +127,8 @@ xdg-utils
 xfsprogs
 xl2tpd
 zsh
+zsh-completions
+bash-completion
 networkmanager
 git
 gum
