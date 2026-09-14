@@ -230,12 +230,20 @@ def apply_monitor_rule(output, mode="preferred", position="auto", scale=1.0, tra
 def handle_lid_close():
     data = get_monitors()
     monitors = data.get("monitors", [])
+    laptop = next((m for m in monitors if m.get("is_laptop", False)), None)
     externals = [m for m in monitors if m.get("is_external", False)]
-    if externals:
+    # Solo conmutar a monitor externo si existe pantalla integrada de laptop Y monitor externo (modo clamshell)
+    if laptop and externals:
         return apply_preset("external_only")
     else:
+        # Bloquear inmediatamente y verificar que la pantalla de bloqueo esté activa antes de apagar el display
+        user_home = os.path.expanduser("~")
+        shell_lock_bin = os.path.join(user_home, ".local", "bin", "shell-lock")
+        if not os.path.isfile(shell_lock_bin):
+            shell_lock_bin = "shell-lock"
+        run_cmd([shell_lock_bin])
         run_cmd(["hyprctl", "dispatch", "dpms", "off"])
-        return {"status": "ok", "action": "dpms_off"}
+        return {"status": "ok", "action": "locked_and_dpms_off"}
 
 def handle_lid_open():
     run_cmd(["hyprctl", "dispatch", "dpms", "on"])
@@ -243,7 +251,7 @@ def handle_lid_open():
     monitors = data.get("monitors", [])
     laptop = next((m for m in monitors if m.get("is_laptop", False)), None)
     externals = [m for m in monitors if m.get("is_external", False)]
-    if externals:
+    if laptop and externals:
         res = apply_preset("extend")
     else:
         if laptop:

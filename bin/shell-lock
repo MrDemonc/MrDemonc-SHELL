@@ -3,14 +3,24 @@
 
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
 LOCK_FILE="${RUNTIME_DIR}/quickshell_lock.toggle"
+LOCK_FIFO="${RUNTIME_DIR}/quickshell_lock.fifo"
+ACTIVE_FILE="${RUNTIME_DIR}/quickshell_lock.active"
 
 if [ "$1" = "unlock" ]; then
-    echo "UNLOCK" > "$LOCK_FILE"
+    echo "UNLOCK" > "$LOCK_FILE" 2>/dev/null
+    if [ -p "$LOCK_FIFO" ]; then
+        timeout 0.3 bash -c "echo 'UNLOCK' > '$LOCK_FIFO'" 2>/dev/null || true
+    fi
+    rm -f "$ACTIVE_FILE" 2>/dev/null
     exit 0
 fi
 
-touch "$LOCK_FILE"
+# Si ya está bloqueado y activo, salir de inmediato sin trabajo redundante
+if [ -f "$ACTIVE_FILE" ]; then
+    exit 0
+fi
 
+# Asegurar que quickshell esté en ejecución si no lo estaba
 if ! pgrep -f "quickshell" >/dev/null 2>&1; then
     if [ -f "/usr/share/mrdemonc-shell/shell.qml" ]; then
         quickshell -p /usr/share/mrdemonc-shell &
@@ -19,4 +29,20 @@ if ! pgrep -f "quickshell" >/dev/null 2>&1; then
     else
         quickshell &
     fi
+    sleep 0.3
 fi
+
+# Notificar bloqueo inmediato a Quickshell (FIFO primero para latencia <1ms, respaldo archivo toggle)
+touch "$LOCK_FILE"
+if [ -p "$LOCK_FIFO" ]; then
+    timeout 0.3 bash -c "echo 'LOCK' > '$LOCK_FIFO'" 2>/dev/null || true
+fi
+
+# Esperar sincronizadamente a que la superficie de bloqueo esté activa (hasta 500ms en pasos de 20ms)
+# Esto garantiza que hypridle, systemd o el apagado de DPMS no ocurran antes de que el lock esté renderizado
+for i in {1..25}; do
+    if [ -f "$ACTIVE_FILE" ]; then
+        break
+    fi
+    sleep 0.02
+done

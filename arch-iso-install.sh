@@ -1117,6 +1117,9 @@ perform_installation_worker() {
         curl
         wget
         neovim
+        ripgrep
+        fd
+        unzip
         hyprland
         hypridle
         quickshell
@@ -1863,12 +1866,27 @@ font-name='Sans 10'
 DCONF_APPEAR
     arch-chroot /mnt dconf update 2>/dev/null || true
 
+    # Desplegar configuración de Neovim con LazyVim y sincronización de temas
+    mkdir -p "$USER_HOME/.config/nvim"
+    if [ -d "$SYSTEM_SHELL/nvim" ]; then
+        cp -a "$SYSTEM_SHELL/nvim/." "$USER_HOME/.config/nvim/"
+    elif [ -d "/usr/share/mrdemonc-shell/nvim" ]; then
+        cp -a /usr/share/mrdemonc-shell/nvim/. "$USER_HOME/.config/nvim/"
+    fi
+
     # Asegurar propiedad en el directorio home antes de inicializar temas como usuario
     arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER" 2>/dev/null || true
 
     if [ -f "$SYSTEM_SHELL/scripts/theme_manager.py" ]; then
         arch-chroot /mnt su - "$SYS_USER" -c "python3 /usr/share/mrdemonc-shell/scripts/theme_manager.py set default" 2>/dev/null || true
     fi
+
+    # Pre-sincronizar plugins de LazyVim para el usuario de forma headless
+    echo "==> Inicializando y sincronizando plugins de LazyVim..."
+    arch-chroot /mnt su - "$SYS_USER" -c 'nvim --headless "+Lazy! sync" +qa' 2>/dev/null || true
+
+    mkdir -p "/mnt/root/.config/nvim"
+    cp -a "$USER_HOME/.config/nvim/." "/mnt/root/.config/nvim/" 2>/dev/null || true
 
     mkdir -p "$USER_HOME/.config"
     if [ -f "$SYSTEM_SHELL/starship/starship.toml" ]; then

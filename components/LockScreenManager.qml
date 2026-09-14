@@ -167,6 +167,21 @@ Item {
         }
     }
 
+    Process {
+        id: markLockedProc
+        command: ["sh", "-c", "touch \"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.active\""]
+    }
+
+    Process {
+        id: markUnlockedProc
+        command: ["sh", "-c", "rm -f \"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.active\""]
+    }
+
+    Component.onCompleted: {
+        markUnlockedProc.running = false;
+        markUnlockedProc.running = true;
+    }
+
     function finishUnlock() {
         dpmsOffTimer.stop();
         dpmsOnProc.running = false;
@@ -178,6 +193,8 @@ Item {
         isChecking = false;
         statusMessage = "";
         failAttempts = 0;
+        markUnlockedProc.running = false;
+        markUnlockedProc.running = true;
     }
 
     function lock() {
@@ -187,6 +204,8 @@ Item {
         isChecking = false;
         statusMessage = "";
         isLocked = true;
+        markLockedProc.running = false;
+        markLockedProc.running = true;
         // Refrescar batería y audio
         batProc.running = false; batProc.running = true;
         audioProc.running = false; audioProc.running = true;
@@ -220,9 +239,9 @@ Item {
         authProc.running = true;
     }
 
-    // Escuchar peticiones de bloqueo y desbloqueo por archivo runtime
+    // Escuchar peticiones de bloqueo y desbloqueo por FIFO runtime (<1ms) y archivo de respaldo
     property var watchLockProc: Process {
-        command: ["sh", "-c", "LOCK=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.toggle\"; while true; do if [ -f \"$LOCK\" ]; then VAL=$(cat \"$LOCK\" 2>/dev/null); rm -f \"$LOCK\"; if [ \"$VAL\" = \"UNLOCK\" ]; then echo 'UNLOCK'; else echo 'LOCK'; fi; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "FIFO=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.fifo\"; LOCK=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.toggle\"; rm -f \"$FIFO\"; mkfifo \"$FIFO\"; ( while true; do if [ -f \"$LOCK\" ]; then VAL=$(cat \"$LOCK\" 2>/dev/null); rm -f \"$LOCK\"; if [ -p \"$FIFO\" ]; then if [ \"$VAL\" = \"UNLOCK\" ]; then echo 'UNLOCK' > \"$FIFO\" 2>/dev/null || true; else echo 'LOCK' > \"$FIFO\" 2>/dev/null || true; fi; fi; fi; sleep 0.05; done ) & BG_PID=$!; trap 'kill $BG_PID 2>/dev/null; rm -f \"$FIFO\"' EXIT; while true; do if read -r line < \"$FIFO\"; then echo \"$line\"; fi; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
