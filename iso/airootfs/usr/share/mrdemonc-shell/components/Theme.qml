@@ -96,11 +96,13 @@ QtObject {
         theme.cyan = parsed.cyan || (theme.isDark ? "#89dceb" : "#04a5e5");
         theme.pink = parsed.pink || (theme.isDark ? "#f5c2e7" : "#ea76cb");
 
-        // Sincronizar inmediatamente el wallpaper del tema con WallpaperManager
+        // Sincronizar inmediatamente el wallpaper del tema con WallpaperManager si está disponible
         let wp = parsed.wallpaperPath || (parsed.wallpaper && parsed._dir ? (parsed._dir + "/" + parsed.wallpaper) : "");
-        if (wp && WallpaperManager.currentWallpaper !== wp) {
-            WallpaperManager.currentWallpaper = wp;
-        }
+        try {
+            if (wp && typeof WallpaperManager !== "undefined" && WallpaperManager.currentWallpaper !== wp) {
+                WallpaperManager.currentWallpaper = wp;
+            }
+        } catch (e) {}
     }
 
     // Observador para cambios externos de tema (vía shell-theme o script)
@@ -114,7 +116,11 @@ QtObject {
                     theme.themeProc.running = true;
                     theme.themeListProc.running = false;
                     theme.themeListProc.running = true;
-                    WallpaperManager.refreshList();
+                    try {
+                        if (typeof WallpaperManager !== "undefined") {
+                            WallpaperManager.refreshList();
+                        }
+                    } catch (e) {}
                 }
             }
         }
@@ -122,7 +128,7 @@ QtObject {
 
     // Detección automática y sincronización del tema nativo de la shell
     property Process themeProc: Process {
-        command: [Quickshell.shellDir + "/scripts/theme_manager.py"]
+        command: ["sh", "-c", "for p in \"$1/scripts/theme_manager.py\" \"$1/../../scripts/theme_manager.py\" \"/usr/share/mrdemonc-shell/scripts/theme_manager.py\"; do if [ -f \"$p\" ]; then exec python3 \"$p\"; fi; done", "sh", Quickshell.shellDir]
         running: true
 
         stdout: SplitParser {
@@ -140,7 +146,7 @@ QtObject {
     }
 
     property Process themeListProc: Process {
-        command: [Quickshell.shellDir + "/scripts/theme_manager.py", "list"]
+        command: ["sh", "-c", "for p in \"$1/scripts/theme_manager.py\" \"$1/../../scripts/theme_manager.py\" \"/usr/share/mrdemonc-shell/scripts/theme_manager.py\"; do if [ -f \"$p\" ]; then exec python3 \"$p\" list; fi; done", "sh", Quickshell.shellDir]
         running: true
 
         stdout: SplitParser {

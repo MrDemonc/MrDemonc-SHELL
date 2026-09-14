@@ -50,6 +50,9 @@ hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd(binDir .. "/shell-recorder"))
 -- Quickshell: Cuentagotas / Selector de Color (SUPER + SHIFT + P)
 hl.bind(mainMod .. " + SHIFT + P", hl.dsp.exec_cmd(binDir .. "/shell-colorpicker"))
 
+-- Quickshell: Actualización Automática del Sistema (SUPER + SHIFT + U)
+hl.bind(mainMod .. " + SHIFT + U", hl.dsp.exec_cmd(binDir .. "/shell-update"))
+
 -- Explorador de archivos (SUPER + E)
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 
@@ -168,6 +171,9 @@ hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = tr
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true })
+
+-- Botón físico de encendido/apagado de la laptop (abre menú de energía de Quickshell)
+hl.bind("XF86PowerOff", hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
 
 -------------------------------------------------------------
 -- GESTIÓN DE TAPA DE LAPTOP (LID SWITCH)

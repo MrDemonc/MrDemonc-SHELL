@@ -232,13 +232,18 @@ def handle_lid_close():
     monitors = data.get("monitors", [])
     laptop = next((m for m in monitors if m.get("is_laptop", False)), None)
     externals = [m for m in monitors if m.get("is_external", False)]
-    # Solo conmutar a monitor externo si existe pantalla integrada de laptop Y monitor externo (modo clamshell)
-    if laptop and externals:
-        return apply_preset("external_only")
+    # Si hay pantalla externa conectada (HDMI, DisplayPort, etc.):
+    # Modo clamshell: NO bloquear, apagar sólo la pantalla integrada de la laptop y mantener la externa activa
+    if externals:
+        res = apply_preset("external_only")
+        run_cmd(["hyprctl", "dispatch", "dpms", "on"])
+        return res
     else:
-        # Bloquear inmediatamente y verificar que la pantalla de bloqueo esté activa antes de apagar el display
+        # Solo laptop sin pantalla externa: bloquear inmediatamente y apagar el display
         user_home = os.path.expanduser("~")
         shell_lock_bin = os.path.join(user_home, ".local", "bin", "shell-lock")
+        if not os.path.isfile(shell_lock_bin):
+            shell_lock_bin = "/usr/local/bin/shell-lock"
         if not os.path.isfile(shell_lock_bin):
             shell_lock_bin = "shell-lock"
         run_cmd([shell_lock_bin])

@@ -1129,6 +1129,7 @@ perform_installation_worker() {
         capitaine-cursors
         gum
         ttf-jetbrains-mono-nerd
+        terminus-font
         noto-fonts
         noto-fonts-emoji
         pipewire
@@ -1190,6 +1191,17 @@ perform_installation_worker() {
         gst-plugin-pipewire
         gst-plugins-good
         libcamera
+        android-tools
+        android-udev
+        cmake
+        meson
+        ninja
+        gdb
+        jq
+        nodejs
+        npm
+        python-pip
+        libusb
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
@@ -1445,7 +1457,9 @@ sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen 2>/dev/null || 
 locale-gen
 echo "LANG=$SYS_LOCALE" > /etc/locale.conf
 echo "KEYMAP=$KEYMAP" > /etc/vconsole.conf
-echo "FONT=ter-v16n" >> /etc/vconsole.conf
+if [ -f /usr/share/kbd/consolefonts/ter-v16n.psf.gz ] || [ -f /usr/share/kbd/consolefonts/ter-v16n.psfu.gz ]; then
+    echo "FONT=ter-v16n" >> /etc/vconsole.conf
+fi
 
 echo "$SYS_HOSTNAME" > /etc/hostname
 cat << HOSTS > /etc/hosts
@@ -1455,8 +1469,8 @@ cat << HOSTS > /etc/hosts
 HOSTS
 
 echo "root:$MASTER_PASS" | chpasswd
-id -u "$SYS_USER" &>/dev/null || useradd -m -g users -G wheel,video,audio,input,storage,optical,network,lp,scanner -s /usr/bin/zsh "$SYS_USER"
-usermod -aG lp,scanner,video,audio,input "$SYS_USER" 2>/dev/null || true
+id -u "$SYS_USER" &>/dev/null || useradd -m -g users -G wheel,video,audio,input,storage,optical,network,lp,scanner,adbusers -s /usr/bin/zsh "$SYS_USER"
+usermod -aG lp,scanner,video,audio,input,adbusers "$SYS_USER" 2>/dev/null || true
 echo "$SYS_USER:$MASTER_PASS" | chpasswd
 
 # Permisos de hardware para brillo de pantalla de laptops sin sudo
@@ -1714,7 +1728,7 @@ CURSOR_THEME
 gtk-cursor-theme-name=capitaine-cursors
 gtk-cursor-theme-size=24
 gtk-theme-name=Adwaita
-gtk-icon-theme-name=Adwaita-Teal
+gtk-icon-theme-name=Adwaita
 gtk-application-prefer-dark-theme=1
 gtk-font-name=Sans 10
 GTK3_CONF
@@ -1724,17 +1738,10 @@ GTK3_CONF
 gtk-cursor-theme-name=capitaine-cursors
 gtk-cursor-theme-size=24
 gtk-theme-name=Adwaita
-gtk-icon-theme-name=Adwaita-Teal
+gtk-icon-theme-name=Adwaita
 gtk-application-prefer-dark-theme=1
 gtk-font-name=Sans 10
 GTK4_CONF
-
-    # Desplegar temas de iconos de acento oficiales Adwaita
-    if [ -d "$SYSTEM_SHELL/icons" ]; then
-        mkdir -p "/mnt/usr/share/icons" "$USER_HOME/.local/share/icons"
-        cp -rf "$SYSTEM_SHELL"/icons/Adwaita-* "/mnt/usr/share/icons/" 2>/dev/null || true
-        cp -rf "$SYSTEM_SHELL"/icons/Adwaita-* "$USER_HOME/.local/share/icons/" 2>/dev/null || true
-    fi
 
     if [ -d "$SYSTEM_SHELL/hypr" ]; then
         cp -f "$SYSTEM_SHELL/hypr/windows.lua" "$USER_HOME/.config/hypr/windows.lua"
@@ -1766,7 +1773,7 @@ GTK4_CONF
         cp -f "$SYSTEM_SHELL/desktop/"*.desktop "$USER_HOME/.local/share/applications/" 2>/dev/null || true
         cp -f "$SYSTEM_SHELL/desktop/"*.desktop "/mnt/etc/skel/.local/share/applications/" 2>/dev/null || true
     elif [ -d "/usr/share/applications" ]; then
-        for dt in shell-image.desktop shell-pdf.desktop shell-video.desktop shell-screenshot.desktop; do
+        for dt in shell-image.desktop shell-pdf.desktop shell-video.desktop shell-screenshot.desktop shell-update.desktop; do
             if [ -f "/usr/share/applications/$dt" ]; then
                 cp -f "/usr/share/applications/$dt" "/mnt/usr/share/applications/" 2>/dev/null || true
                 cp -f "/usr/share/applications/$dt" "$USER_HOME/.local/share/applications/" 2>/dev/null || true
@@ -1797,6 +1804,18 @@ PROF_BIN
     mkdir -p "$USER_HOME/.config/systemd/user"
     ln -sf /dev/null "$USER_HOME/.config/systemd/user/dunst.service"
     chown -R "$SYS_USER:$SYS_USER" "$USER_HOME/.config/systemd" 2>/dev/null || true
+
+    # Configuración de systemd-logind para gestión instantánea de cierre de tapa (evitar suspensión antes de bloquear)
+    mkdir -p /mnt/etc/systemd/logind.conf.d
+    cat << 'LOGIND_LID' > /mnt/etc/systemd/logind.conf.d/lid.conf
+[Login]
+HandlePowerKey=ignore
+HandlePowerKeyLongPress=poweroff
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+LidSwitchIgnoreInhibited=no
+LOGIND_LID
 
     if [ -d "$SYSTEM_SHELL/kitty" ]; then
         cp -a "$SYSTEM_SHELL/kitty/." "$USER_HOME/.config/kitty/"
@@ -1879,7 +1898,7 @@ DCONF_PROF
 color-scheme='prefer-dark'
 accent-color='teal'
 gtk-theme='Adwaita'
-icon-theme='Adwaita-Teal'
+icon-theme='Adwaita'
 cursor-theme='capitaine-cursors'
 cursor-size=24
 font-name='Sans 10'
@@ -1887,12 +1906,23 @@ DCONF_APPEAR
     arch-chroot /mnt dconf update 2>/dev/null || true
 
     # Desplegar configuración de Neovim con LazyVim y sincronización de temas
-    mkdir -p "$USER_HOME/.config/nvim"
+    mkdir -p "$USER_HOME/.config/nvim" "/mnt/etc/skel/.config/nvim"
     if [ -d "$SYSTEM_SHELL/nvim" ]; then
         cp -a "$SYSTEM_SHELL/nvim/." "$USER_HOME/.config/nvim/"
     elif [ -d "/usr/share/mrdemonc-shell/nvim" ]; then
         cp -a /usr/share/mrdemonc-shell/nvim/. "$USER_HOME/.config/nvim/"
+    elif [ -d "/home/$SYS_USER/Documentos/MrDemonc-SHELL/nvim" ]; then
+        cp -a "/home/$SYS_USER/Documentos/MrDemonc-SHELL/nvim/." "$USER_HOME/.config/nvim/"
+    else
+        echo "==> Clonando starter oficial de LazyVim..."
+        git clone https://github.com/LazyVim/starter.git "$USER_HOME/.config/nvim" 2>/dev/null || true
+        rm -rf "$USER_HOME/.config/nvim/.git"
     fi
+    cp -a "$USER_HOME/.config/nvim/." "/mnt/etc/skel/.config/nvim/" 2>/dev/null || true
+
+    # Pre-crear directorios de configuración para VS Code y VSCodium
+    mkdir -p "$USER_HOME/.config/Code/User" "$USER_HOME/.config/VSCodium/User"
+    mkdir -p "/mnt/etc/skel/.config/Code/User" "/mnt/etc/skel/.config/VSCodium/User"
 
     # Asegurar propiedad en el directorio home antes de inicializar temas como usuario
     arch-chroot /mnt chown -R "$SYS_USER:users" "/home/$SYS_USER" 2>/dev/null || true
@@ -1900,6 +1930,9 @@ DCONF_APPEAR
     if [ -f "$SYSTEM_SHELL/scripts/theme_manager.py" ]; then
         arch-chroot /mnt su - "$SYS_USER" -c "python3 /usr/share/mrdemonc-shell/scripts/theme_manager.py set default" 2>/dev/null || true
     fi
+
+    cp -f "$USER_HOME/.config/Code/User/settings.json" "/mnt/etc/skel/.config/Code/User/settings.json" 2>/dev/null || true
+    cp -f "$USER_HOME/.config/VSCodium/User/settings.json" "/mnt/etc/skel/.config/VSCodium/User/settings.json" 2>/dev/null || true
 
     # Pre-sincronizar plugins de LazyVim para el usuario de forma headless
     echo "==> Inicializando y sincronizando plugins de LazyVim..."
@@ -2168,9 +2201,13 @@ video/3gpp2=shell-video.desktop;
 video/mp2t=shell-video.desktop;
 MIME_CONF
 
+    mkdir -p "$USER_HOME/.local/share/applications" "/mnt/etc/skel/.local/share/applications"
+    cp -f "$USER_HOME/.config/mimeapps.list" "$USER_HOME/.local/share/applications/mimeapps.list" 2>/dev/null || true
     cp -f "$USER_HOME/.config/mimeapps.list" /mnt/etc/skel/.config/mimeapps.list 2>/dev/null || true
+    cp -f "$USER_HOME/.config/mimeapps.list" /mnt/etc/skel/.local/share/applications/mimeapps.list 2>/dev/null || true
     cp -f "$USER_HOME/.config/mimeapps.list" /mnt/usr/share/applications/mimeapps.list 2>/dev/null || true
     cp -f "$USER_HOME/.config/mimeapps.list" /mnt/etc/xdg/mimeapps.list 2>/dev/null || true
+    chown "$SYS_USER:users" "$USER_HOME/.config/mimeapps.list" "$USER_HOME/.local/share/applications/mimeapps.list" 2>/dev/null || true
 
     # Actualizar bases de datos de aplicaciones y aplicar configuraciones xdg-mime
     arch-chroot /mnt update-desktop-database /usr/share/applications 2>/dev/null || true
@@ -2178,16 +2215,27 @@ MIME_CONF
 
     arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default org.gnome.Nautilus.desktop inode/directory" 2>/dev/null || true
     arch-chroot /mnt su - "$SYS_USER" -c "xdg-settings set default-web-browser zen.desktop 2>/dev/null || true"
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop x-scheme-handler/http x-scheme-handler/https text/html" 2>/dev/null || true
+    for proto in x-scheme-handler/http x-scheme-handler/https text/html; do
+        arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop $proto" 2>/dev/null || true
+    done
 
-    # Asociar visor de imágenes por defecto
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-image.desktop image/png image/jpeg image/jpg image/webp image/gif image/svg+xml image/avif image/bmp image/tiff image/heic image/heif image/jxl" 2>/dev/null || true
+    # Asociar visor de imágenes por defecto de forma individual y robusta
+    for m in image/png image/jpeg image/jpg image/webp image/gif image/svg+xml image/avif image/bmp image/tiff image/heic image/heif image/jxl; do
+        arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-image.desktop $m" 2>/dev/null || true
+        arch-chroot /mnt su - "$SYS_USER" -c "gio mime $m shell-image.desktop" 2>/dev/null || true
+    done
 
     # Asociar visor de PDF por defecto
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-pdf.desktop application/pdf application/x-pdf application/x-bzpdf application/x-gzpdf" 2>/dev/null || true
+    for m in application/pdf application/x-pdf application/x-bzpdf application/x-gzpdf; do
+        arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-pdf.desktop $m" 2>/dev/null || true
+        arch-chroot /mnt su - "$SYS_USER" -c "gio mime $m shell-pdf.desktop" 2>/dev/null || true
+    done
 
     # Asociar reproductor de video por defecto
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-video.desktop video/mp4 video/webm video/x-matroska video/quicktime video/x-msvideo video/ogg video/mpeg video/avi video/x-flv video/x-ms-wmv video/3gpp video/3gpp2 video/mp2t" 2>/dev/null || true
+    for m in video/mp4 video/webm video/x-matroska video/quicktime video/x-msvideo video/ogg video/mpeg video/avi video/x-flv video/x-ms-wmv video/3gpp video/3gpp2 video/mp2t; do
+        arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default shell-video.desktop $m" 2>/dev/null || true
+        arch-chroot /mnt su - "$SYS_USER" -c "gio mime $m shell-video.desktop" 2>/dev/null || true
+    done
 
     # Instalación de OpenCode y Antigravity CLI para el usuario instalado
     set_phase "Instalando OpenCode y Antigravity CLI" 94

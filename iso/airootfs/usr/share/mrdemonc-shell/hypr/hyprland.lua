@@ -295,3 +295,12 @@ hl.window_rule({
     float = true,
     center = true,
 })
+
+-- Terminal flotante centrada para actualización del sistema
+hl.window_rule({
+    name  = "shell-system-update",
+    match = { class = "^shell-update$" },
+    float = true,
+    center = true,
+    size  = "920 620",
+})

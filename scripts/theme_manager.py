@@ -329,6 +329,8 @@ hl("ColorColumn", {{ bg = c.bg_surface }})
 hl("LineNr", {{ fg = c.overlay, bg = "none" }})
 hl("CursorLineNr", {{ fg = c.primary, bg = "none", bold = true }})
 hl("SignColumn", {{ fg = c.overlay, bg = "none" }})
+hl("EndOfBuffer", {{ fg = c.border, bg = "none" }})
+hl("MsgArea", {{ fg = c.fg, bg = "none" }})
 hl("VertSplit", {{ fg = c.border, bg = "none" }})
 hl("WinSeparator", {{ fg = c.border, bg = "none" }})
 hl("StatusLine", {{ fg = c.fg, bg = c.bg_surface }})
@@ -523,6 +525,185 @@ return {{
     except Exception:
         pass
 
+def sync_vscode_theme(theme_data):
+    try:
+        is_dark = theme_data.get("isDark", True)
+        bg = theme_data.get("bg", "#1a1d24")
+        bg_surface = theme_data.get("bgSurface", "#14161d")
+        bg_hover = theme_data.get("bgHover", "#282d38")
+        border = theme_data.get("border", "#353b49")
+        fg = theme_data.get("text", "#eceff4")
+        subtext = theme_data.get("subtext", "#d8dee9")
+        overlay = theme_data.get("overlay", "#7b889b")
+        primary = theme_data.get("primary", "#88c0d0")
+        success = theme_data.get("success", "#a3be8c")
+        warning = theme_data.get("warning", "#ebcb8b")
+        danger = theme_data.get("danger", "#bf616a")
+        cyan = theme_data.get("cyan", "#81a1c1")
+        pink = theme_data.get("pink", "#b48ead")
+
+        color_customizations = {
+            "editor.background": bg,
+            "editor.foreground": fg,
+            "sideBar.background": bg_surface,
+            "sideBar.foreground": fg,
+            "sideBar.border": border,
+            "sideBarTitle.foreground": primary,
+            "sideBarSectionHeader.background": bg_hover,
+            "sideBarSectionHeader.foreground": fg,
+            "sideBarSectionHeader.border": border,
+            "activityBar.background": bg_surface,
+            "activityBar.foreground": primary,
+            "activityBar.inactiveForeground": overlay,
+            "activityBar.border": border,
+            "activityBarBadge.background": primary,
+            "activityBarBadge.foreground": bg,
+            "statusBar.background": bg_surface,
+            "statusBar.foreground": subtext,
+            "statusBar.border": border,
+            "statusBar.noFolderBackground": bg_surface,
+            "statusBar.debuggingBackground": primary,
+            "statusBar.debuggingForeground": bg,
+            "statusBarItem.remoteBackground": primary,
+            "statusBarItem.remoteForeground": bg,
+            "titleBar.activeBackground": bg_surface,
+            "titleBar.activeForeground": fg,
+            "titleBar.inactiveBackground": bg_surface,
+            "titleBar.inactiveForeground": overlay,
+            "titleBar.border": border,
+            "editorGroupHeader.tabsBackground": bg_surface,
+            "editorGroupHeader.tabsBorder": border,
+            "tab.activeBackground": bg,
+            "tab.activeForeground": primary,
+            "tab.activeBorder": primary,
+            "tab.inactiveBackground": bg_surface,
+            "tab.inactiveForeground": subtext,
+            "tab.border": border,
+            "panel.background": bg_surface,
+            "panel.border": border,
+            "panelTitle.activeForeground": primary,
+            "panelTitle.activeBorder": primary,
+            "panelTitle.inactiveForeground": overlay,
+            "terminal.background": bg,
+            "terminal.foreground": fg,
+            "terminalCursor.foreground": primary,
+            "terminal.ansiBlack": bg_surface,
+            "terminal.ansiRed": danger,
+            "terminal.ansiGreen": success,
+            "terminal.ansiYellow": warning,
+            "terminal.ansiBlue": cyan,
+            "terminal.ansiMagenta": pink,
+            "terminal.ansiCyan": primary,
+            "terminal.ansiWhite": fg,
+            "terminal.ansiBrightBlack": overlay,
+            "terminal.ansiBrightRed": danger,
+            "terminal.ansiBrightGreen": success,
+            "terminal.ansiBrightYellow": warning,
+            "terminal.ansiBrightBlue": cyan,
+            "terminal.ansiBrightMagenta": pink,
+            "terminal.ansiBrightCyan": primary,
+            "terminal.ansiBrightWhite": fg,
+            "focusBorder": primary,
+            "input.background": bg_hover,
+            "input.foreground": fg,
+            "input.border": border,
+            "input.placeholderForeground": overlay,
+            "inputOption.activeBorder": primary,
+            "dropdown.background": bg_hover,
+            "dropdown.foreground": fg,
+            "dropdown.border": border,
+            "list.hoverBackground": bg_hover,
+            "list.activeSelectionBackground": bg_hover,
+            "list.activeSelectionForeground": primary,
+            "list.inactiveSelectionBackground": bg_hover,
+            "list.inactiveSelectionForeground": fg,
+            "list.focusBackground": bg_hover,
+            "list.highlightForeground": primary,
+            "badge.background": primary,
+            "badge.foreground": bg,
+            "button.background": primary,
+            "button.foreground": bg,
+            "button.hoverBackground": cyan,
+            "progressBar.background": primary,
+            "pickerGroup.border": border,
+            "pickerGroup.foreground": primary,
+            "editorWidget.background": bg_surface,
+            "editorWidget.border": border,
+            "editorSuggestWidget.background": bg_surface,
+            "editorSuggestWidget.border": border,
+            "editorSuggestWidget.selectedBackground": bg_hover,
+            "editorSuggestWidget.highlightForeground": primary,
+            "editorHoverWidget.background": bg_surface,
+            "editorHoverWidget.border": border,
+            "peekView.border": primary,
+            "peekViewEditor.background": bg_surface,
+            "peekViewResult.background": bg_surface,
+            "peekViewResult.selectionBackground": bg_hover,
+            "peekViewTitle.background": bg_hover,
+            "scrollbarSlider.background": f"{overlay}40",
+            "scrollbarSlider.hoverBackground": f"{overlay}80",
+            "scrollbarSlider.activeBackground": f"{overlay}b0",
+            "editorLineNumber.foreground": overlay,
+            "editorLineNumber.activeForeground": primary,
+            "editorCursor.foreground": primary,
+            "editor.selectionBackground": f"{primary}33",
+            "editor.inactiveSelectionBackground": f"{primary}1a",
+            "editor.lineHighlightBackground": bg_hover
+        }
+
+        token_customizations = {
+            "comments": overlay,
+            "keywords": pink,
+            "functions": primary,
+            "strings": success,
+            "numbers": warning,
+            "types": cyan,
+            "variables": fg
+        }
+
+        home = os.path.expanduser("~")
+        settings_paths = [
+            os.path.join(home, ".config", "Code", "User", "settings.json"),
+            os.path.join(home, ".config", "VSCodium", "User", "settings.json"),
+            os.path.join(home, ".config", "Code - OSS", "User", "settings.json"),
+            os.path.join(home, ".config", "Code - Insiders", "User", "settings.json"),
+        ]
+
+        if os.path.isdir("/etc/skel"):
+            settings_paths.extend([
+                "/etc/skel/.config/Code/User/settings.json",
+                "/etc/skel/.config/VSCodium/User/settings.json",
+            ])
+
+        for sp in settings_paths:
+            try:
+                sdir = os.path.dirname(sp)
+                data = {}
+                if os.path.isfile(sp):
+                    try:
+                        with open(sp, "r", encoding="utf-8") as f:
+                            raw = f.read()
+                        clean_raw = re.sub(r'//.*?$|/\*.*?\*/', '', raw, flags=re.MULTILINE | re.DOTALL)
+                        clean_raw = re.sub(r',\s*([\}\]])', r'\1', clean_raw)
+                        data = json.loads(clean_raw)
+                    except Exception:
+                        data = {}
+                else:
+                    if not (os.path.isdir(os.path.dirname(sdir)) or os.path.isdir(sdir)):
+                        continue
+
+                os.makedirs(sdir, exist_ok=True)
+                data["workbench.colorCustomizations"] = color_customizations
+                data["editor.tokenColorCustomizations"] = token_customizations
+                data["workbench.colorTheme"] = "Default Dark Modern" if is_dark else "Default Light Modern"
+
+                with open(sp, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
 def sync_hyprland_theme(theme_data):
     try:
         primary = theme_data.get("primary", "#88c0d0").lstrip('#')
@@ -600,19 +781,8 @@ def sync_gtk_theme(theme_data):
         color_scheme = "prefer-dark" if is_dark else "prefer-light"
         accent_enum = get_nearest_gnome_accent(primary)
 
-        # Mapear el acento al tema de iconos oficial de Adwaita correspondiente
-        accent_icons = {
-            "blue": "Adwaita-Blue-Default",
-            "teal": "Adwaita-Teal",
-            "green": "Adwaita-Green",
-            "yellow": "Adwaita-Yellow",
-            "orange": "Adwaita-Orange",
-            "red": "Adwaita-Red",
-            "pink": "Adwaita-Pink",
-            "purple": "Adwaita-Purple",
-            "slate": "Adwaita-Slate",
-        }
-        icon_theme = accent_icons.get(accent_enum, "Adwaita-Teal")
+        # Mantener los iconos originales de Adwaita para Files / Nautilus
+        icon_theme = "Adwaita"
 
         # 1. Configuración oficial en GSettings (Libadwaita / GTK4 / XDG Portals / Navegadores)
         for key, val in [
@@ -841,6 +1011,7 @@ def set_theme(name):
 
     sync_terminal_theme(theme_obj)
     sync_nvim_theme(theme_obj)
+    sync_vscode_theme(theme_obj)
     sync_hyprland_theme(theme_obj)
     sync_gtk_theme(theme_obj)
     sync_limine_theme(theme_obj)

@@ -162,3 +162,5 @@ bluez
 bluez-utils
 alsa-firmware
 xdg-user-dirs
+android-tools
+android-udev

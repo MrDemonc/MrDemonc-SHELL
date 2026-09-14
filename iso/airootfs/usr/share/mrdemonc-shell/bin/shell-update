@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Launcher para Actualización del Sistema (SUPER + SHIFT + U)
+#  Lanza un terminal Kitty flotante y centrado ejecutando system_update.sh
+# ==============================================================================
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_DIRS=(
+    "$QUICKSHELL_DIR"
+    "$SCRIPT_DIR/.."
+    "$HOME/Documentos/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+)
+
+TARGET_SCRIPT=""
+for d in "${SEARCH_DIRS[@]}"; do
+    if [ -n "$d" ] && [ -f "$d/scripts/system_update.sh" ]; then
+        TARGET_SCRIPT="$d/scripts/system_update.sh"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: No se encontró system_update.sh" >&2
+    exit 1
+fi
+
+# Si ya se llama en modo interactivo no flotante, ejecutar directo
+if [ "$1" = "--no-float" ]; then
+    exec bash "$TARGET_SCRIPT" "$@"
+fi
+
+# Lanzar en Kitty flotante centrado con clase especial shell-update
+if command -v kitty >/dev/null 2>&1; then
+    exec kitty --class "shell-update" --title "Actualización del Sistema" bash -c "bash \"$TARGET_SCRIPT\""
+elif command -v foot >/dev/null 2>&1; then
+    exec foot --app-id "shell-update" --title "Actualización del Sistema" bash -c "bash \"$TARGET_SCRIPT\""
+elif command -v alacritty >/dev/null 2>&1; then
+    exec alacritty --class "shell-update" --title "Actualización del Sistema" -e bash -c "bash \"$TARGET_SCRIPT\""
+else
+    exec xterm -class "shell-update" -title "Actualización del Sistema" -e bash -c "bash \"$TARGET_SCRIPT\""
+fi

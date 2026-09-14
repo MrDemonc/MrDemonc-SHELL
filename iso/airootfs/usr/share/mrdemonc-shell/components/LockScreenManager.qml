@@ -136,10 +136,10 @@ Item {
         }
     }
 
-    // Temporizador para apagar la pantalla tras 5 segundos de bloquearse
+    // Temporizador para apagar la pantalla tras 10 segundos de bloquearse
     Timer {
         id: dpmsOffTimer
-        interval: 5000
+        interval: 10000
         repeat: false
         onTriggered: {
             if (lockMgr.isLocked) {

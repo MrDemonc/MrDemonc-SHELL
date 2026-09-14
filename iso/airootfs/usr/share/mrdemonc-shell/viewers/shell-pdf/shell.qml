@@ -22,7 +22,7 @@ FloatingWindow {
     property real pageWidth: 612
     property real pageHeight: 792
     property real zoomFactor: 1.0
-    property bool isDarkMode: true
+    property bool isDarkMode: Theme.isDark
     property bool isFullscreen: false
     property bool controlsVisible: true
     property int currentPageVisible: 1
