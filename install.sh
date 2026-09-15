@@ -385,7 +385,20 @@ if command -v systemctl >/dev/null 2>&1; then
     # Dar prioridad exclusiva al servidor nativo de notificaciones de Quickshell
     systemctl --user stop dunst.service 2>/dev/null || true
     systemctl --user mask dunst.service 2>/dev/null || true
-    pkill -9 dunst 2>/dev/null || true
+    # Configurar systemd-logind para que delegue la tecla de encendido y tapa a Hyprland / Quickshell
+    if [ -d "/etc/systemd" ]; then
+        sudo mkdir -p /etc/systemd/logind.conf.d
+        sudo tee /etc/systemd/logind.conf.d/lid.conf >/dev/null << 'LOGIND_LID'
+[Login]
+HandlePowerKey=ignore
+HandlePowerKeyLongPress=poweroff
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+LidSwitchIgnoreInhibited=no
+LOGIND_LID
+        sudo systemctl kill -s HUP systemd-logind 2>/dev/null || true
+    fi
 fi
 
 # Añadir usuario a grupos de cámara y escáner/impresora si existe

@@ -275,9 +275,105 @@ if [ -d "$REPO_DIR/kitty" ]; then
     echo -e "${GREEN}[OK] Configuración y paleta de temas de Kitty aplicadas (~/.config/kitty/).${NC}"
 fi
 
-# Establecer Nautilus (Files) como explorador de carpetas por defecto
+# Establecer asociaciones MIME predeterminadas (Imágenes, PDF, Videos, Navegador y Gestor de carpetas)
+mkdir -p "$USER_HOME/.config"
+cat << 'MIME_CONF' > "$USER_HOME/.config/mimeapps.list"
+[Default Applications]
+text/html=zen.desktop
+x-scheme-handler/http=zen.desktop
+x-scheme-handler/https=zen.desktop
+x-scheme-handler/about=zen.desktop
+x-scheme-handler/unknown=zen.desktop
+inode/directory=org.gnome.Nautilus.desktop
+application/pdf=shell-pdf.desktop
+application/x-pdf=shell-pdf.desktop
+application/x-bzpdf=shell-pdf.desktop
+application/x-gzpdf=shell-pdf.desktop
+image/bmp=shell-image.desktop
+image/gif=shell-image.desktop
+image/jpeg=shell-image.desktop
+image/jpg=shell-image.desktop
+image/pjpeg=shell-image.desktop
+image/png=shell-image.desktop
+image/tiff=shell-image.desktop
+image/webp=shell-image.desktop
+image/x-bmp=shell-image.desktop
+image/x-portable-anymap=shell-image.desktop
+image/x-portable-bitmap=shell-image.desktop
+image/x-portable-graymap=shell-image.desktop
+image/x-portable-pixmap=shell-image.desktop
+image/x-xbitmap=shell-image.desktop
+image/x-xpixmap=shell-image.desktop
+image/svg+xml=shell-image.desktop
+image/avif=shell-image.desktop
+image/heic=shell-image.desktop
+image/heif=shell-image.desktop
+image/jxl=shell-image.desktop
+video/mp4=shell-video.desktop
+video/webm=shell-video.desktop
+video/x-matroska=shell-video.desktop
+video/quicktime=shell-video.desktop
+video/x-msvideo=shell-video.desktop
+video/ogg=shell-video.desktop
+video/mpeg=shell-video.desktop
+video/avi=shell-video.desktop
+video/x-flv=shell-video.desktop
+video/x-ms-wmv=shell-video.desktop
+video/3gpp=shell-video.desktop
+video/3gpp2=shell-video.desktop
+video/mp2t=shell-video.desktop
+
+[Added Associations]
+text/html=zen.desktop;
+x-scheme-handler/http=zen.desktop;
+x-scheme-handler/https=zen.desktop;
+x-scheme-handler/about=zen.desktop;
+x-scheme-handler/unknown=zen.desktop;
+inode/directory=org.gnome.Nautilus.desktop;
+application/pdf=shell-pdf.desktop;
+application/x-pdf=shell-pdf.desktop;
+application/x-bzpdf=shell-pdf.desktop;
+application/x-gzpdf=shell-pdf.desktop;
+image/bmp=shell-image.desktop;
+image/gif=shell-image.desktop;
+image/jpeg=shell-image.desktop;
+image/jpg=shell-image.desktop;
+image/pjpeg=shell-image.desktop;
+image/png=shell-image.desktop;
+image/tiff=shell-image.desktop;
+image/webp=shell-image.desktop;
+image/x-bmp=shell-image.desktop;
+image/x-portable-anymap=shell-image.desktop;
+image/x-portable-bitmap=shell-image.desktop;
+image/x-portable-graymap=shell-image.desktop;
+image/x-portable-pixmap=shell-image.desktop;
+image/x-xbitmap=shell-image.desktop;
+image/x-xpixmap=shell-image.desktop;
+image/svg+xml=shell-image.desktop;
+image/avif=shell-image.desktop;
+image/heic=shell-image.desktop;
+image/heif=shell-image.desktop;
+image/jxl=shell-image.desktop;
+video/mp4=shell-video.desktop;
+video/webm=shell-video.desktop;
+video/x-matroska=shell-video.desktop;
+video/quicktime=shell-video.desktop;
+video/x-msvideo=shell-video.desktop;
+video/ogg=shell-video.desktop;
+video/mpeg=shell-video.desktop;
+video/avi=shell-video.desktop;
+video/x-flv=shell-video.desktop;
+video/x-ms-wmv=shell-video.desktop;
+video/3gpp=shell-video.desktop;
+video/3gpp2=shell-video.desktop;
+video/mp2t=shell-video.desktop;
+MIME_CONF
+
 if command -v xdg-mime >/dev/null 2>&1; then
     xdg-mime default org.gnome.Nautilus.desktop inode/directory 2>/dev/null || true
+    xdg-mime default shell-image.desktop image/png image/jpeg image/jpg image/webp image/gif image/svg+xml image/avif image/bmp image/tiff image/heic image/heif image/jxl 2>/dev/null || true
+    xdg-mime default shell-pdf.desktop application/pdf application/x-pdf application/x-bzpdf application/x-gzpdf 2>/dev/null || true
+    xdg-mime default shell-video.desktop video/mp4 video/webm video/x-matroska video/quicktime video/x-msvideo video/ogg video/mpeg video/avi video/x-flv video/x-ms-wmv video/3gpp video/3gpp2 video/mp2t 2>/dev/null || true
 fi
 
 # Habilitar servicios de red, bluetooth e impresión
@@ -289,7 +385,20 @@ if command -v systemctl >/dev/null 2>&1; then
     # Dar prioridad exclusiva al servidor nativo de notificaciones de Quickshell
     systemctl --user stop dunst.service 2>/dev/null || true
     systemctl --user mask dunst.service 2>/dev/null || true
-    pkill -9 dunst 2>/dev/null || true
+    # Configurar systemd-logind para que delegue la tecla de encendido y tapa a Hyprland / Quickshell
+    if [ -d "/etc/systemd" ]; then
+        sudo mkdir -p /etc/systemd/logind.conf.d
+        sudo tee /etc/systemd/logind.conf.d/lid.conf >/dev/null << 'LOGIND_LID'
+[Login]
+HandlePowerKey=ignore
+HandlePowerKeyLongPress=poweroff
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+LidSwitchIgnoreInhibited=no
+LOGIND_LID
+        sudo systemctl kill -s HUP systemd-logind 2>/dev/null || true
+    fi
 fi
 
 # Añadir usuario a grupos de cámara y escáner/impresora si existe

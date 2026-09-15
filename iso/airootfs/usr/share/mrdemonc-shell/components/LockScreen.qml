@@ -18,6 +18,7 @@ WlSessionLock {
                 id: lockContainer
                 anchors.fill: parent
                 focus: true
+                Keys.onPressed: LockScreenManager.wakeScreen()
 
                 // -------------------------------------------------------------
                 // 0. ANIMACIÓN DE TRANSICIÓN AL BLOQUEAR Y DESBLOQUEAR
@@ -567,6 +568,31 @@ WlSessionLock {
                 }
 
                 // Autoejecución al activarse el bloqueo para enfocar el campo de texto
+                // -------------------------------------------------------------
+                // 4. CAPA DE APAGADO TOTAL (BLACKOUT PARA MÁQUINAS VIRTUALES Y REPOSO)
+                // -------------------------------------------------------------
+                Rectangle {
+                    id: blackoutLayer
+                    anchors.fill: parent
+                    color: "#000000"
+                    z: 999999
+                    visible: LockScreenManager.screenOff
+                    opacity: LockScreenManager.screenOff ? 1.0 : 0.0
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: LockScreenManager.screenOff
+                        hoverEnabled: true
+                        onPositionChanged: LockScreenManager.wakeScreen()
+                        onPressed: LockScreenManager.wakeScreen()
+                        onWheel: LockScreenManager.wakeScreen()
+                    }
+                }
+
                 Component.onCompleted: {
                     surfaceReady = true;
                     pwdInput.forceActiveFocus();
@@ -577,6 +603,11 @@ WlSessionLock {
                     function onIsLockedChanged() {
                         if (LockScreenManager.isLocked) {
                             pwdInput.text = "";
+                            pwdInput.forceActiveFocus();
+                        }
+                    }
+                    function onScreenOffChanged() {
+                        if (!LockScreenManager.screenOff) {
                             pwdInput.forceActiveFocus();
                         }
                     }

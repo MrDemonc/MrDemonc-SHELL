@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Control unificado de DPMS (encendido/apagado de pantallas) para MrDemonc-SHELL
+# Compatible de forma transparente tanto con Hyprland Lua como Hyprland estándar
+# En máquinas virtuales (QEMU/KVM/VirtualBox/VMware), gestiona el apagado mediante blackout visual
+# evitando la desconexión del CRTC virtual que provoca "Display output is not active".
+
+ACTION="${1:-off}"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+LOCK_FILE="${RUNTIME_DIR}/quickshell_lock.toggle"
+LOCK_FIFO="${RUNTIME_DIR}/quickshell_lock.fifo"
+
+# Detectar si estamos en una máquina virtual
+IS_VM=false
+if command -v systemd-detect-virt >/dev/null 2>&1; then
+    if systemd-detect-virt >/dev/null 2>&1; then
+        VIRT_TYPE="$(systemd-detect-virt 2>/dev/null)"
+        if [ -n "$VIRT_TYPE" ] && [ "$VIRT_TYPE" != "none" ]; then
+            IS_VM=true
+        fi
+    fi
+fi
+
+# Respaldo adicional: comprobar nombres de salida virtual (Virtual-1, etc.)
+if [ "$IS_VM" = "false" ]; then
+    if hyprctl monitors -j 2>/dev/null | grep -qiE '"name":\s*"Virtual-'; then
+        IS_VM=true
+    fi
+fi
+
+notify_lock() {
+    local msg="$1"
+    if [ -p "$LOCK_FIFO" ]; then
+        timeout 0.3 bash -c "echo '$msg' > '$LOCK_FIFO'" 2>/dev/null || true
+    fi
+    echo "$msg" > "$LOCK_FILE" 2>/dev/null || true
+}
+
+case "$ACTION" in
+    off)
+        notify_lock "DPMS_OFF"
+        if [ "$IS_VM" = "false" ]; then
+            hyprctl eval 'hl.dispatch(hl.dsp.dpms("off"))' >/dev/null 2>&1 || \
+            hyprctl dispatch dpms off >/dev/null 2>&1 || true
+        fi
+        ;;
+    on)
+        notify_lock "DPMS_ON"
+        if [ "$IS_VM" = "false" ]; then
+            hyprctl eval 'hl.dispatch(hl.dsp.dpms("on"))' >/dev/null 2>&1 || \
+            hyprctl dispatch dpms on >/dev/null 2>&1 || true
+        fi
+        ;;
+    toggle)
+        notify_lock "DPMS_TOGGLE"
+        if [ "$IS_VM" = "false" ]; then
+            hyprctl eval 'hl.dispatch(hl.dsp.dpms("toggle"))' >/dev/null 2>&1 || \
+            hyprctl dispatch dpms toggle >/dev/null 2>&1 || true
+        fi
+        ;;
+    *)
+        notify_lock "DPMS_OFF"
+        if [ "$IS_VM" = "false" ]; then
+            hyprctl eval 'hl.dispatch(hl.dsp.dpms("off"))' >/dev/null 2>&1 || \
+            hyprctl dispatch dpms off >/dev/null 2>&1 || true
+        fi
+        ;;
+esac

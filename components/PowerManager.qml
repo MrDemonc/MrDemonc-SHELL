@@ -94,9 +94,9 @@ QtObject {
         }
     ]
 
-    // Observador para toggle SUPER + ESC o comando CLI
+    // Observador para toggle SUPER + ESC o comando CLI (FIFO ultrarrápido <1ms + respaldo archivo)
     property var watchToggleProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_power.toggle\"; while true; do if [ -f \"$STATE\" ]; then rm -f \"$STATE\"; echo 'TOGGLE'; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "FIFO=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_power.fifo\"; LOCK=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_power.toggle\"; rm -f \"$FIFO\"; mkfifo \"$FIFO\"; ( while true; do if [ -f \"$LOCK\" ]; then rm -f \"$LOCK\"; if [ -p \"$FIFO\" ]; then echo 'TOGGLE' > \"$FIFO\" 2>/dev/null || true; fi; fi; sleep 0.05; done ) & BG_PID=$!; trap 'kill $BG_PID 2>/dev/null; rm -f \"$FIFO\"' EXIT; while true; do if read -r line < \"$FIFO\"; then echo \"$line\"; fi; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

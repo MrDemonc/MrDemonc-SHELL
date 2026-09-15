@@ -38,11 +38,22 @@ end
 ---------------------
 
 -- Set programs that you use
-local userHome    = os.getenv("HOME") or "/home/demonc-test"
-local binDir      = userHome .. "/.local/bin"
+local userHome    = os.getenv("HOME") or ""
+local binDir      = (userHome ~= "" and (userHome .. "/.local/bin")) or "/usr/local/bin"
 local terminal    = "kitty"
 local fileManager = "nautilus"
 local menu        = binDir .. "/shell-apps"
+
+-- Helper global para control de DPMS en Hyprland Lua
+dpms = function(arg)
+    local state = "off"
+    if type(arg) == "table" and arg.status then
+        state = arg.status
+    elseif type(arg) == "string" and arg ~= "" then
+        state = arg
+    end
+    return hl.dispatch(hl.dsp.dpms(state))
+end
 
 
 -------------------

@@ -136,6 +136,19 @@ Item {
         }
     }
 
+    property bool screenOff: false
+
+    function turnScreenOff() {
+        if (!isLocked) return;
+        screenOff = true;
+        Quickshell.execDetached(["shell-dpms", "off"]);
+    }
+
+    function turnScreenOn() {
+        screenOff = false;
+        Quickshell.execDetached(["shell-dpms", "on"]);
+    }
+
     // Temporizador para apagar la pantalla tras 10 segundos de bloquearse
     Timer {
         id: dpmsOffTimer
@@ -143,25 +156,15 @@ Item {
         repeat: false
         onTriggered: {
             if (lockMgr.isLocked) {
-                dpmsOffProc.running = false;
-                dpmsOffProc.running = true;
+                turnScreenOff();
             }
         }
     }
 
-    Process {
-        id: dpmsOffProc
-        command: ["hyprctl", "dispatch", "dpms", "off"]
-    }
-
-    Process {
-        id: dpmsOnProc
-        command: ["hyprctl", "dispatch", "dpms", "on"]
-    }
-
     function wakeScreen() {
-        dpmsOnProc.running = false;
-        dpmsOnProc.running = true;
+        if (screenOff) {
+            turnScreenOn();
+        }
         if (isLocked) {
             dpmsOffTimer.restart();
         }
@@ -184,8 +187,8 @@ Item {
 
     function finishUnlock() {
         dpmsOffTimer.stop();
-        dpmsOnProc.running = false;
-        dpmsOnProc.running = true;
+        screenOff = false;
+        turnScreenOn();
         finishUnlockTimer.stop();
         isLocked = false;
         isUnlocking = false;
@@ -203,13 +206,14 @@ Item {
         authFailed = false;
         isChecking = false;
         statusMessage = "";
+        screenOff = false;
         isLocked = true;
         markLockedProc.running = false;
         markLockedProc.running = true;
         // Refrescar batería y audio
         batProc.running = false; batProc.running = true;
         audioProc.running = false; audioProc.running = true;
-        // Iniciar temporizador de 5 segundos para apagar la pantalla
+        // Iniciar temporizador de 10 segundos para apagar la pantalla
         dpmsOffTimer.restart();
     }
 
@@ -241,13 +245,19 @@ Item {
 
     // Escuchar peticiones de bloqueo y desbloqueo por FIFO runtime (<1ms) y archivo de respaldo
     property var watchLockProc: Process {
-        command: ["sh", "-c", "FIFO=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.fifo\"; LOCK=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.toggle\"; rm -f \"$FIFO\"; mkfifo \"$FIFO\"; ( while true; do if [ -f \"$LOCK\" ]; then VAL=$(cat \"$LOCK\" 2>/dev/null); rm -f \"$LOCK\"; if [ -p \"$FIFO\" ]; then if [ \"$VAL\" = \"UNLOCK\" ]; then echo 'UNLOCK' > \"$FIFO\" 2>/dev/null || true; else echo 'LOCK' > \"$FIFO\" 2>/dev/null || true; fi; fi; fi; sleep 0.05; done ) & BG_PID=$!; trap 'kill $BG_PID 2>/dev/null; rm -f \"$FIFO\"' EXIT; while true; do if read -r line < \"$FIFO\"; then echo \"$line\"; fi; done"]
+        command: ["sh", "-c", "FIFO=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.fifo\"; LOCK=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.toggle\"; rm -f \"$FIFO\"; mkfifo \"$FIFO\"; ( while true; do if [ -f \"$LOCK\" ]; then VAL=$(cat \"$LOCK\" 2>/dev/null); rm -f \"$LOCK\"; if [ -p \"$FIFO\" ]; then echo \"$VAL\" > \"$FIFO\" 2>/dev/null || true; fi; fi; sleep 0.05; done ) & BG_PID=$!; trap 'kill $BG_PID 2>/dev/null; rm -f \"$FIFO\"' EXIT; while true; do if read -r line < \"$FIFO\"; then echo \"$line\"; fi; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
                 let str = String(data).trim();
                 if (str.indexOf("UNLOCK") !== -1) {
                     lockMgr.unlock(false);
+                } else if (str.indexOf("DPMS_OFF") !== -1) {
+                    if (lockMgr.isLocked) {
+                        lockMgr.screenOff = true;
+                    }
+                } else if (str.indexOf("DPMS_ON") !== -1) {
+                    lockMgr.screenOff = false;
                 } else if (str.indexOf("LOCK") !== -1) {
                     lockMgr.lock();
                 }

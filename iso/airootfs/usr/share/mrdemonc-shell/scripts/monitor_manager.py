@@ -227,6 +227,26 @@ def apply_monitor_rule(output, mode="preferred", position="auto", scale=1.0, tra
         lua = f'hl.monitor({{ output = "{output}", mode = "{mode}", position = "{position}", scale = {scale}, transform = {transform}, disabled = false }})'
     eval_hyprland_lua(lua)
 
+def dpms_off():
+    user_home = os.path.expanduser("~")
+    shell_dpms_bin = os.path.join(user_home, ".local", "bin", "shell-dpms")
+    if not os.path.isfile(shell_dpms_bin):
+        shell_dpms_bin = "/usr/local/bin/shell-dpms"
+    if os.path.isfile(shell_dpms_bin):
+        run_cmd([shell_dpms_bin, "off"])
+    else:
+        eval_hyprland_lua('hl.dispatch(hl.dsp.dpms("off"))')
+
+def dpms_on():
+    user_home = os.path.expanduser("~")
+    shell_dpms_bin = os.path.join(user_home, ".local", "bin", "shell-dpms")
+    if not os.path.isfile(shell_dpms_bin):
+        shell_dpms_bin = "/usr/local/bin/shell-dpms"
+    if os.path.isfile(shell_dpms_bin):
+        run_cmd([shell_dpms_bin, "on"])
+    else:
+        eval_hyprland_lua('hl.dispatch(hl.dsp.dpms("on"))')
+
 def handle_lid_close():
     data = get_monitors()
     monitors = data.get("monitors", [])
@@ -236,7 +256,7 @@ def handle_lid_close():
     # Modo clamshell: NO bloquear, apagar sólo la pantalla integrada de la laptop y mantener la externa activa
     if externals:
         res = apply_preset("external_only")
-        run_cmd(["hyprctl", "dispatch", "dpms", "on"])
+        dpms_on()
         return res
     else:
         # Solo laptop sin pantalla externa: bloquear inmediatamente y apagar el display
@@ -247,11 +267,13 @@ def handle_lid_close():
         if not os.path.isfile(shell_lock_bin):
             shell_lock_bin = "shell-lock"
         run_cmd([shell_lock_bin])
-        run_cmd(["hyprctl", "dispatch", "dpms", "off"])
+        import time
+        time.sleep(0.1)
+        dpms_off()
         return {"status": "ok", "action": "locked_and_dpms_off"}
 
 def handle_lid_open():
-    run_cmd(["hyprctl", "dispatch", "dpms", "on"])
+    dpms_on()
     data = get_monitors()
     monitors = data.get("monitors", [])
     laptop = next((m for m in monitors if m.get("is_laptop", False)), None)
@@ -264,7 +286,7 @@ def handle_lid_open():
             save_monitors_lua([{"name": laptop["name"], "mode": "preferred", "pos": "0x0", "scale": 1.0, "disabled": False}])
             run_cmd(["hyprctl", "dispatch", "focusmonitor", laptop["name"]])
         res = {"status": "ok", "action": "laptop_active"}
-    run_cmd(["hyprctl", "dispatch", "dpms", "on"])
+    dpms_on()
     return res
 
 def apply_preset(preset_name):

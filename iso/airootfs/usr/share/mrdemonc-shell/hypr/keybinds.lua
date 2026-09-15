@@ -3,8 +3,8 @@
 -- Archivo: ~/.config/hypr/keybinds.lua
 -------------------------------------------------------------
 
-local userHome    = os.getenv("HOME") or "/home/demonc-test"
-local binDir      = userHome .. "/.local/bin"
+local userHome    = os.getenv("HOME") or ""
+local binDir      = (userHome ~= "" and (userHome .. "/.local/bin")) or "/usr/local/bin"
 local terminal    = "kitty"
 local fileManager = "nautilus"
 local browser     = "zen-browser"
@@ -173,7 +173,10 @@ hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = tr
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true })
 
 -- Botón físico de encendido/apagado de la laptop (abre menú de energía de Quickshell)
-hl.bind("XF86PowerOff", hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
+hl.bind("XF86PowerOff",  hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
+hl.bind("XF86PowerDown", hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
+hl.bind("code:124",      hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
+hl.bind("code:116",      hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
 
 -------------------------------------------------------------
 -- GESTIÓN DE TAPA DE LAPTOP (LID SWITCH)
