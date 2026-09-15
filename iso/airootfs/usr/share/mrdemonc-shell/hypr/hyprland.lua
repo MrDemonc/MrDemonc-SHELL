@@ -72,6 +72,7 @@ hl.on("hyprland.start", function ()
     else
         shellPath = userHome .. "/Documentos/MrDemonc-SHELL"
     end
+    hl.exec_cmd("systemd-inhibit --what=handle-power-key:handle-suspend-key:handle-hibernate-key --who=MrDemonc-SHELL --why='Quickshell Power Menu' sleep infinity")
     hl.exec_cmd("quickshell -d -p " .. shellPath)
     hl.exec_cmd("hypridle")
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1")

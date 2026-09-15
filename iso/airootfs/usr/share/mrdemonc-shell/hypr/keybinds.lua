@@ -172,11 +172,10 @@ hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = tr
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true })
 
--- Botón físico de encendido/apagado de la laptop (abre menú de energía de Quickshell)
+-- Botón físico de encendido/apagado y suspensión (abre menú de energía de Quickshell)
 hl.bind("XF86PowerOff",  hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
 hl.bind("XF86PowerDown", hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
-hl.bind("code:124",      hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
-hl.bind("code:116",      hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
+hl.bind("XF86Sleep",     hl.dsp.exec_cmd(binDir .. "/shell-power"), { locked = true })
 
 -------------------------------------------------------------
 -- GESTIÓN DE TAPA DE LAPTOP (LID SWITCH)

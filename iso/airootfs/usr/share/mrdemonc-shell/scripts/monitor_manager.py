@@ -227,69 +227,158 @@ def apply_monitor_rule(output, mode="preferred", position="auto", scale=1.0, tra
         lua = f'hl.monitor({{ output = "{output}", mode = "{mode}", position = "{position}", scale = {scale}, transform = {transform}, disabled = false }})'
     eval_hyprland_lua(lua)
 
-def dpms_off():
+def get_dpms_bin():
     user_home = os.path.expanduser("~")
-    shell_dpms_bin = os.path.join(user_home, ".local", "bin", "shell-dpms")
-    if not os.path.isfile(shell_dpms_bin):
-        shell_dpms_bin = "/usr/local/bin/shell-dpms"
-    if os.path.isfile(shell_dpms_bin):
-        run_cmd([shell_dpms_bin, "off"])
+    candidates = [
+        os.path.join(user_home, ".local", "bin", "shell-dpms"),
+        "/usr/local/bin/shell-dpms",
+        "/usr/share/mrdemonc-shell/bin/shell-dpms",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "shell-dpms")
+    ]
+    for c in candidates:
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    import shutil
+    w = shutil.which("shell-dpms")
+    if w:
+        return w
+    return None
+
+def get_lock_bin():
+    user_home = os.path.expanduser("~")
+    candidates = [
+        os.path.join(user_home, ".local", "bin", "shell-lock"),
+        "/usr/local/bin/shell-lock",
+        "/usr/share/mrdemonc-shell/bin/shell-lock",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "shell-lock")
+    ]
+    for c in candidates:
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    import shutil
+    w = shutil.which("shell-lock")
+    if w:
+        return w
+    return "shell-lock"
+
+def is_lid_physically_open():
+    import glob
+    for path in glob.glob("/proc/acpi/button/lid/*/state"):
+        try:
+            with open(path, "r") as f:
+                content = f.read().lower()
+                if "open" in content:
+                    return True
+                elif "close" in content:
+                    return False
+        except Exception:
+            pass
+    return None
+
+def check_lid_debounce(event_name):
+    import time
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    stamp_file = os.path.join(runtime_dir, "shell_lid_last_event")
+    now = time.time()
+
+    if os.path.exists(stamp_file):
+        try:
+            with open(stamp_file, "r") as f:
+                line = f.read().strip()
+                if ":" in line:
+                    parts = line.split(":", 1)
+                    last_time = float(parts[0])
+                    last_event = parts[1]
+                    # Descartar rebote si es el mismo evento dentro de 1.2 segundos
+                    if event_name == last_event and (now - last_time) < 1.2:
+                        return False
+                    # Si es evento contrario en menos de 0.8s, verificar estado fisico por hardware
+                    if (now - last_time) < 0.8:
+                        phys = is_lid_physically_open()
+                        if phys is not None:
+                            if event_name == "lid_open" and not phys:
+                                return False
+                            if event_name == "lid_close" and phys:
+                                return False
+        except Exception:
+            pass
+
+    try:
+        with open(stamp_file, "w") as f:
+            f.write(f"{now}:{event_name}")
+    except Exception:
+        pass
+    return True
+
+def dpms_off():
+    bin_path = get_dpms_bin()
+    if bin_path:
+        run_cmd([bin_path, "off"])
     else:
         eval_hyprland_lua('hl.dispatch(hl.dsp.dpms("off"))')
 
 def dpms_on():
-    user_home = os.path.expanduser("~")
-    shell_dpms_bin = os.path.join(user_home, ".local", "bin", "shell-dpms")
-    if not os.path.isfile(shell_dpms_bin):
-        shell_dpms_bin = "/usr/local/bin/shell-dpms"
-    if os.path.isfile(shell_dpms_bin):
-        run_cmd([shell_dpms_bin, "on"])
+    bin_path = get_dpms_bin()
+    if bin_path:
+        run_cmd([bin_path, "on"])
     else:
         eval_hyprland_lua('hl.dispatch(hl.dsp.dpms("on"))')
 
 def handle_lid_close():
+    if not check_lid_debounce("lid_close"):
+        return {"status": "debounced", "action": "ignored"}
+
+    phys = is_lid_physically_open()
+    if phys is True:
+        return {"status": "ignored", "reason": "lid_physically_open"}
+
     data = get_monitors()
     monitors = data.get("monitors", [])
     laptop = next((m for m in monitors if m.get("is_laptop", False)), None)
     externals = [m for m in monitors if m.get("is_external", False)]
+
     # Si hay pantalla externa conectada (HDMI, DisplayPort, etc.):
     # Modo clamshell: NO bloquear, apagar sólo la pantalla integrada de la laptop y mantener la externa activa
+    # IMPORTANTE: NO guardar en monitors.lua para evitar bucles de recarga de Hyprland
     if externals:
-        res = apply_preset("external_only")
+        res = apply_preset("external_only", save_config=False)
         dpms_on()
         return res
     else:
         # Solo laptop sin pantalla externa: bloquear inmediatamente y apagar el display
-        user_home = os.path.expanduser("~")
-        shell_lock_bin = os.path.join(user_home, ".local", "bin", "shell-lock")
-        if not os.path.isfile(shell_lock_bin):
-            shell_lock_bin = "/usr/local/bin/shell-lock"
-        if not os.path.isfile(shell_lock_bin):
-            shell_lock_bin = "shell-lock"
-        run_cmd([shell_lock_bin])
+        lock_bin = get_lock_bin()
+        run_cmd([lock_bin])
         import time
         time.sleep(0.1)
         dpms_off()
         return {"status": "ok", "action": "locked_and_dpms_off"}
 
 def handle_lid_open():
+    if not check_lid_debounce("lid_open"):
+        return {"status": "debounced", "action": "ignored"}
+
+    phys = is_lid_physically_open()
+    if phys is False:
+        return {"status": "ignored", "reason": "lid_physically_closed"}
+
     dpms_on()
     data = get_monitors()
     monitors = data.get("monitors", [])
     laptop = next((m for m in monitors if m.get("is_laptop", False)), None)
     externals = [m for m in monitors if m.get("is_external", False)]
+
+    # Al abrir la tapa: NO guardar en monitors.lua. Aplicar en memoria via IPC.
     if laptop and externals:
-        res = apply_preset("extend")
+        res = apply_preset("extend", save_config=False)
     else:
         if laptop:
             apply_monitor_rule(laptop["name"], mode="preferred", position="0x0", scale=1.0, disabled=False)
-            save_monitors_lua([{"name": laptop["name"], "mode": "preferred", "pos": "0x0", "scale": 1.0, "disabled": False}])
             run_cmd(["hyprctl", "dispatch", "focusmonitor", laptop["name"]])
         res = {"status": "ok", "action": "laptop_active"}
     dpms_on()
     return res
 
-def apply_preset(preset_name):
+def apply_preset(preset_name, save_config=True):
     data = get_monitors()
     monitors = data.get("monitors", [])
     if not monitors:
@@ -343,7 +432,8 @@ def apply_preset(preset_name):
                 apply_monitor_rule(ext["name"], mirror=primary["name"])
                 lua_rules.append({"name": ext["name"], "mirror": primary["name"], "disabled": False})
 
-    save_monitors_lua(lua_rules)
+    if save_config and lua_rules:
+        save_monitors_lua(lua_rules)
     return {"status": "ok", "preset": preset_name}
 
 def main():
