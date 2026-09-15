@@ -8,6 +8,7 @@ WlSessionLock {
     id: sessionLockRoot
 
     locked: LockScreenManager.isLocked
+    onSecureStateChanged: LockScreenManager.confirmSecure(secure)
 
     surface: Component {
         WlSessionLockSurface {
@@ -586,8 +587,8 @@ WlSessionLock {
                     MouseArea {
                         anchors.fill: parent
                         enabled: LockScreenManager.screenOff
-                        hoverEnabled: true
-                        onPositionChanged: LockScreenManager.wakeScreen()
+                        // Mostrar esta capa puede generar movimiento sintético del ratón.
+                        // Despertar sólo por entrada explícita evita un bucle visible/screenOff.
                         onPressed: LockScreenManager.wakeScreen()
                         onWheel: LockScreenManager.wakeScreen()
                     }

@@ -23,14 +23,9 @@
 ------------------
 
 -- See https://wiki.hypr.land/Configuring/Basics/Monitors/
-if not pcall(require, "monitors") then
-    hl.monitor({
-        output   = "",
-        mode     = "preferred",
-        position = "auto",
-        scale    = "auto",
-    })
-end
+-- Regla de respaldo para cualquier salida recién conectada, incluso con perfiles guardados.
+hl.monitor({ output = "", mode = "preferred", position = "auto-right", scale = "auto" })
+pcall(require, "monitors")
 
 
 ---------------------
@@ -52,7 +47,7 @@ dpms = function(arg)
     elseif type(arg) == "string" and arg ~= "" then
         state = arg
     end
-    return hl.dispatch(hl.dsp.dpms(state))
+    return hl.dispatch(hl.dsp.dpms({ action = state }))
 end
 
 
@@ -75,6 +70,9 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("systemd-inhibit --what=handle-power-key:handle-suspend-key:handle-hibernate-key --who=MrDemonc-SHELL --why='Quickshell Power Menu' sleep infinity")
     hl.exec_cmd("quickshell -d -p " .. shellPath)
     hl.exec_cmd("hypridle")
+    -- Restaurar modo cafeína persistente: si estaba activo antes del reinicio,
+    -- mantener hypridle en pausa hasta que el usuario lo desactive con shell-caffeine
+    hl.exec_cmd("sh -c 'ST=\"$HOME/.local/state/mrdemonc/caffeine\"; i=0; while ! pgrep -x hypridle >/dev/null 2>&1 && [ $i -lt 100 ]; do sleep 0.1; i=$((i+1)); done; if [ -f \"$ST\" ] && [ \"$(cat \"$ST\")\" = \"on\" ]; then pkill -STOP hypridle 2>/dev/null; fi'")
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1")
     hl.exec_cmd("hyprctl setcursor capitaine-cursors 24")
 end)

@@ -1202,6 +1202,8 @@ perform_installation_worker() {
         npm
         python-pip
         libusb
+        inkscape
+        telegram-desktop
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
@@ -2237,14 +2239,18 @@ MIME_CONF
         arch-chroot /mnt su - "$SYS_USER" -c "gio mime $m shell-video.desktop" 2>/dev/null || true
     done
 
-    # Instalación de OpenCode y Antigravity CLI para el usuario instalado
-    set_phase "Instalando OpenCode y Antigravity CLI" 94
-    echo "==> Instalando herramientas de IA y desarrollo (OpenCode y Antigravity CLI)..."
+    # Instalación de OpenCode, Antigravity CLI y Codex para el usuario instalado
+    set_phase "Instalando OpenCode, Antigravity CLI y Codex" 94
+    echo "==> Instalando herramientas de IA y desarrollo (OpenCode, Antigravity CLI y Codex)..."
     arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://opencode.ai/install | bash" 2>/dev/null || {
         echo "Aviso: Falló la descarga de opencode o no hay conexión a internet disponible."
     }
     arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://antigravity.google/cli/install.sh | bash" 2>/dev/null || {
         echo "Aviso: Falló la descarga de Antigravity CLI o no hay conexión a internet disponible."
+    }
+    echo "==> Instalando Codex (openai) mediante npm..."
+    arch-chroot /mnt su - "$SYS_USER" -c "sudo npm install -g @openai/codex" 2>/dev/null || {
+        echo "Aviso: Falló la instalación de Codex con npm o no hay conexión a internet disponible."
     }
     # Symlink antigravity -> agy para soporte de ambos comandos
     if [ -f "$USER_HOME/.local/bin/agy" ]; then

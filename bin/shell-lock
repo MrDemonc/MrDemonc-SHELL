@@ -6,13 +6,9 @@ LOCK_FILE="${RUNTIME_DIR}/quickshell_lock.toggle"
 LOCK_FIFO="${RUNTIME_DIR}/quickshell_lock.fifo"
 ACTIVE_FILE="${RUNTIME_DIR}/quickshell_lock.active"
 
-if [ "$1" = "unlock" ]; then
-    echo "UNLOCK" > "$LOCK_FILE" 2>/dev/null
-    if [ -p "$LOCK_FIFO" ]; then
-        timeout 0.3 bash -c "echo 'UNLOCK' > '$LOCK_FIFO'" 2>/dev/null || true
-    fi
-    rm -f "$ACTIVE_FILE" 2>/dev/null
-    exit 0
+if [ "${1:-}" = "unlock" ]; then
+    echo "El desbloqueo requiere autenticación en la pantalla de bloqueo." >&2
+    exit 1
 fi
 
 # Si ya está bloqueado y activo, salir de inmediato sin trabajo redundante
@@ -33,16 +29,16 @@ if ! pgrep -f "quickshell" >/dev/null 2>&1; then
 fi
 
 # Notificar bloqueo inmediato a Quickshell (FIFO primero para latencia <1ms, respaldo archivo toggle)
-touch "$LOCK_FILE"
-if [ -p "$LOCK_FIFO" ]; then
-    timeout 0.3 bash -c "echo 'LOCK' > '$LOCK_FIFO'" 2>/dev/null || true
+if ! { [ -p "$LOCK_FIFO" ] && timeout 0.3 bash -c 'printf "LOCK\n" > "$1"' _ "$LOCK_FIFO"; }; then
+    printf 'LOCK\n' > "$LOCK_FILE"
 fi
 
-# Esperar sincronizadamente a que la superficie de bloqueo esté activa (hasta 500ms en pasos de 20ms)
-# Esto garantiza que hypridle, systemd o el apagado de DPMS no ocurran antes de que el lock esté renderizado
-for i in {1..25}; do
+# Confirmación del compositor (WlSessionLock.secure), hasta 3 segundos.
+for i in {1..150}; do
     if [ -f "$ACTIVE_FILE" ]; then
-        break
+        exit 0
     fi
     sleep 0.02
 done
+echo "No se pudo confirmar el bloqueo de la sesión." >&2
+exit 1

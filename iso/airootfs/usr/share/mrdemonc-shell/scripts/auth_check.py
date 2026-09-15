@@ -42,8 +42,7 @@ def main():
     # Leer contraseña de forma segura por stdin (no visible en ps aux)
     try:
         raw = sys.stdin.buffer.read()
-        # Limpiar salto de línea terminal si viene por pipe
-        pwd = raw.rstrip(b"\r\n\x00").decode("utf-8", errors="replace")
+        pwd = raw.decode("utf-8")
     except Exception:
         pwd = ""
 

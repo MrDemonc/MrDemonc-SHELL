@@ -2,230 +2,255 @@
 import sys
 import os
 import json
+import math
+import re
 import subprocess
+from pathlib import Path
 
 CONFIG_DIR = os.path.expanduser("~/.config/quickshell")
 HYPR_MONITORS_LUA = os.path.expanduser("~/.config/hypr/monitors.lua")
 
-os.makedirs(CONFIG_DIR, exist_ok=True)
 
 def run_cmd(cmd):
     try:
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
-        return res.stdout.strip()
-    except Exception:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=8).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
         return ""
 
+
+def run_checked(cmd):
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
+    if result.returncode != 0 or result.stdout.lstrip().lower().startswith("error"):
+        raise RuntimeError((result.stderr or result.stdout).strip() or "Hyprland rechazó la operación")
+    return result.stdout.strip()
+
+
 def eval_hyprland_lua(lua_code):
-    cmd = ["hyprctl", "eval", lua_code]
-    return run_cmd(cmd)
+    return run_checked(["hyprctl", "eval", lua_code])
+
 
 def is_laptop_display(name):
-    lower = name.lower()
-    return lower.startswith("edp") or lower.startswith("lvds") or lower.startswith("dsi")
+    return name.lower().startswith(("edp", "lvds", "dsi"))
 
-def get_monitors():
-    out = run_cmd(["hyprctl", "monitors", "all", "-j"])
-    data = []
-    if out:
-        try:
-            data = json.loads(out)
-        except Exception:
-            data = []
 
-    monitors = []
-    for m in data:
-        name = m.get("name", "")
-        if not name:
-            continue
-        
-        is_laptop = is_laptop_display(name)
-        disabled = bool(m.get("disabled", False))
-        width = m.get("width", 1920)
-        height = m.get("height", 1080)
-        rr = round(float(m.get("refreshRate", 60.0)), 2)
-        scale = float(m.get("scale", 1.0))
-        focused = bool(m.get("focused", False))
-        mirror = m.get("mirrorOf", "none") or "none"
-        transform = int(m.get("transform", 0))
-        desc = m.get("description", "") or m.get("model", "") or ("Pantalla Integrada" if is_laptop else "Monitor Externo")
+def parse_mode(mode):
+    match = re.fullmatch(r"(\d+)x(\d+)@(\d+(?:\.\d+)?)(?:Hz)?", mode, re.IGNORECASE)
+    if not match:
+        return None
+    w, h, rate = int(match[1]), int(match[2]), float(match[3])
+    return (w, h, rate) if w > 0 and h > 0 and math.isfinite(rate) and rate > 0 else None
 
-        def calculate_aspect_ratio(w, h):
-            import math
-            g = math.gcd(w, h)
-            aw, ah = w // g, h // g
-            if (aw, ah) == (8, 5): return "16:10"
-            if (aw, ah) == (64, 27) or (aw, ah) == (43, 18) or (aw, ah) == (12, 5): return "21:9"
-            if (aw, ah) == (32, 9): return "32:9"
-            return f"{aw}:{ah}"
 
-        def get_edid_max_refresh(connector_name):
-            import glob
-            for edid_file in glob.glob(f"/sys/class/drm/*{connector_name}*/edid"):
-                try:
-                    with open(edid_file, "rb") as f:
-                        data = f.read()
-                    if len(data) >= 128:
-                        for offset in [54, 72, 90, 108]:
-                            if data[offset:offset+5] == b"\x00\x00\x00\xfd\x00":
-                                max_v_rate = data[offset + 6]
-                                if 30 <= max_v_rate <= 360:
-                                    return float(max_v_rate)
-                except Exception:
-                    pass
-            return None
+def mode_string(w, h, rate):
+    return f"{w}x{h}@{rate:.2f}Hz"
 
-        raw_modes = m.get("availableModes", [])
-        res_modes = {}
-        import re
-        for rm in raw_modes:
-            match = re.match(r"^(\d+)x(\d+)(?:[@\s]+([\d\.]+))?(?:Hz)?", rm, re.IGNORECASE)
-            if match:
-                w = int(match.group(1))
-                h = int(match.group(2))
-                rate = float(match.group(3)) if match.group(3) else 60.0
-                key = (w, h)
-                if key not in res_modes:
-                    res_modes[key] = set()
-                res_modes[key].add(rate)
 
-        # Check EDID for hardware maximum refresh rate (e.g. 120Hz, 144Hz)
-        edid_max = get_edid_max_refresh(name)
-        if edid_max and edid_max >= 100.0:
-            if (width, height) not in res_modes:
-                res_modes[(width, height)] = set()
-            res_modes[(width, height)].add(edid_max)
-            if edid_max >= 120.0:
-                res_modes[(width, height)].add(120.0)
-            res_modes[(width, height)].add(60.0)
-
-        # Ensure current active resolution and refresh rate are present
-        if (width, height) not in res_modes:
-            res_modes[(width, height)] = set()
-        res_modes[(width, height)].add(rr)
-
-        if not res_modes:
-            res_modes[(width, height)] = {rr}
-            aspect = calculate_aspect_ratio(width, height)
-            if aspect == "16:9":
-                res_modes.setdefault((1920, 1080), {60.0})
-                res_modes.setdefault((1600, 900), {60.0})
-                res_modes.setdefault((1366, 768), {60.0})
-                res_modes.setdefault((1280, 720), {60.0})
-            elif aspect == "16:10":
-                res_modes.setdefault((1920, 1200), {60.0})
-                res_modes.setdefault((1680, 1050), {60.0})
-                res_modes.setdefault((1440, 900), {60.0})
-                res_modes.setdefault((1280, 800), {60.0})
-
-        # Order resolutions by pixel count descending
-        sorted_keys = sorted(res_modes.keys(), key=lambda x: (x[0] * x[1]), reverse=True)
-        structured_modes = []
-
-        # Find max rate for native resolution
-        native_rates = sorted(list(res_modes.get((width, height), {rr})), reverse=True)
-        max_native_rate = int(round(native_rates[0])) if native_rates else int(round(rr))
-        native_aspect = calculate_aspect_ratio(width, height)
-
-        # Preferred / Native Option
-        structured_modes.append({
-            "mode": "preferred",
-            "resolution": f"{width}x{height}",
-            "label": f"{width} × {height} ({native_aspect})",
-            "rate": f"{max_native_rate}Hz",
-            "display": f"{width} × {height} ({native_aspect}) · Automática ({max_native_rate}Hz)",
-            "is_native": True
-        })
-
-        for w, h in sorted_keys:
-            aspect = calculate_aspect_ratio(w, h)
-            rates = sorted(list(res_modes[(w, h)]), reverse=True)
-            seen_rounded = set()
-            for r in rates:
-                r_int = int(round(r))
-                if r_int in seen_rounded:
-                    continue
-                seen_rounded.add(r_int)
-                is_native = (w == width and h == height)
-                mode_str = f"{w}x{h}@{r:.2f}Hz"
-                disp_str = f"{w} × {h} ({aspect}) · {r_int}Hz" + (" (Nativa)" if (is_native and r_int == max_native_rate) else "")
-                structured_modes.append({
-                    "mode": mode_str,
-                    "resolution": f"{w}x{h}",
-                    "label": f"{w} × {h} ({aspect})",
-                    "rate": f"{r_int}Hz",
-                    "display": disp_str,
-                    "is_native": is_native
-                })
-
-        monitors.append({
-            "name": name,
-            "description": desc,
-            "is_laptop": is_laptop,
-            "is_external": not is_laptop,
-            "width": width,
-            "height": height,
-            "refresh_rate": rr,
-            "current_mode": f"{width}x{height}@{rr}Hz",
-            "scale": scale,
-            "focused": focused,
-            "disabled": disabled,
-            "mirror": mirror,
-            "transform": transform,
-            "modes": structured_modes,
-            "available_modes": [sm["mode"] for sm in structured_modes],
-            "resolutions": [f"{w}x{h}" for w, h in sorted_keys],
-            "pos_x": m.get("x", 0),
-            "pos_y": m.get("y", 0)
-        })
-
-    monitors.sort(key=lambda x: (not x["is_laptop"], x["name"]))
-
-    laptop_count = sum(1 for m in monitors if m["is_laptop"])
-    external_count = sum(1 for m in monitors if m["is_external"])
-
+def describe_monitor(m):
+    name = m["name"]
+    disabled = bool(m.get("disabled", False))
+    width, height = int(m.get("width", 0)), int(m.get("height", 0))
+    rate = round(float(m.get("refreshRate", 0)), 2)
+    scale = float(m.get("scale", 1)) or 1.0
+    transform = int(m.get("transform", 0))
+    # EDID range limits are NOT resolution/refresh modes. Never synthesize them.
+    available = []
+    for raw in m.get("availableModes", []):
+        parsed = parse_mode(raw)
+        if parsed:
+            canonical = mode_string(*parsed)
+            if canonical not in available:
+                available.append(canonical)
+    current = mode_string(width, height, rate) if width > 0 and height > 0 and rate > 0 else "preferred"
+    preferred = available[0] if available else current
+    if not disabled and current != "preferred" and current not in available:
+        available.append(current)
+    modes = [{"mode": "preferred", "display": "Automática", "rate": "Auto",
+              "resolution": "", "label": "Automática", "is_native": False}]
+    for value in sorted(available, key=lambda v: (parse_mode(v)[0] * parse_mode(v)[1], parse_mode(v)[2]), reverse=True):
+        w, h, rr = parse_mode(value)
+        hz = f"{rr:.2f}".rstrip("0").rstrip(".")
+        modes.append({"mode": value, "resolution": f"{w}x{h}", "label": f"{w} × {h}",
+                      "rate": f"{hz} Hz", "display": f"{w} × {h} · {hz} Hz", "is_native": False})
     return {
-        "monitors": monitors,
-        "count": len(monitors),
-        "laptop_count": laptop_count,
-        "external_count": external_count,
-        "has_external": external_count > 0,
-        "has_laptop": laptop_count > 0
+        "name": name, "description": m.get("description") or m.get("model") or name,
+        "is_laptop": is_laptop_display(name), "is_external": not is_laptop_display(name),
+        "width": width, "height": height, "refresh_rate": rate, "current_mode": current,
+        "preferred_mode": preferred, "scale": scale, "transform": transform,
+        "focused": bool(m.get("focused", False)), "disabled": disabled,
+        "mirror": m.get("mirrorOf") or "none", "modes": modes,
+        "available_modes": [x["mode"] for x in modes],
+        "resolutions": list(dict.fromkeys(x["resolution"] for x in modes if x["resolution"])),
+        "pos_x": m.get("x", 0), "pos_y": m.get("y", 0),
     }
 
+
+def get_monitors():
+    data = json.loads(run_checked(["hyprctl", "monitors", "all", "-j"]))
+    if not isinstance(data, list):
+        raise RuntimeError("Respuesta de monitores no válida")
+    monitors = [describe_monitor(m) for m in data if m.get("name")]
+    monitors.sort(key=lambda m: (not m["is_laptop"], m["name"]))
+    laptop_count = sum(m["is_laptop"] for m in monitors)
+    external_count = len(monitors) - laptop_count
+    return {"monitors": monitors, "count": len(monitors), "laptop_count": laptop_count,
+            "external_count": external_count, "has_external": external_count > 0,
+            "has_laptop": laptop_count > 0}
+
+
+def monitor_rule(m):
+    quote = lambda value: json.dumps(str(value), ensure_ascii=False)
+    if m.get("disabled", False):
+        return f'hl.monitor({{ output = {quote(m["name"])}, disabled = true }})'
+    return ('hl.monitor({ output = ' + quote(m["name"]) + ', mode = ' + quote(m.get("mode", "preferred"))
+            + ', position = ' + quote(m.get("pos", "auto")) + ', scale = ' + str(float(m.get("scale", 1)))
+            + ', transform = ' + str(int(m.get("transform", 0)))
+            + ', mirror = ' + quote(m.get("mirror", "")) + ', disabled = false })')
+
+
 def save_monitors_lua(monitors):
-    try:
-        lines = ["-- Autogenerated by MrDemonc-SHELL Monitor Manager"]
-        for m in monitors:
-            name = m["name"]
-            if m.get("disabled", False):
-                lines.append(f'hl.monitor({{ output = "{name}", disabled = true }})')
-            else:
-                mode = m.get("mode", "preferred")
-                pos = m.get("pos", "auto")
-                scale = m.get("scale", 1.0)
-                trans = m.get("transform", 0)
-                mirror = m.get("mirror", "")
-                if mirror and mirror != "none":
-                    lines.append(f'hl.monitor({{ output = "{name}", mirror = "{mirror}" }})')
-                else:
-                    lines.append(f'hl.monitor({{ output = "{name}", mode = "{mode}", position = "{pos}", scale = {scale}, transform = {trans}, disabled = false }})')
-        with open(HYPR_MONITORS_LUA, "w") as f:
-            f.write("\n".join(lines) + "\n")
-    except Exception:
-        pass
+    path = Path(HYPR_MONITORS_LUA)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    contents = "-- Autogenerated by MrDemonc-SHELL Monitor Manager\n" + "\n".join(map(monitor_rule, monitors)) + "\n"
+    temporary = path.with_suffix(".lua.tmp")
+    temporary.write_text(contents)
+    os.replace(temporary, path)
+
+
+def apply_layout(layout, save_config=False):
+    # One Lua request; do not also send legacy 'keyword monitor' commands.
+    # Enable outputs before disabling the previous primary output.
+    ordered = sorted(layout, key=lambda m: m.get("disabled", False))
+    eval_hyprland_lua("\n".join(map(monitor_rule, ordered)))
+    if save_config:
+        save_monitors_lua(layout)
+
 
 def apply_monitor_rule(output, mode="preferred", position="auto", scale=1.0, transform=0, disabled=False, mirror=""):
-    if disabled:
-        run_cmd(["hyprctl", "keyword", "monitor", f"{output},disable"])
-        lua = f'hl.monitor({{ output = "{output}", disabled = true }})'
-    elif mirror and mirror != "none":
-        run_cmd(["hyprctl", "keyword", "monitor", f"{output},preferred,auto,1,mirror,{mirror}"])
-        lua = f'hl.monitor({{ output = "{output}", mode = "preferred", position = "auto", scale = 1.0, mirror = "{mirror}", disabled = false }})'
+    apply_layout([{"name": output, "mode": mode, "pos": position, "scale": scale,
+                   "transform": transform, "disabled": disabled, "mirror": mirror}])
+
+
+def active_rule(m):
+    mode = m.get("current_mode", "preferred")
+    if m.get("disabled") or not parse_mode(mode):
+        mode = m.get("preferred_mode", "preferred")
+    if not parse_mode(mode):
+        raise RuntimeError("Todavía no hay modos disponibles para " + m["name"])
+    return {"name": m["name"], "mode": mode, "pos": f'{m.get("pos_x", 0)}x{m.get("pos_y", 0)}',
+            "scale": m.get("scale", 1) or 1, "transform": m.get("transform", 0),
+            "disabled": False, "mirror": ""}
+
+
+def arrange_extended(layout):
+    x = 0
+    for rule in layout:
+        if rule.get("disabled") or rule.get("mirror"):
+            continue
+        width, height, _ = parse_mode(rule["mode"])
+        if rule.get("transform", 0) % 2:
+            width, height = height, width
+        rule["pos"] = f"{x}x0"
+        x += math.ceil(width / rule["scale"])
+    return layout
+
+
+def validate_layout(layout):
+    rectangles = []
+    for rule in layout:
+        if rule.get("disabled") or rule.get("mirror"):
+            continue
+        width, height, _ = parse_mode(rule["mode"])
+        if rule.get("transform", 0) % 2:
+            width, height = height, width
+        x, y = map(int, rule["pos"].split("x"))
+        right, bottom = x + width / rule["scale"], y + height / rule["scale"]
+        for left2, top2, right2, bottom2 in rectangles:
+            if x < right2 and right > left2 and y < bottom2 and bottom > top2:
+                raise ValueError("Las pantallas se superponen; selecciona Extender para reorganizarlas")
+        rectangles.append((x, y, right, bottom))
+
+
+def build_preset(preset, monitors):
+    if preset not in ("extend", "external_only", "laptop_only", "mirror"):
+        raise ValueError("Perfil de pantalla desconocido")
+    if not monitors:
+        raise ValueError("No se detectaron monitores")
+    laptops = [m for m in monitors if m["is_laptop"]]
+    externals = [m for m in monitors if m["is_external"]]
+    if preset == "external_only" and not externals:
+        raise ValueError("No hay monitor externo conectado")
+    if preset == "laptop_only" and not laptops:
+        raise ValueError("No se detectó pantalla de laptop")
+    layout = []
+    for m in laptops + externals:
+        disabled = (preset == "external_only" and m["is_laptop"]) or (preset == "laptop_only" and m["is_external"])
+        layout.append({"name": m["name"], "disabled": True} if disabled else active_rule(m))
+    if preset == "mirror":
+        primary = layout[0]["name"]
+        for rule in layout:
+            rule["pos"] = "0x0"
+            rule["mirror"] = "" if rule["name"] == primary else primary
+        return layout
+    return arrange_extended(layout)
+
+
+def apply_preset(preset_name, save_config=True):
+    layout = build_preset(preset_name, get_monitors()["monitors"])
+    apply_layout(layout, save_config)
+    return {"status": "ok", "preset": preset_name, "message": "Configuración de pantallas aplicada"}
+
+
+def apply_setting(output, enabled, mode, scale, transform, position="auto", mirror=""):
+    monitors = get_monitors()["monitors"]
+    target = next((m for m in monitors if m["name"] == output), None)
+    if target is None:
+        raise ValueError("El monitor ya no está conectado")
+    if not math.isfinite(scale) or scale <= 0 or transform not in range(8):
+        raise ValueError("Escala u orientación no válida")
+    if enabled and mode not in target["available_modes"]:
+        raise ValueError("Ese modo no está anunciado por el monitor")
+    layout = []
+    for m in monitors:
+        if m["name"] == output:
+            if enabled:
+                updated = dict(m, disabled=False, current_mode=target["preferred_mode"] if mode == "preferred" else mode,
+                               scale=scale, transform=transform)
+                layout.append(active_rule(updated))
+            else:
+                layout.append({"name": output, "disabled": True})
+        elif m["disabled"]:
+            layout.append({"name": m["name"], "disabled": True})
+        else:
+            layout.append(active_rule(m))
+    if all(m.get("disabled") for m in layout):
+        raise ValueError("Debe quedar al menos una pantalla activa")
+    # The UI has no position editor: reflow all active outputs after size/scale changes.
+    arrange_extended(layout)
+    if position != "auto":
+        if not re.fullmatch(r"-?\d+x-?\d+", position):
+            raise ValueError("Posición de pantalla no válida")
+        next(rule for rule in layout if rule["name"] == output)["pos"] = position
+    if mirror and mirror != "none":
+        if mirror == output or not any(r["name"] == mirror and not r.get("disabled") for r in layout):
+            raise ValueError("Pantalla de referencia para duplicar no válida")
+        next(rule for rule in layout if rule["name"] == output)["mirror"] = mirror
+    validate_layout(layout)
+    apply_layout(layout, save_config=True)
+    return {"status": "ok", "message": "Cambios de pantalla aplicados", "output": output}
+
+
+def handle_topology_change():
+    monitors = get_monitors()["monitors"]
+    if not monitors:
+        return {"status": "ignored", "message": "Esperando monitores"}
+    has_external = any(m["is_external"] for m in monitors)
+    if has_external and is_lid_physically_open() is False:
+        preset = "external_only"
     else:
-        run_cmd(["hyprctl", "keyword", "monitor", f"{output},{mode},{position},{scale},transform,{transform}"])
-        lua = f'hl.monitor({{ output = "{output}", mode = "{mode}", position = "{position}", scale = {scale}, transform = {transform}, disabled = false }})'
-    eval_hyprland_lua(lua)
+        preset = "extend"
+    apply_layout(build_preset(preset, monitors), save_config=(preset == "extend"))
+    return {"status": "ok", "message": "Pantallas conectadas configuradas automáticamente"}
+
 
 def get_dpms_bin():
     user_home = os.path.expanduser("~")
@@ -315,14 +340,14 @@ def dpms_off():
     if bin_path:
         run_cmd([bin_path, "off"])
     else:
-        eval_hyprland_lua('hl.dispatch(hl.dsp.dpms("off"))')
+        eval_hyprland_lua('hl.dispatch(hl.dsp.dpms({ action = "off" }))')
 
 def dpms_on():
     bin_path = get_dpms_bin()
     if bin_path:
         run_cmd([bin_path, "on"])
     else:
-        eval_hyprland_lua('hl.dispatch(hl.dsp.dpms("on"))')
+        eval_hyprland_lua('hl.dispatch(hl.dsp.dpms({ action = "on" }))')
 
 def handle_lid_close():
     if not check_lid_debounce("lid_close"):
@@ -347,9 +372,12 @@ def handle_lid_close():
     else:
         # Solo laptop sin pantalla externa: bloquear inmediatamente y apagar el display
         lock_bin = get_lock_bin()
-        run_cmd([lock_bin])
-        import time
-        time.sleep(0.1)
+        result = subprocess.run([lock_bin], check=False)
+        if result.returncode != 0:
+            return {"status": "error", "message": "No se confirmó el bloqueo"}
+        if is_lid_physically_open() is True:
+            dpms_on()
+            return {"status": "ignored", "reason": "lid_reopened"}
         dpms_off()
         return {"status": "ok", "action": "locked_and_dpms_off"}
 
@@ -371,70 +399,12 @@ def handle_lid_open():
     if laptop and externals:
         res = apply_preset("extend", save_config=False)
     else:
-        if laptop:
+        if laptop and laptop.get("disabled", False):
             apply_monitor_rule(laptop["name"], mode="preferred", position="0x0", scale=1.0, disabled=False)
             run_cmd(["hyprctl", "dispatch", "focusmonitor", laptop["name"]])
         res = {"status": "ok", "action": "laptop_active"}
     dpms_on()
     return res
-
-def apply_preset(preset_name, save_config=True):
-    data = get_monitors()
-    monitors = data.get("monitors", [])
-    if not monitors:
-        return {"status": "error", "message": "No se detectaron monitores"}
-
-    laptop = next((m for m in monitors if m["is_laptop"]), None)
-    externals = [m for m in monitors if m["is_external"]]
-
-    lua_rules = []
-
-    if preset_name == "external_only":
-        if not externals:
-            return {"status": "error", "message": "No hay monitor externo conectado"}
-        if laptop:
-            apply_monitor_rule(laptop["name"], disabled=True)
-            lua_rules.append({"name": laptop["name"], "disabled": True})
-        for i, ext in enumerate(externals):
-            pos = "0x0" if i == 0 else "auto-right"
-            apply_monitor_rule(ext["name"], mode="preferred", position=pos, scale=1.0, disabled=False)
-            lua_rules.append({"name": ext["name"], "mode": "preferred", "pos": pos, "scale": 1.0, "disabled": False})
-        run_cmd(["hyprctl", "dispatch", "focusmonitor", externals[0]["name"]])
-
-    elif preset_name == "laptop_only":
-        if not laptop:
-            return {"status": "error", "message": "No se detectó pantalla de laptop"}
-        for ext in externals:
-            apply_monitor_rule(ext["name"], disabled=True)
-            lua_rules.append({"name": ext["name"], "disabled": True})
-        apply_monitor_rule(laptop["name"], mode="preferred", position="0x0", scale=1.0, disabled=False)
-        lua_rules.append({"name": laptop["name"], "mode": "preferred", "pos": "0x0", "scale": 1.0, "disabled": False})
-        run_cmd(["hyprctl", "dispatch", "focusmonitor", laptop["name"]])
-
-    elif preset_name == "extend":
-        if laptop:
-            apply_monitor_rule(laptop["name"], mode="preferred", position="0x0", scale=1.0, disabled=False)
-            lua_rules.append({"name": laptop["name"], "mode": "preferred", "pos": "0x0", "scale": 1.0, "disabled": False})
-        for i, ext in enumerate(externals):
-            pos = "auto-right" if (laptop or i > 0) else "0x0"
-            apply_monitor_rule(ext["name"], mode="preferred", position=pos, scale=1.0, disabled=False)
-            lua_rules.append({"name": ext["name"], "mode": "preferred", "pos": pos, "scale": 1.0, "disabled": False})
-
-    elif preset_name == "mirror":
-        primary = laptop if laptop else (externals[0] if externals else None)
-        if not primary:
-            return {"status": "error", "message": "No hay monitores para duplicar"}
-        apply_monitor_rule(primary["name"], mode="preferred", position="0x0", scale=1.0, disabled=False)
-        lua_rules.append({"name": primary["name"], "mode": "preferred", "pos": "0x0", "scale": 1.0, "disabled": False})
-
-        for ext in externals:
-            if ext["name"] != primary["name"]:
-                apply_monitor_rule(ext["name"], mirror=primary["name"])
-                lua_rules.append({"name": ext["name"], "mirror": primary["name"], "disabled": False})
-
-    if save_config and lua_rules:
-        save_monitors_lua(lua_rules)
-    return {"status": "ok", "preset": preset_name}
 
 def main():
     if len(sys.argv) < 2:
@@ -447,12 +417,9 @@ def main():
         print(json.dumps(get_monitors()))
         return
 
-    if action == "lid_close":
-        print(json.dumps(handle_lid_close()))
-        return
-
-    if action == "lid_open":
-        print(json.dumps(handle_lid_open()))
+    if action in ("lid_close", "lid_open", "auto"):
+        result = {"lid_close": handle_lid_close, "lid_open": handle_lid_open, "auto": handle_topology_change}[action]()
+        print(json.dumps(result))
         return
 
     if action == "preset":
@@ -477,18 +444,19 @@ def main():
         parser.add_argument("--mirror", default="")
         args = parser.parse_args()
 
-        disabled = args.disable if args.disable else (not args.enable if args.enable else False)
-        apply_monitor_rule(
-            output=args.output,
-            mode=args.mode,
-            position=args.pos,
-            scale=args.scale,
-            transform=args.transform,
-            disabled=disabled,
-            mirror=args.mirror
-        )
-        print(json.dumps({"status": "ok", "output": args.output}))
+        result = apply_setting(args.output, not args.disable, args.mode, args.scale, args.transform, args.pos, args.mirror)
+        print(json.dumps(result))
         return
 
 if __name__ == "__main__":
-    main()
+    try:
+        if len(sys.argv) > 1 and sys.argv[1] in ("lid_close", "lid_open", "auto", "set", "preset"):
+            import fcntl
+            with open(os.path.join(os.environ["XDG_RUNTIME_DIR"], "shell_lid.lock"), "w") as guard:
+                fcntl.flock(guard, fcntl.LOCK_EX)
+                main()
+        else:
+            main()
+    except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
+        print(json.dumps({"status": "error", "message": str(error)}))
+        sys.exit(1)

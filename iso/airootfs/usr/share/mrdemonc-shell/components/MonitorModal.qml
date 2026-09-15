@@ -56,8 +56,22 @@ PanelWindow {
         id: modalCard
         anchors.centerIn: parent
 
+        // Perfil realmente activo según el estado actual de los monitores.
+        readonly property string activePreset: {
+            let ms = (MonitorManager.monitorInfo && MonitorManager.monitorInfo.monitors) || [];
+            if (!ms.length) return "";
+            const enabled = ms.filter(m => !m.disabled);
+            if (enabled.some(m => m.mirror && m.mirror !== "none")) return "mirror";
+            const ext = enabled.some(m => m.is_external);
+            const lap = enabled.some(m => m.is_laptop);
+            if (ext && !lap) return "external_only";
+            if (lap && !ext) return "laptop_only";
+            if (ext && lap) return "extend";
+            return "";
+        }
+
         implicitWidth: 700
-        implicitHeight: 485
+        implicitHeight: 510
         color: Theme.bg
         border.color: Theme.border
         border.width: 1
@@ -117,9 +131,10 @@ PanelWindow {
                     Layout.fillWidth: true
                     implicitHeight: 52
                     radius: 10
-                    color: pExtMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                    border.color: Theme.border
-                    border.width: 1
+                    readonly property bool isActive: modalCard.activePreset === "extend"
+                    color: (isActive || pExtMouse.containsMouse) ? Theme.bgHover : Theme.bgSurface
+                    border.color: isActive ? Theme.primary : Theme.border
+                    border.width: isActive ? 1.5 : 1
 
                     RowLayout {
                         anchors.centerIn: parent
@@ -147,9 +162,10 @@ PanelWindow {
                     Layout.fillWidth: true
                     implicitHeight: 52
                     radius: 10
-                    color: pExtOnlyMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                    border.color: Theme.primary
-                    border.width: 1
+                    readonly property bool isActive: modalCard.activePreset === "external_only"
+                    color: (isActive || pExtOnlyMouse.containsMouse) ? Theme.bgHover : Theme.bgSurface
+                    border.color: isActive ? Theme.primary : Theme.border
+                    border.width: isActive ? 1.5 : 1
 
                     RowLayout {
                         anchors.centerIn: parent
@@ -177,9 +193,10 @@ PanelWindow {
                     Layout.fillWidth: true
                     implicitHeight: 52
                     radius: 10
-                    color: pLapOnlyMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                    border.color: Theme.border
-                    border.width: 1
+                    readonly property bool isActive: modalCard.activePreset === "laptop_only"
+                    color: (isActive || pLapOnlyMouse.containsMouse) ? Theme.bgHover : Theme.bgSurface
+                    border.color: isActive ? Theme.primary : Theme.border
+                    border.width: isActive ? 1.5 : 1
 
                     RowLayout {
                         anchors.centerIn: parent
@@ -207,9 +224,10 @@ PanelWindow {
                     Layout.fillWidth: true
                     implicitHeight: 52
                     radius: 10
-                    color: pMirrorMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                    border.color: Theme.border
-                    border.width: 1
+                    readonly property bool isActive: modalCard.activePreset === "mirror"
+                    color: (isActive || pMirrorMouse.containsMouse) ? Theme.bgHover : Theme.bgSurface
+                    border.color: isActive ? Theme.primary : Theme.border
+                    border.width: isActive ? 1.5 : 1
 
                     RowLayout {
                         anchors.centerIn: parent
@@ -520,7 +538,7 @@ PanelWindow {
                                                     return m.display;
                                                 }
                                             }
-                                            return monitorControlCard.monMode === "preferred" ? "Automática (Nativa Recomendada)" : monitorControlCard.monMode;
+                                            return monitorControlCard.monMode === "preferred" ? "Automática" : monitorControlCard.monMode;
                                         }
                                         color: Theme.text
                                         font.family: Theme.fontFamily
@@ -689,7 +707,7 @@ PanelWindow {
 
                         Text {
                             text: MonitorManager.feedbackMessage
-                            color: Theme.primary
+                            color: MonitorManager.feedbackError ? Theme.danger : Theme.primary
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.bold: true
@@ -737,6 +755,7 @@ PanelWindow {
 
                             MouseArea {
                                 id: btnApplyMouse
+                                enabled: !MonitorManager.busy
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor

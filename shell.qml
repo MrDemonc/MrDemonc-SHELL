@@ -12,6 +12,7 @@ ShellRoot {
     property var _lockMgr: LockScreenManager
     property var _osdMgr: OsdManager
     property var _powerMgr: PowerManager
+    property var _monitorMgr: MonitorManager
 
     // 1. Fondo de pantalla integrado por pantalla
     Variants {

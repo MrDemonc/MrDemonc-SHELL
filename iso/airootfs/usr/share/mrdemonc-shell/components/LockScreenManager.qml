@@ -105,15 +105,24 @@ Item {
 
     // Proceso de autenticación con PAM
     property Process authProc: Process {
+        property string password: ""
+        command: ["python3", Quickshell.shellDir + "/scripts/auth_check.py"]
+        onStarted: {
+            write(password);
+            password = "";
+            stdinEnabled = false;
+        }
         onExited: function(exitCode, exitStatus) {
+            password = "";
             lockMgr.isChecking = false;
-            if (exitCode === 0) {
+            if (exitCode === 0 && exitStatus === 0 && lockMgr.isLocked) {
                 lockMgr.unlock(false);
             } else {
                 lockMgr.authFailed = true;
                 lockMgr.failAttempts += 1;
                 lockMgr.statusMessage = "Contraseña incorrecta";
                 failedResetTimer.restart();
+                dpmsOffTimer.restart();
             }
         }
     }
@@ -137,16 +146,34 @@ Item {
     }
 
     property bool screenOff: false
+    property string pendingDpms: ""
+
+    Process {
+        id: dpmsProc
+        onExited: lockMgr.flushDpms()
+    }
+
+    function requestDpms(action) {
+        pendingDpms = action;
+        flushDpms();
+    }
+
+    function flushDpms() {
+        if (dpmsProc.running || pendingDpms === "") return;
+        dpmsProc.command = ["bash", Quickshell.shellDir + "/bin/shell-dpms", pendingDpms];
+        pendingDpms = "";
+        dpmsProc.running = true;
+    }
 
     function turnScreenOff() {
-        if (!isLocked) return;
+        if (!isLocked || isChecking || isUnlocking) return;
         screenOff = true;
-        Quickshell.execDetached(["shell-dpms", "off"]);
+        requestDpms("off");
     }
 
     function turnScreenOn() {
         screenOff = false;
-        Quickshell.execDetached(["shell-dpms", "on"]);
+        requestDpms("on");
     }
 
     // Temporizador para apagar la pantalla tras 10 segundos de bloquearse
@@ -165,7 +192,7 @@ Item {
         if (screenOff) {
             turnScreenOn();
         }
-        if (isLocked) {
+        if (isLocked && !isChecking && !isUnlocking) {
             dpmsOffTimer.restart();
         }
     }
@@ -201,6 +228,7 @@ Item {
     }
 
     function lock() {
+        if (isLocked) return;
         finishUnlockTimer.stop();
         isUnlocking = false;
         authFailed = false;
@@ -208,8 +236,6 @@ Item {
         statusMessage = "";
         screenOff = false;
         isLocked = true;
-        markLockedProc.running = false;
-        markLockedProc.running = true;
         // Refrescar batería y audio
         batProc.running = false; batProc.running = true;
         audioProc.running = false; audioProc.running = true;
@@ -218,6 +244,8 @@ Item {
     }
 
     function unlock(immediate) {
+        dpmsOffTimer.stop();
+        turnScreenOn();
         if (immediate) {
             finishUnlock();
             return;
@@ -235,12 +263,17 @@ Item {
             return;
         }
         isChecking = true;
+        dpmsOffTimer.stop();
+        turnScreenOn();
         authFailed = false;
         statusMessage = "Comprobando...";
-        let escaped = pwd.replace(/'/g, "'\\''");
-        authProc.command = ["sh", "-c", `printf '%s' '${escaped}' | "${Quickshell.shellDir}/scripts/auth_check.py"`];
-        authProc.running = false;
+        authProc.password = pwd;
+        authProc.stdinEnabled = true;
         authProc.running = true;
+    }
+
+    function confirmSecure(secure) {
+        if (secure && isLocked) markLockedProc.running = true;
     }
 
     // Escuchar peticiones de bloqueo y desbloqueo por FIFO runtime (<1ms) y archivo de respaldo
@@ -250,15 +283,15 @@ Item {
         stdout: SplitParser {
             onRead: function(data) {
                 let str = String(data).trim();
-                if (str.indexOf("UNLOCK") !== -1) {
-                    lockMgr.unlock(false);
-                } else if (str.indexOf("DPMS_OFF") !== -1) {
+                if (str === "DPMS_OFF") {
                     if (lockMgr.isLocked) {
                         lockMgr.screenOff = true;
                     }
-                } else if (str.indexOf("DPMS_ON") !== -1) {
+                } else if (str === "DPMS_ON") {
                     lockMgr.screenOff = false;
-                } else if (str.indexOf("LOCK") !== -1) {
+                    if (lockMgr.isLocked && !lockMgr.isChecking && !lockMgr.isUnlocking)
+                        dpmsOffTimer.restart();
+                } else if (str === "LOCK") {
                     lockMgr.lock();
                 }
             }

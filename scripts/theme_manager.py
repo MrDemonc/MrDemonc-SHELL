@@ -963,6 +963,122 @@ def sync_limine_theme(theme_data):
     except Exception:
         pass
 
+def sync_opencode_theme(theme_data):
+    try:
+        import subprocess
+        tid = theme_data.get("id", "default")
+
+        c = {
+            "bg": theme_data.get("bg", "#1a1d24"),
+            "bgSurface": theme_data.get("bgSurface", "#14161d"),
+            "bgHover": theme_data.get("bgHover", "#282d38"),
+            "border": theme_data.get("border", "#353b49"),
+            "text": theme_data.get("text", "#eceff4"),
+            "subtext": theme_data.get("subtext", "#d8dee9"),
+            "overlay": theme_data.get("overlay", "#7b889b"),
+            "primary": theme_data.get("primary", "#88c0d0"),
+            "success": theme_data.get("success", "#a3be8c"),
+            "warning": theme_data.get("warning", "#ebcb8b"),
+            "danger": theme_data.get("danger", "#bf616a"),
+            "cyan": theme_data.get("cyan", "#81a1c1"),
+            "pink": theme_data.get("pink", "#b48ead"),
+        }
+
+        def ref(key):
+            return {"dark": key, "light": key}
+
+        # Mapeo de la paleta de la shell a los tokens del tema TUI de OpenCode (estilo Omarchy)
+        theme_obj = {
+            "primary": ref("primary"),
+            "secondary": ref("cyan"),
+            "accent": ref("primary"),
+            "error": ref("danger"),
+            "warning": ref("warning"),
+            "success": ref("success"),
+            "info": ref("cyan"),
+            "text": ref("text"),
+            "textMuted": ref("subtext"),
+            "background": ref("bg"),
+            "backgroundPanel": ref("bgSurface"),
+            "backgroundElement": ref("bgSurface"),
+            "border": ref("border"),
+            "borderActive": ref("primary"),
+            "borderSubtle": ref("border"),
+            "diffAdded": ref("success"),
+            "diffRemoved": ref("danger"),
+            "diffContext": ref("overlay"),
+            "diffHunkHeader": ref("primary"),
+            "diffHighlightAdded": ref("success"),
+            "diffHighlightRemoved": ref("danger"),
+            "diffAddedBg": ref("bgSurface"),
+            "diffRemovedBg": ref("bgSurface"),
+            "diffContextBg": ref("bgSurface"),
+            "diffLineNumber": ref("overlay"),
+            "diffAddedLineNumberBg": ref("bgSurface"),
+            "diffRemovedLineNumberBg": ref("bgSurface"),
+            "markdownText": ref("text"),
+            "markdownHeading": ref("primary"),
+            "markdownLink": ref("cyan"),
+            "markdownLinkText": ref("primary"),
+            "markdownCode": ref("success"),
+            "markdownBlockQuote": ref("overlay"),
+            "markdownEmph": ref("warning"),
+            "markdownStrong": ref("pink"),
+            "markdownHorizontalRule": ref("border"),
+            "markdownListItem": ref("primary"),
+            "markdownListEnumeration": ref("cyan"),
+            "markdownImage": ref("cyan"),
+            "markdownImageText": ref("primary"),
+            "markdownCodeBlock": ref("text"),
+            "syntaxComment": ref("overlay"),
+            "syntaxKeyword": ref("pink"),
+            "syntaxFunction": ref("primary"),
+            "syntaxVariable": ref("text"),
+            "syntaxString": ref("success"),
+            "syntaxNumber": ref("warning"),
+            "syntaxType": ref("cyan"),
+            "syntaxOperator": ref("cyan"),
+            "syntaxPunctuation": ref("text"),
+        }
+
+        opencode_theme = {
+            "$schema": "https://opencode.ai/theme.json",
+            "defs": {k: v for k, v in c.items()},
+            "theme": theme_obj,
+        }
+
+        config_home = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+        opencode_dir = os.path.join(config_home, "opencode")
+        themes_dir = os.path.join(opencode_dir, "themes")
+        os.makedirs(themes_dir, exist_ok=True)
+
+        with open(os.path.join(themes_dir, f"{tid}.json"), "w", encoding="utf-8") as f:
+            json.dump(opencode_theme, f, indent=2, ensure_ascii=False)
+
+        # Activar el tema en la config TUI de OpenCode conservando el resto de claves
+        tui_path = os.path.join(opencode_dir, "tui.json")
+        tui_data = {}
+        if os.path.isfile(tui_path):
+            try:
+                with open(tui_path, "r", encoding="utf-8") as f:
+                    raw = f.read()
+                clean_raw = re.sub(r'//.*?$|/\*.*?\*/', '', raw, flags=re.MULTILINE | re.DOTALL)
+                clean_raw = re.sub(r',\s*([\}\]])', r'\1', clean_raw)
+                tui_data = json.loads(clean_raw) if clean_raw.strip() else {}
+            except Exception:
+                tui_data = {}
+        if isinstance(tui_data, dict):
+            tui_data["$schema"] = "https://opencode.ai/tui.json"
+            tui_data["theme"] = tid
+            with open(tui_path, "w", encoding="utf-8") as f:
+                json.dump(tui_data, f, indent=2, ensure_ascii=False)
+
+        # Recargar instancias abiertas de OpenCode para aplicar el tema en vivo
+        subprocess.run(["pkill", "-SIGUSR2", "opencode"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["killall", "-SIGUSR2", "opencode"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
 def set_theme(name):
     ensure_dirs()
     all_themes = get_all_themes()
@@ -1015,6 +1131,7 @@ def set_theme(name):
     sync_hyprland_theme(theme_obj)
     sync_gtk_theme(theme_obj)
     sync_limine_theme(theme_obj)
+    sync_opencode_theme(theme_obj)
     return True
 
 def sanitize_theme_id(name):

@@ -23,14 +23,9 @@
 ------------------
 
 -- See https://wiki.hypr.land/Configuring/Basics/Monitors/
-if not pcall(require, "monitors") then
-    hl.monitor({
-        output   = "",
-        mode     = "preferred",
-        position = "auto",
-        scale    = "auto",
-    })
-end
+-- Regla de respaldo para cualquier salida recién conectada, incluso con perfiles guardados.
+hl.monitor({ output = "", mode = "preferred", position = "auto-right", scale = "auto" })
+pcall(require, "monitors")
 
 
 ---------------------
@@ -52,7 +47,7 @@ dpms = function(arg)
     elseif type(arg) == "string" and arg ~= "" then
         state = arg
     end
-    return hl.dispatch(hl.dsp.dpms(state))
+    return hl.dispatch(hl.dsp.dpms({ action = state }))
 end
 
 
