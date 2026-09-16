@@ -1107,6 +1107,8 @@ perform_installation_worker() {
         networkmanager
         sudo
         git
+        github-cli
+        openssh
         zsh
         zsh-completions
         zsh-autosuggestions
@@ -1204,11 +1206,13 @@ perform_installation_worker() {
         libusb
         inkscape
         telegram-desktop
+        steam
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
     # Habilitar repositorio multilib en el entorno de instalación para pacstrap
     sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf 2>/dev/null || true
+    pacman -Sy --noconfirm 2>/dev/null || true
 
     pacstrap -K /mnt "${BASE_PACKAGES[@]}"
     genfstab -U /mnt >> /mnt/etc/fstab
@@ -1491,6 +1495,8 @@ if [ -n "$GIT_USER_EMAIL" ]; then
     su - "$SYS_USER" -s /bin/bash -c "git config --global user.email '$GIT_USER_EMAIL'" 2>/dev/null || true
 fi
 su - "$SYS_USER" -s /bin/bash -c "git config --global init.defaultBranch main" 2>/dev/null || true
+su - "$SYS_USER" -s /bin/bash -c "git config --global credential.helper store" 2>/dev/null || true
+su - "$SYS_USER" -s /bin/bash -c "git config --global push.autoSetupRemote true" 2>/dev/null || true
 
 sed -i "s/^HOOKS=.*/HOOKS=($MKINITCPIO_HOOKS)/" /etc/mkinitcpio.conf
 mkinitcpio -P
@@ -2248,24 +2254,9 @@ MIME_CONF
     arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://antigravity.google/cli/install.sh | bash" 2>/dev/null || {
         echo "Aviso: Falló la descarga de Antigravity CLI o no hay conexión a internet disponible."
     }
-    echo "==> Instalando Codex (openai) mediante npm global como root..."
-    arch-chroot /mnt npm install -g @openai/codex --prefix /usr 2>/dev/null || {
-        echo "Aviso: Falló la instalación de Codex con npm o no hay conexión a internet disponible."
+    arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://chatgpt.com/codex/install.sh | sh" 2>/dev/null || {
+        echo "Aviso: Falló la descarga de Codex o no hay conexión a internet disponible."
     }
-    # Verificación real: crear symlink en /usr/bin si npm lo dejó en otro prefijo
-    if [ -f "/mnt/usr/lib/node_modules/@openai/codex/bin/codex.js" ]; then
-        ln -sf "/mnt/usr/lib/node_modules/@openai/codex/bin/codex.js" /mnt/usr/bin/codex 2>/dev/null || true
-    fi
-    # Reintento como usuario si el binario aún no existe (p. ej. npm no estaba disponible como root)
-    if [ ! -x "/mnt/usr/bin/codex" ]; then
-        echo "==> Codex no quedó en /usr/bin: reintentando instalación local para el usuario..."
-        arch-chroot /mnt su - "$SYS_USER" -c "mkdir -p ~/.npm-global && npm config set prefix ~/.npm-global && npm install -g @openai/codex" 2>/dev/null || {
-            echo "Aviso: Falló el reintento local de Codex o no hay conexión a internet disponible."
-        }
-        if [ -f "$USER_HOME/.npm-global/bin/codex" ]; then
-            ln -sf "$USER_HOME/.npm-global/bin/codex" "$USER_HOME/.local/bin/codex" 2>/dev/null || true
-        fi
-    fi
     # Symlink antigravity -> agy para soporte de ambos comandos
     if [ -f "$USER_HOME/.local/bin/agy" ]; then
         ln -sf "$USER_HOME/.local/bin/agy" "$USER_HOME/.local/bin/antigravity" 2>/dev/null || true
