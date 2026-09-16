@@ -1,5 +1,5 @@
 -- Generado automáticamente por Quickshell Theme Manager
--- Tema activo: Default
+-- Tema activo: Street
 vim.cmd("highlight clear")
 if vim.fn.exists("syntax_on") == 1 then
   vim.cmd("syntax reset")
@@ -9,19 +9,19 @@ vim.o.termguicolors = true
 vim.o.background = "dark"
 
 local c = {
-  bg = "#1a1d24",
-  bg_surface = "#14161d",
-  bg_hover = "#282d38",
-  border = "#353b49",
-  fg = "#eceff4",
-  subtext = "#d8dee9",
-  overlay = "#7b889b",
-  primary = "#88c0d0",
-  success = "#a3be8c",
-  warning = "#ebcb8b",
-  danger = "#bf616a",
-  cyan = "#81a1c1",
-  pink = "#b48ead",
+  bg = "#14171a",
+  bg_surface = "#1b1f23",
+  bg_hover = "#282e35",
+  border = "#3a434c",
+  fg = "#ece5de",
+  subtext = "#b8ab9f",
+  overlay = "#707a84",
+  primary = "#f5af19",
+  success = "#6f9479",
+  warning = "#e59b1f",
+  danger = "#c85a42",
+  cyan = "#77a2b2",
+  pink = "#b67d8f",
 }
 
 local hl = function(group, opts)

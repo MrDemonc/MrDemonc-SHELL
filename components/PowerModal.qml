@@ -131,7 +131,7 @@ PanelWindow {
         id: modalCard
         anchors.centerIn: parent
 
-        implicitWidth: 700
+        implicitWidth: PowerManager.pendingAction ? 400 : 700
         implicitHeight: PowerManager.pendingAction ? 150 : 125
         color: Theme.bg
         border.color: Theme.border
@@ -141,6 +141,13 @@ PanelWindow {
 
         opacity: PowerManager.powerOpen ? 1.0 : 0.0
         scale: PowerManager.powerOpen ? 1.0 : 0.90
+
+        Behavior on implicitWidth {
+            NumberAnimation {
+                duration: 220
+                easing.type: Easing.OutCubic
+            }
+        }
 
         Behavior on implicitHeight {
             NumberAnimation {

@@ -1,16 +1,16 @@
 -- Generado automáticamente por Quickshell Theme Manager
 local colors = {
-  bg = "#1a1d24",
-  bg_surface = "#14161d",
-  bg_hover = "#282d38",
-  fg = "#eceff4",
-  primary = "#88c0d0",
-  success = "#a3be8c",
-  warning = "#ebcb8b",
-  danger = "#bf616a",
-  pink = "#b48ead",
-  cyan = "#81a1c1",
-  overlay = "#7b889b",
+  bg = "#14171a",
+  bg_surface = "#1b1f23",
+  bg_hover = "#282e35",
+  fg = "#ece5de",
+  primary = "#f5af19",
+  success = "#6f9479",
+  warning = "#e59b1f",
+  danger = "#c85a42",
+  pink = "#b67d8f",
+  cyan = "#77a2b2",
+  overlay = "#707a84",
 }
 
 return {

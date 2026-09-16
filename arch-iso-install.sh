@@ -2248,10 +2248,24 @@ MIME_CONF
     arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://antigravity.google/cli/install.sh | bash" 2>/dev/null || {
         echo "Aviso: Falló la descarga de Antigravity CLI o no hay conexión a internet disponible."
     }
-    echo "==> Instalando Codex (openai) mediante npm..."
-    arch-chroot /mnt su - "$SYS_USER" -c "sudo npm install -g @openai/codex" 2>/dev/null || {
+    echo "==> Instalando Codex (openai) mediante npm global como root..."
+    arch-chroot /mnt npm install -g @openai/codex --prefix /usr 2>/dev/null || {
         echo "Aviso: Falló la instalación de Codex con npm o no hay conexión a internet disponible."
     }
+    # Verificación real: crear symlink en /usr/bin si npm lo dejó en otro prefijo
+    if [ -f "/mnt/usr/lib/node_modules/@openai/codex/bin/codex.js" ]; then
+        ln -sf "/mnt/usr/lib/node_modules/@openai/codex/bin/codex.js" /mnt/usr/bin/codex 2>/dev/null || true
+    fi
+    # Reintento como usuario si el binario aún no existe (p. ej. npm no estaba disponible como root)
+    if [ ! -x "/mnt/usr/bin/codex" ]; then
+        echo "==> Codex no quedó en /usr/bin: reintentando instalación local para el usuario..."
+        arch-chroot /mnt su - "$SYS_USER" -c "mkdir -p ~/.npm-global && npm config set prefix ~/.npm-global && npm install -g @openai/codex" 2>/dev/null || {
+            echo "Aviso: Falló el reintento local de Codex o no hay conexión a internet disponible."
+        }
+        if [ -f "$USER_HOME/.npm-global/bin/codex" ]; then
+            ln -sf "$USER_HOME/.npm-global/bin/codex" "$USER_HOME/.local/bin/codex" 2>/dev/null || true
+        fi
+    fi
     # Symlink antigravity -> agy para soporte de ambos comandos
     if [ -f "$USER_HOME/.local/bin/agy" ]; then
         ln -sf "$USER_HOME/.local/bin/agy" "$USER_HOME/.local/bin/antigravity" 2>/dev/null || true
