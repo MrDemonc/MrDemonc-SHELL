@@ -1756,10 +1756,26 @@ GTK4_CONF
         cp -f "$SYSTEM_SHELL/hypr/keybinds.lua" "$USER_HOME/.config/hypr/keybinds.lua"
         cp -f "$SYSTEM_SHELL/hypr/theme_colors.lua" "$USER_HOME/.config/hypr/theme_colors.lua" 2>/dev/null || true
         cp -f "$SYSTEM_SHELL/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf" 2>/dev/null || true
+        if [ -f "$SYSTEM_SHELL/hypr/monitors.lua" ]; then
+            cp -f "$SYSTEM_SHELL/hypr/monitors.lua" "$USER_HOME/.config/hypr/monitors.lua"
+        fi
         rm -f "$USER_HOME/.config/hypr/hyprlock"*.conf 2>/dev/null || true
 
         cp -f "$SYSTEM_SHELL/hypr/hyprland.lua" "$USER_HOME/.config/hypr/hyprland.lua"
         sed -i "s/kb_layout  = \".*\"/kb_layout  = \"$HYPR_KB\"/g" "$USER_HOME/.config/hypr/hyprland.lua"
+    fi
+
+    # Configurar perfil de audio HiFi predeterminado (altavoces + HDMI para portátiles)
+    mkdir -p "$USER_HOME/.local/state/wireplumber" "/mnt/etc/skel/.local/state/wireplumber"
+    cat << 'WP_PROF' > "$USER_HOME/.local/state/wireplumber/default-profile"
+[default-profile]
+alsa_card.pci-0000_00_1f.3-platform-skl_hda_dsp_generic=HiFi (HDMI1, HDMI2, HDMI3, Mic1, Mic2, Speaker)
+WP_PROF
+    cp -f "$USER_HOME/.local/state/wireplumber/default-profile" "/mnt/etc/skel/.local/state/wireplumber/default-profile" 2>/dev/null || true
+    if command -v pactl >/dev/null 2>&1; then
+        for card in $(pactl list cards short 2>/dev/null | awk '{print $1}'); do
+            pactl set-card-profile "$card" "HiFi (HDMI1, HDMI2, HDMI3, Mic1, Mic2, Speaker)" 2>/dev/null || true
+        done
     fi
 
     # Desplegar comandos y utilidades CLI de MrDemonc-SHELL

@@ -199,6 +199,7 @@ create_cli_wrapper "shell-lock" "bin/shell-lock"
 create_cli_wrapper "shell-osd" "bin/shell-osd"
 create_cli_wrapper "shell-brightness" "bin/shell-brightness"
 create_cli_wrapper "shell-volume" "bin/shell-volume"
+create_cli_wrapper "shell-audio-init" "bin/shell-audio-init"
 
 # Instalar también en /usr/local/bin para disponibilidad global en el sistema
 if command -v sudo >/dev/null 2>&1; then
@@ -214,6 +215,19 @@ if command -v sudo >/dev/null 2>&1; then
         sudo udevadm control --reload-rules 2>/dev/null || true
         sudo udevadm trigger --subsystem-match=backlight 2>/dev/null || true
     fi
+fi
+
+# Configurar perfil de audio inicial (altavoces + HDMI para portátiles)
+echo -e "  Configurando perfil de audio predeterminado para tarjetas Intel/ALSA..."
+mkdir -p "$USER_HOME/.local/state/wireplumber"
+cat << 'WP_PROF' > "$USER_HOME/.local/state/wireplumber/default-profile"
+[default-profile]
+alsa_card.pci-0000_00_1f.3-platform-skl_hda_dsp_generic=HiFi (HDMI1, HDMI2, HDMI3, Mic1, Mic2, Speaker)
+WP_PROF
+if command -v pactl >/dev/null 2>&1; then
+    for card in $(pactl list cards short 2>/dev/null | awk '{print $1}'); do
+        pactl set-card-profile "$card" "HiFi (HDMI1, HDMI2, HDMI3, Mic1, Mic2, Speaker)" 2>/dev/null || true
+    done
 fi
 
 # Instalar accesos directos .desktop
@@ -254,6 +268,9 @@ if [ -d "$REPO_DIR/hypr" ]; then
     cp -f "$REPO_DIR/hypr/keybinds.lua" "$HYPR_CONFIG_DIR/keybinds.lua"
     cp -f "$REPO_DIR/hypr/theme_colors.lua" "$HYPR_CONFIG_DIR/theme_colors.lua" 2>/dev/null || true
     cp -f "$REPO_DIR/hypr/hypridle.conf" "$HYPR_CONFIG_DIR/hypridle.conf" 2>/dev/null || true
+    if [ -f "$REPO_DIR/hypr/monitors.lua" ]; then
+        cp -f "$REPO_DIR/hypr/monitors.lua" "$HYPR_CONFIG_DIR/monitors.lua"
+    fi
     rm -f "$HYPR_CONFIG_DIR/hyprlock"*.conf 2>/dev/null || true
     
     # Generar hyprland.lua con la ruta exacta del repositorio

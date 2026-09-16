@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
-# Control unificado de DPMS (encendido/apagado de pantallas) para MrDemonc-SHELL
-# Compatible de forma transparente tanto con Hyprland Lua como Hyprland estándar
-# En máquinas virtuales (QEMU/KVM/VirtualBox/VMware), gestiona el apagado mediante blackout visual
-# evitando la desconexión del CRTC virtual que provoca "Display output is not active".
+# ==============================================================================
+#  MrDemonc-SHELL: Control unificado de DPMS (encendido/apagado de pantallas)
+# ==============================================================================
+# Compatible de forma transparente tanto con Hyprland Lua como Hyprland estándar.
+# En hardware real apaga/enciende físicamente la señal de pantalla mediante DPMS.
+# En máquinas virtuales (QEMU/KVM/VirtualBox/VMware), gestiona el reposo mediante
+# blackout visual para evitar la desconexión del CRTC virtual ("Display output is not active").
 
 ACTION="${1:-off}"
-RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:?Se requiere una sesión de usuario}"
+case "$ACTION" in on|off|toggle) ;; *) exit 2 ;; esac
+exec 9>"$RUNTIME_DIR/quickshell_dpms.lock"
+flock -x 9
 LOCK_FILE="${RUNTIME_DIR}/quickshell_lock.toggle"
 LOCK_FIFO="${RUNTIME_DIR}/quickshell_lock.fifo"
 
 # Detectar si estamos en una máquina virtual
 IS_VM=false
 if command -v systemd-detect-virt >/dev/null 2>&1; then
-    if systemd-detect-virt >/dev/null 2>&1; then
-        VIRT_TYPE="$(systemd-detect-virt 2>/dev/null)"
-        if [ -n "$VIRT_TYPE" ] && [ "$VIRT_TYPE" != "none" ]; then
-            IS_VM=true
-        fi
+    VIRT_TYPE="$(systemd-detect-virt 2>/dev/null)" || true
+    if [ -n "$VIRT_TYPE" ] && [ "$VIRT_TYPE" != "none" ]; then
+        IS_VM=true
     fi
 fi
 
@@ -29,39 +33,47 @@ fi
 
 notify_lock() {
     local msg="$1"
-    if [ -p "$LOCK_FIFO" ]; then
-        timeout 0.3 bash -c "echo '$msg' > '$LOCK_FIFO'" 2>/dev/null || true
+    if [ -p "$LOCK_FIFO" ] && timeout 0.3 bash -c 'printf "%s\n" "$1" > "$2"' _ "$msg" "$LOCK_FIFO"; then
+        return
     fi
-    echo "$msg" > "$LOCK_FILE" 2>/dev/null || true
+    printf '%s\n' "$msg" > "$LOCK_FILE"
+}
+
+apply_hyprland_dpms() {
+    local act="$1"
+    # Soporte nativo para Hyprland Lua y fallback para Hyprland clásico
+    hyprctl dispatch "hl.dsp.dpms({ action = \"$act\" })" >/dev/null 2>&1 || \
+    hyprctl eval "hl.dispatch(hl.dsp.dpms({ action = \"$act\" }))" >/dev/null 2>&1 || \
+    hyprctl dispatch dpms "$act" >/dev/null 2>&1 || true
 }
 
 case "$ACTION" in
     off)
-        notify_lock "DPMS_OFF"
-        if [ "$IS_VM" = "false" ]; then
-            hyprctl eval 'hl.dispatch(hl.dsp.dpms("off"))' >/dev/null 2>&1 || \
-            hyprctl dispatch dpms off >/dev/null 2>&1 || true
+        if [ "$IS_VM" = "true" ]; then
+            notify_lock "DPMS_OFF"
+        else
+            apply_hyprland_dpms "off"
         fi
         ;;
     on)
-        notify_lock "DPMS_ON"
-        if [ "$IS_VM" = "false" ]; then
-            hyprctl eval 'hl.dispatch(hl.dsp.dpms("on"))' >/dev/null 2>&1 || \
-            hyprctl dispatch dpms on >/dev/null 2>&1 || true
+        if [ "$IS_VM" = "true" ]; then
+            notify_lock "DPMS_ON"
+        else
+            apply_hyprland_dpms "on"
         fi
         ;;
     toggle)
-        notify_lock "DPMS_TOGGLE"
-        if [ "$IS_VM" = "false" ]; then
-            hyprctl eval 'hl.dispatch(hl.dsp.dpms("toggle"))' >/dev/null 2>&1 || \
-            hyprctl dispatch dpms toggle >/dev/null 2>&1 || true
+        if [ "$IS_VM" = "true" ]; then
+            notify_lock "DPMS_TOGGLE"
+        else
+            apply_hyprland_dpms "toggle"
         fi
         ;;
     *)
-        notify_lock "DPMS_OFF"
-        if [ "$IS_VM" = "false" ]; then
-            hyprctl eval 'hl.dispatch(hl.dsp.dpms("off"))' >/dev/null 2>&1 || \
-            hyprctl dispatch dpms off >/dev/null 2>&1 || true
+        if [ "$IS_VM" = "true" ]; then
+            notify_lock "DPMS_OFF"
+        else
+            apply_hyprland_dpms "off"
         fi
         ;;
 esac

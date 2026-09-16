@@ -60,12 +60,19 @@ end
 -- Autostart necessary processes (like notifications daemons, status bars, etc.)
 -- Or execute your favorite apps at launch like this:
 hl.on("hyprland.start", function () 
+    local candidates = {
+        userHome .. "/Documentos/github/MrDemonc-SHELL",
+        userHome .. "/Documentos/MrDemonc-SHELL",
+        "/usr/share/mrdemonc-shell",
+    }
     local shellPath = "/usr/share/mrdemonc-shell"
-    local f = io.open(shellPath .. "/shell.qml", "r")
-    if f then
-        f:close()
-    else
-        shellPath = userHome .. "/Documentos/MrDemonc-SHELL"
+    for _, path in ipairs(candidates) do
+        local f = io.open(path .. "/shell.qml", "r")
+        if f then
+            f:close()
+            shellPath = path
+            break
+        end
     end
     hl.exec_cmd("systemd-inhibit --what=handle-power-key:handle-suspend-key:handle-hibernate-key --who=MrDemonc-SHELL --why='Quickshell Power Menu' sleep infinity")
     hl.exec_cmd("quickshell -d -p " .. shellPath)
@@ -75,6 +82,8 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("sh -c 'ST=\"$HOME/.local/state/mrdemonc/caffeine\"; i=0; while ! pgrep -x hypridle >/dev/null 2>&1 && [ $i -lt 100 ]; do sleep 0.1; i=$((i+1)); done; if [ -f \"$ST\" ] && [ \"$(cat \"$ST\")\" = \"on\" ]; then pkill -STOP hypridle 2>/dev/null; fi'")
     hl.exec_cmd("/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1")
     hl.exec_cmd("hyprctl setcursor capitaine-cursors 24")
+    -- Configurar perfil de audio HiFi (altavoces + HDMI) para portátiles y monitor externo
+    hl.exec_cmd("sh -c 'sleep 1; if command -v shell-audio-init >/dev/null 2>&1; then shell-audio-init; else for c in $(pactl list cards short 2>/dev/null | awk \"{print \\$1}\"); do pactl set-card-profile \"$c\" \"HiFi (HDMI1, HDMI2, HDMI3, Mic1, Mic2, Speaker)\" 2>/dev/null || true; done; fi'")
 end)
 
 

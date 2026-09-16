@@ -167,7 +167,6 @@ Item {
 
     function turnScreenOff() {
         if (!isLocked || isChecking || isUnlocking) return;
-        screenOff = true;
         requestDpms("off");
     }
 

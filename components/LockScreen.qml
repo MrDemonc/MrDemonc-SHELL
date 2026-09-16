@@ -570,7 +570,7 @@ WlSessionLock {
 
                 // Autoejecución al activarse el bloqueo para enfocar el campo de texto
                 // -------------------------------------------------------------
-                // 4. CAPA DE APAGADO TOTAL (BLACKOUT PARA MÁQUINAS VIRTUALES Y REPOSO)
+                // 4. CAPA DE APAGADO TOTAL (BLACKOUT EXCLUSIVO PARA MÁQUINAS VIRTUALES)
                 // -------------------------------------------------------------
                 Rectangle {
                     id: blackoutLayer
@@ -587,8 +587,9 @@ WlSessionLock {
                     MouseArea {
                         anchors.fill: parent
                         enabled: LockScreenManager.screenOff
-                        // Mostrar esta capa puede generar movimiento sintético del ratón.
-                        // Despertar sólo por entrada explícita evita un bucle visible/screenOff.
+                        cursorShape: Qt.BlankCursor
+                        hoverEnabled: true
+                        onPositionChanged: LockScreenManager.wakeScreen()
                         onPressed: LockScreenManager.wakeScreen()
                         onWheel: LockScreenManager.wakeScreen()
                     }

@@ -131,8 +131,8 @@ PanelWindow {
         id: modalCard
         anchors.centerIn: parent
 
-        implicitWidth: 700
-        implicitHeight: PowerManager.pendingAction ? 115 : 125
+        implicitWidth: PowerManager.pendingAction ? 400 : 700
+        implicitHeight: PowerManager.pendingAction ? 150 : 125
         color: Theme.bg
         border.color: Theme.border
         border.width: 1
@@ -141,6 +141,13 @@ PanelWindow {
 
         opacity: PowerManager.powerOpen ? 1.0 : 0.0
         scale: PowerManager.powerOpen ? 1.0 : 0.90
+
+        Behavior on implicitWidth {
+            NumberAnimation {
+                duration: 220
+                easing.type: Easing.OutCubic
+            }
+        }
 
         Behavior on implicitHeight {
             NumberAnimation {
@@ -280,8 +287,8 @@ PanelWindow {
                 }
             }
 
-            // B. Vista de Confirmación
-            RowLayout {
+            // B. Vista de Confirmación (texto arriba, botones debajo)
+            ColumnLayout {
                 anchors.centerIn: parent
                 spacing: 20
                 visible: PowerManager.pendingAction !== null
@@ -291,8 +298,11 @@ PanelWindow {
                     NumberAnimation { duration: 160 }
                 }
 
+                // Texto de confirmación: icono + título centrados
                 RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
                     spacing: 12
+
                     Text {
                         text: PowerManager.pendingAction ? PowerManager.pendingAction.icon : ""
                         font.family: Theme.iconFontFamily
@@ -309,8 +319,9 @@ PanelWindow {
                     }
                 }
 
-                // Botones Cancelar y Confirmar
+                // Botones Cancelar y Confirmar debajo del texto
                 RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
                     spacing: 10
 
                     // Botón Cancelar
