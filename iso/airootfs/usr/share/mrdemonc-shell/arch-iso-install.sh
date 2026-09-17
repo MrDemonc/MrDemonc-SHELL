@@ -1068,24 +1068,31 @@ perform_installation_worker() {
     echo "==> Formateando Btrfs en $ROOT_DEV..."
     mkfs.btrfs -f -L ARCHROOT "$ROOT_DEV"
 
-    echo "==> Creando subvolúmenes Btrfs (@, @home, @snapshots, @var_log, @pkg)..."
+    echo "==> Creando subvolúmenes Btrfs (@, @home, @snapshots, @var_log, @pkg, @swap)..."
     mount "$ROOT_DEV" /mnt
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@snapshots
     btrfs subvolume create /mnt/@var_log
     btrfs subvolume create /mnt/@pkg
+    btrfs subvolume create /mnt/@swap
     umount /mnt
 
     echo "==> Montando subvolúmenes Btrfs en /mnt..."
     BTRFS_MOUNT_OPTS="noatime,compress=zstd,space_cache=v2"
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@" "$ROOT_DEV" /mnt
-    mkdir -p /mnt/{home,.snapshots,var/log,var/cache/pacman/pkg,boot}
+    mkdir -p /mnt/{home,.snapshots,var/log,var/cache/pacman/pkg,boot,swap}
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@home" "$ROOT_DEV" /mnt/home
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@snapshots" "$ROOT_DEV" /mnt/.snapshots
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@var_log" "$ROOT_DEV" /mnt/var/log
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@pkg" "$ROOT_DEV" /mnt/var/cache/pacman/pkg
+    mount -o "noatime,space_cache=v2,subvol=@swap" "$ROOT_DEV" /mnt/swap
     mount "$PART_EFI" /mnt/boot
+
+    echo "==> Creando y activando archivo Swap de 20GB en subvolumen @swap..."
+    btrfs filesystem mkswapfile --size 20G /mnt/swap/swapfile
+    chmod 600 /mnt/swap/swapfile
+    swapon /mnt/swap/swapfile
 
     set_phase "Instalando paquetes base con pacstrap" 35
     echo "==> Iniciando instalación de paquetes del sistema..."
@@ -1107,6 +1114,8 @@ perform_installation_worker() {
         networkmanager
         sudo
         git
+        github-cli
+        openssh
         zsh
         zsh-completions
         zsh-autosuggestions
@@ -1202,14 +1211,31 @@ perform_installation_worker() {
         npm
         python-pip
         libusb
+        inkscape
+        telegram-desktop
+        steam
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
 
     # Habilitar repositorio multilib en el entorno de instalación para pacstrap
     sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf 2>/dev/null || true
+    pacman -Sy --noconfirm 2>/dev/null || true
 
     pacstrap -K /mnt "${BASE_PACKAGES[@]}"
     genfstab -U /mnt >> /mnt/etc/fstab
+
+    # Asegurar configuración óptima de Swap en fstab y sysctl
+    if grep -q "swapfile" /mnt/etc/fstab; then
+        sed -i 's|/mnt/swap/swapfile|/swap/swapfile|g' /mnt/etc/fstab
+    else
+        echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+    fi
+
+    mkdir -p /mnt/etc/sysctl.d
+    cat << 'SWAPCONF' > /mnt/etc/sysctl.d/99-swap.conf
+vm.swappiness=60
+vm.vfs_cache_pressure=50
+SWAPCONF
 
     # Habilitar repositorio multilib, Color, ILoveCandy y descargas paralelas en el sistema instalado
     sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /mnt/etc/pacman.conf 2>/dev/null || true
@@ -1489,6 +1515,8 @@ if [ -n "$GIT_USER_EMAIL" ]; then
     su - "$SYS_USER" -s /bin/bash -c "git config --global user.email '$GIT_USER_EMAIL'" 2>/dev/null || true
 fi
 su - "$SYS_USER" -s /bin/bash -c "git config --global init.defaultBranch main" 2>/dev/null || true
+su - "$SYS_USER" -s /bin/bash -c "git config --global credential.helper store" 2>/dev/null || true
+su - "$SYS_USER" -s /bin/bash -c "git config --global push.autoSetupRemote true" 2>/dev/null || true
 
 sed -i "s/^HOOKS=.*/HOOKS=($MKINITCPIO_HOOKS)/" /etc/mkinitcpio.conf
 mkinitcpio -P
@@ -1748,10 +1776,26 @@ GTK4_CONF
         cp -f "$SYSTEM_SHELL/hypr/keybinds.lua" "$USER_HOME/.config/hypr/keybinds.lua"
         cp -f "$SYSTEM_SHELL/hypr/theme_colors.lua" "$USER_HOME/.config/hypr/theme_colors.lua" 2>/dev/null || true
         cp -f "$SYSTEM_SHELL/hypr/hypridle.conf" "$USER_HOME/.config/hypr/hypridle.conf" 2>/dev/null || true
+        if [ -f "$SYSTEM_SHELL/hypr/monitors.lua" ]; then
+            cp -f "$SYSTEM_SHELL/hypr/monitors.lua" "$USER_HOME/.config/hypr/monitors.lua"
+        fi
         rm -f "$USER_HOME/.config/hypr/hyprlock"*.conf 2>/dev/null || true
 
         cp -f "$SYSTEM_SHELL/hypr/hyprland.lua" "$USER_HOME/.config/hypr/hyprland.lua"
         sed -i "s/kb_layout  = \".*\"/kb_layout  = \"$HYPR_KB\"/g" "$USER_HOME/.config/hypr/hyprland.lua"
+    fi
+
+    # Configurar perfil de audio HiFi predeterminado (altavoces + HDMI para portátiles)
+    mkdir -p "$USER_HOME/.local/state/wireplumber" "/mnt/etc/skel/.local/state/wireplumber"
+    cat << 'WP_PROF' > "$USER_HOME/.local/state/wireplumber/default-profile"
+[default-profile]
+alsa_card.pci-0000_00_1f.3-platform-skl_hda_dsp_generic=HiFi (HDMI1, HDMI2, HDMI3, Mic1, Mic2, Speaker)
+WP_PROF
+    cp -f "$USER_HOME/.local/state/wireplumber/default-profile" "/mnt/etc/skel/.local/state/wireplumber/default-profile" 2>/dev/null || true
+    if command -v pactl >/dev/null 2>&1; then
+        for card in $(pactl list cards short 2>/dev/null | awk '{print $1}'); do
+            pactl set-card-profile "$card" "HiFi (HDMI1, HDMI2, HDMI3, Mic1, Mic2, Speaker)" 2>/dev/null || true
+        done
     fi
 
     # Desplegar comandos y utilidades CLI de MrDemonc-SHELL
@@ -2045,6 +2089,18 @@ alias ll='ls -la --color=auto'
 alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
 
+# Navegación rápida de directorios
+setopt AUTO_CD
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+
+# OSC 7 para sincronización de directorio actual con emuladores de terminal
+chpwd() {
+    print -Pn "\e]7;file://%m$PWD\e\\" 2>/dev/null || true
+}
+
 # Inicializar Starship Prompt
 export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 if command -v starship >/dev/null 2>&1; then
@@ -2100,6 +2156,10 @@ alias ls='ls --color=auto'
 alias ll='ls -la --color=auto'
 alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
 
 export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 if command -v starship >/dev/null 2>&1; then
@@ -2237,14 +2297,17 @@ MIME_CONF
         arch-chroot /mnt su - "$SYS_USER" -c "gio mime $m shell-video.desktop" 2>/dev/null || true
     done
 
-    # Instalación de OpenCode y Antigravity CLI para el usuario instalado
-    set_phase "Instalando OpenCode y Antigravity CLI" 94
-    echo "==> Instalando herramientas de IA y desarrollo (OpenCode y Antigravity CLI)..."
+    # Instalación de OpenCode, Antigravity CLI y Codex para el usuario instalado
+    set_phase "Instalando OpenCode, Antigravity CLI y Codex" 94
+    echo "==> Instalando herramientas de IA y desarrollo (OpenCode, Antigravity CLI y Codex)..."
     arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://opencode.ai/install | bash" 2>/dev/null || {
         echo "Aviso: Falló la descarga de opencode o no hay conexión a internet disponible."
     }
     arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://antigravity.google/cli/install.sh | bash" 2>/dev/null || {
         echo "Aviso: Falló la descarga de Antigravity CLI o no hay conexión a internet disponible."
+    }
+    arch-chroot /mnt su - "$SYS_USER" -c "curl -fsSL https://chatgpt.com/codex/install.sh | sh" 2>/dev/null || {
+        echo "Aviso: Falló la descarga de Codex o no hay conexión a internet disponible."
     }
     # Symlink antigravity -> agy para soporte de ambos comandos
     if [ -f "$USER_HOME/.local/bin/agy" ]; then
@@ -2307,6 +2370,7 @@ MIME_CONF
     set_phase "Finalizando instalación y sincronizando almacenamiento" 98
     echo "==> Sincronizando datos a disco y desmontando particiones..."
     sync
+    swapoff -a 2>/dev/null || true
     fuser -km /mnt 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     cryptsetup close cryptroot 2>/dev/null || true

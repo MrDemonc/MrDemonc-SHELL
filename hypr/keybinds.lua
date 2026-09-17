@@ -5,7 +5,7 @@
 
 local userHome    = os.getenv("HOME") or ""
 local binDir      = (userHome ~= "" and (userHome .. "/.local/bin")) or "/usr/local/bin"
-local terminal    = "kitty"
+local terminal    = binDir .. "/shell-terminal"
 local fileManager = "nautilus"
 local browser     = "zen-browser"
 local mainMod     = "SUPER"

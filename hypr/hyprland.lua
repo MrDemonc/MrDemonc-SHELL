@@ -35,7 +35,7 @@ pcall(require, "monitors")
 -- Set programs that you use
 local userHome    = os.getenv("HOME") or ""
 local binDir      = (userHome ~= "" and (userHome .. "/.local/bin")) or "/usr/local/bin"
-local terminal    = "kitty"
+local terminal    = binDir .. "/shell-terminal"
 local fileManager = "nautilus"
 local menu        = binDir .. "/shell-apps"
 

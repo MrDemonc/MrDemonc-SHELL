@@ -1068,24 +1068,31 @@ perform_installation_worker() {
     echo "==> Formateando Btrfs en $ROOT_DEV..."
     mkfs.btrfs -f -L ARCHROOT "$ROOT_DEV"
 
-    echo "==> Creando subvolúmenes Btrfs (@, @home, @snapshots, @var_log, @pkg)..."
+    echo "==> Creando subvolúmenes Btrfs (@, @home, @snapshots, @var_log, @pkg, @swap)..."
     mount "$ROOT_DEV" /mnt
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@snapshots
     btrfs subvolume create /mnt/@var_log
     btrfs subvolume create /mnt/@pkg
+    btrfs subvolume create /mnt/@swap
     umount /mnt
 
     echo "==> Montando subvolúmenes Btrfs en /mnt..."
     BTRFS_MOUNT_OPTS="noatime,compress=zstd,space_cache=v2"
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@" "$ROOT_DEV" /mnt
-    mkdir -p /mnt/{home,.snapshots,var/log,var/cache/pacman/pkg,boot}
+    mkdir -p /mnt/{home,.snapshots,var/log,var/cache/pacman/pkg,boot,swap}
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@home" "$ROOT_DEV" /mnt/home
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@snapshots" "$ROOT_DEV" /mnt/.snapshots
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@var_log" "$ROOT_DEV" /mnt/var/log
     mount -o "$BTRFS_MOUNT_OPTS,subvol=@pkg" "$ROOT_DEV" /mnt/var/cache/pacman/pkg
+    mount -o "noatime,space_cache=v2,subvol=@swap" "$ROOT_DEV" /mnt/swap
     mount "$PART_EFI" /mnt/boot
+
+    echo "==> Creando y activando archivo Swap de 20GB en subvolumen @swap..."
+    btrfs filesystem mkswapfile --size 20G /mnt/swap/swapfile
+    chmod 600 /mnt/swap/swapfile
+    swapon /mnt/swap/swapfile
 
     set_phase "Instalando paquetes base con pacstrap" 35
     echo "==> Iniciando instalación de paquetes del sistema..."
@@ -1216,6 +1223,19 @@ perform_installation_worker() {
 
     pacstrap -K /mnt "${BASE_PACKAGES[@]}"
     genfstab -U /mnt >> /mnt/etc/fstab
+
+    # Asegurar configuración óptima de Swap en fstab y sysctl
+    if grep -q "swapfile" /mnt/etc/fstab; then
+        sed -i 's|/mnt/swap/swapfile|/swap/swapfile|g' /mnt/etc/fstab
+    else
+        echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+    fi
+
+    mkdir -p /mnt/etc/sysctl.d
+    cat << 'SWAPCONF' > /mnt/etc/sysctl.d/99-swap.conf
+vm.swappiness=60
+vm.vfs_cache_pressure=50
+SWAPCONF
 
     # Habilitar repositorio multilib, Color, ILoveCandy y descargas paralelas en el sistema instalado
     sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /mnt/etc/pacman.conf 2>/dev/null || true
@@ -2069,6 +2089,18 @@ alias ll='ls -la --color=auto'
 alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
 
+# Navegación rápida de directorios
+setopt AUTO_CD
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+
+# OSC 7 para sincronización de directorio actual con emuladores de terminal
+chpwd() {
+    print -Pn "\e]7;file://%m$PWD\e\\" 2>/dev/null || true
+}
+
 # Inicializar Starship Prompt
 export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 if command -v starship >/dev/null 2>&1; then
@@ -2124,6 +2156,10 @@ alias ls='ls --color=auto'
 alias ll='ls -la --color=auto'
 alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
 
 export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 if command -v starship >/dev/null 2>&1; then
@@ -2334,6 +2370,7 @@ MIME_CONF
     set_phase "Finalizando instalación y sincronizando almacenamiento" 98
     echo "==> Sincronizando datos a disco y desmontando particiones..."
     sync
+    swapoff -a 2>/dev/null || true
     fuser -km /mnt 2>/dev/null || true
     umount -R /mnt 2>/dev/null || true
     cryptsetup close cryptroot 2>/dev/null || true

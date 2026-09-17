@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Lanzador inteligente de terminal
+# ==============================================================================
+# Abre una nueva ventana de Kitty preservando la ruta de trabajo actual (CWD)
+# del terminal activo en Hyprland. Si no hay terminal activo, abre en $HOME.
+
+get_active_terminal_cwd() {
+    local win_info pid win_class
+    if ! command -v hyprctl >/dev/null 2>&1; then
+        return 1
+    fi
+    win_info="$(hyprctl activewindow -j 2>/dev/null)" || return 1
+    win_class="$(echo "$win_info" | grep -Po '"class":\s*"\K[^"]*' | tr '[:upper:]' '[:lower:]')"
+    pid="$(echo "$win_info" | grep -Po '"pid":\s*\K[0-9]+')"
+
+    case "$win_class" in
+        *kitty*|*alacritty*|*foot*|*wezterm*|*ghostty*|*terminal*) ;;
+        *) return 1 ;;
+    esac
+
+    if [ -n "$pid" ] && [ "$pid" -gt 0 ] 2>/dev/null; then
+        # Recorrer el árbol de procesos hijos para encontrar el shell (zsh, bash, etc.)
+        local child_pids=("$pid")
+        local queue=("$pid")
+        while [ ${#queue[@]} -gt 0 ]; do
+            local current="${queue[0]}"
+            queue=("${queue[@]:1}")
+            for c in $(pgrep -P "$current" 2>/dev/null); do
+                local cmdline
+                cmdline="$(tr '\0' ' ' < "/proc/$c/cmdline" 2>/dev/null)"
+                if [[ "$cmdline" != *"__atexit__"* && "$cmdline" != *"__watch_conf__"* ]]; then
+                    child_pids+=("$c")
+                    queue+=("$c")
+                fi
+            done
+        done
+
+        # Probar desde el proceso hijo más profundo (el shell o app en ejecución)
+        for ((idx=${#child_pids[@]}-1; idx>=0; idx--)); do
+            local p="${child_pids[idx]}"
+            local c_cwd
+            c_cwd="$(readlink "/proc/$p/cwd" 2>/dev/null)"
+            if [ -n "$c_cwd" ] && [ -d "$c_cwd" ]; then
+                echo "$c_cwd"
+                return 0
+            fi
+        done
+    fi
+    return 1
+}
+
+TARGET_DIR="$(get_active_terminal_cwd)"
+
+if [ -n "$TARGET_DIR" ] && [ -d "$TARGET_DIR" ]; then
+    exec kitty --directory "$TARGET_DIR" "$@"
+else
+    exec kitty "$@"
+fi
