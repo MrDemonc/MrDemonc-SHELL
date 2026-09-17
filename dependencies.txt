@@ -50,6 +50,19 @@ wtype
 kitty
 nautilus
 
+# --- Gestión de Dispositivos, Almacenamiento & Soporte Android MTP ---
+gvfs
+gvfs-mtp
+gvfs-gphoto2
+gvfs-afc
+gvfs-smb
+udisks2
+udiskie
+android-udev
+dosfstools
+exfatprogs
+ntfs-3g
+
 # --- Cursor & Autenticación Polkit ---
 capitaine-cursors
 polkit-gnome

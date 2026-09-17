@@ -1135,6 +1135,14 @@ perform_installation_worker() {
         quickshell
         kitty
         nautilus
+        gvfs
+        gvfs-mtp
+        gvfs-gphoto2
+        gvfs-afc
+        gvfs-smb
+        udisks2
+        udiskie
+        android-udev
         capitaine-cursors
         gum
         ttf-jetbrains-mono-nerd
@@ -1168,6 +1176,8 @@ perform_installation_worker() {
         wtype
         python
         dosfstools
+        exfatprogs
+        ntfs-3g
         efibootmgr
         e2fsprogs
         mesa
@@ -1596,6 +1606,26 @@ systemctl enable systemd-timesyncd.service 2>/dev/null || true
 systemctl enable cups.service 2>/dev/null || true
 systemctl enable avahi-daemon.service 2>/dev/null || true
 systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null || true
+systemctl enable udisks2.service 2>/dev/null || true
+
+# Configurar reglas de Polkit para permitir montaje de discos y particiones sin contraseña
+mkdir -p /etc/polkit-1/rules.d
+cat << 'POLKIT_CONF' > /etc/polkit-1/rules.d/50-udisks2.rules
+/* Permitir a usuarios en el grupo wheel montar, desmontar y desbloquear discos sin solicitar clave */
+polkit.addRule(function(action, subject) {
+    if ((action.id == "org.freedesktop.udisks2.filesystem-mount" ||
+         action.id == "org.freedesktop.udisks2.filesystem-mount-system" ||
+         action.id == "org.freedesktop.udisks2.filesystem-mount-other-seat" ||
+         action.id == "org.freedesktop.udisks2.encrypted-unlock" ||
+         action.id == "org.freedesktop.udisks2.encrypted-unlock-system" ||
+         action.id == "org.freedesktop.udisks2.eject-media" ||
+         action.id == "org.freedesktop.udisks2.power-off-drive") &&
+        subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+POLKIT_CONF
+chmod 644 /etc/polkit-1/rules.d/50-udisks2.rules
 
 # Configurar resolución mDNS en nsswitch.conf para descubrimiento de impresoras de red
 sed -i 's/^hosts:.*/hosts: mymachines mdns_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns/' /etc/nsswitch.conf 2>/dev/null || true

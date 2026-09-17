@@ -164,3 +164,11 @@ alsa-firmware
 xdg-user-dirs
 android-tools
 android-udev
+gvfs
+gvfs-mtp
+gvfs-gphoto2
+gvfs-afc
+gvfs-smb
+ntfs-3g
+udisks2
+udiskie

@@ -59,6 +59,17 @@ PACKAGES=(
     wtype
     kitty
     nautilus
+    gvfs
+    gvfs-mtp
+    gvfs-gphoto2
+    gvfs-afc
+    gvfs-smb
+    udisks2
+    udiskie
+    android-udev
+    dosfstools
+    exfatprogs
+    ntfs-3g
     capitaine-cursors
     polkit-gnome
     ttf-jetbrains-mono-nerd
@@ -208,14 +219,38 @@ if command -v sudo >/dev/null 2>&1; then
     sudo cp -f "$REPO_DIR/bin/"* /usr/local/bin/ 2>/dev/null || true
     sudo chmod +x /usr/local/bin/shell-* /usr/local/bin/clipboard-action 2>/dev/null || true
 
-    # Configurar permisos de brillo para laptop (udev) y grupos de usuario
-    echo -e "  Configurando permisos de hardware para brillo de laptop y audio..."
-    sudo usermod -aG video,audio,input "$CURRENT_USER" 2>/dev/null || true
+    # Configurar permisos de hardware para brillo de laptop, audio, almacenamiento y Android MTP/ADB
+    echo -e "  Configurando permisos de hardware para brillo de laptop, audio, almacenamiento y Android..."
+    sudo usermod -aG video,audio,input,storage,adbusers "$CURRENT_USER" 2>/dev/null || true
     if [ ! -f /etc/udev/rules.d/90-backlight.rules ]; then
         echo 'ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chmod a+rw /sys/class/backlight/%k/brightness"' | sudo tee /etc/udev/rules.d/90-backlight.rules >/dev/null 2>&1 || true
         sudo udevadm control --reload-rules 2>/dev/null || true
         sudo udevadm trigger --subsystem-match=backlight 2>/dev/null || true
     fi
+
+    # Configurar reglas de Polkit para permitir montaje de discos y particiones sin contraseña
+    if [ ! -f /etc/polkit-1/rules.d/50-udisks2.rules ]; then
+        sudo mkdir -p /etc/polkit-1/rules.d
+        cat << 'POLKIT_EOF' | sudo tee /etc/polkit-1/rules.d/50-udisks2.rules >/dev/null 2>&1 || true
+/* Permitir a usuarios en el grupo wheel montar, desmontar y desbloquear discos sin solicitar clave */
+polkit.addRule(function(action, subject) {
+    if ((action.id == "org.freedesktop.udisks2.filesystem-mount" ||
+         action.id == "org.freedesktop.udisks2.filesystem-mount-system" ||
+         action.id == "org.freedesktop.udisks2.filesystem-mount-other-seat" ||
+         action.id == "org.freedesktop.udisks2.encrypted-unlock" ||
+         action.id == "org.freedesktop.udisks2.encrypted-unlock-system" ||
+         action.id == "org.freedesktop.udisks2.eject-media" ||
+         action.id == "org.freedesktop.udisks2.power-off-drive") &&
+        subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+POLKIT_EOF
+    fi
+
+    sudo systemctl enable --now udisks2.service 2>/dev/null || true
+    sudo udevadm control --reload-rules 2>/dev/null || true
+    sudo udevadm trigger 2>/dev/null || true
 fi
 
 # Configurar perfil de audio inicial (altavoces + HDMI para portátiles)
