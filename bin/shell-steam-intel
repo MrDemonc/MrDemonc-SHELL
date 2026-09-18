@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Launcher para Corrección de GPU Intel & Steam
+#  Lanza un terminal Kitty flotante centrado ejecutando fix_intel_gpu_steam.sh
+# ==============================================================================
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_DIRS=(
+    "$QUICKSHELL_DIR"
+    "$SCRIPT_DIR/.."
+    "$HOME/Documentos/github/MrDemonc-SHELL"
+    "$HOME/Documentos/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+)
+
+TARGET_SCRIPT=""
+for d in "${SEARCH_DIRS[@]}"; do
+    if [ -n "$d" ] && [ -f "$d/scripts/fix_intel_gpu_steam.sh" ]; then
+        TARGET_SCRIPT="$d/scripts/fix_intel_gpu_steam.sh"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    echo "Error: No se encontró fix_intel_gpu_steam.sh" >&2
+    exit 1
+fi
+
+if [ "$1" = "--no-float" ]; then
+    exec bash "$TARGET_SCRIPT" "$@"
+fi
+
+if command -v kitty >/dev/null 2>&1; then
+    exec kitty --class "shell-update" --title "Controladores Intel & Steam" bash -c "bash \"$TARGET_SCRIPT\" \"$@\"; echo ''; read -n 1 -s -p 'Presiona cualquier tecla para salir...'"
+elif command -v foot >/dev/null 2>&1; then
+    exec foot --app-id "shell-update" --title "Controladores Intel & Steam" bash -c "bash \"$TARGET_SCRIPT\" \"$@\"; echo ''; read -n 1 -s -p 'Presiona cualquier tecla para salir...'"
+elif command -v alacritty >/dev/null 2>&1; then
+    exec alacritty --class "shell-update" --title "Controladores Intel & Steam" -e bash -c "bash \"$TARGET_SCRIPT\" \"$@\"; echo ''; read -n 1 -s -p 'Presiona cualquier tecla para salir...'"
+else
+    exec bash "$TARGET_SCRIPT" "$@"
+fi

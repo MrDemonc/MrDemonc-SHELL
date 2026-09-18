@@ -212,6 +212,7 @@ create_cli_wrapper "shell-brightness" "bin/shell-brightness"
 create_cli_wrapper "shell-volume" "bin/shell-volume"
 create_cli_wrapper "shell-audio-init" "bin/shell-audio-init"
 create_cli_wrapper "shell-terminal" "bin/shell-terminal"
+create_cli_wrapper "shell-steam-intel" "bin/shell-steam-intel"
 
 # Instalar también en /usr/local/bin para disponibilidad global en el sistema
 if command -v sudo >/dev/null 2>&1; then

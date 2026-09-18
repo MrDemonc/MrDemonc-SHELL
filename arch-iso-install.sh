@@ -1103,6 +1103,61 @@ perform_installation_worker() {
         UCODE_PKG="intel-ucode"
     fi
 
+    # -------------------------------------------------------------------------
+    # Detección de GPU y configuración de controladores gráficos y Vulkan
+    # Asegura soporte completo de 32 y 64 bits para Steam y aceleración HW
+    # evitando dependencias erróneas de NVIDIA en hardware Intel/AMD
+    # -------------------------------------------------------------------------
+    GPU_PACKAGES=(
+        mesa
+        lib32-mesa
+        vulkan-icd-loader
+        lib32-vulkan-icd-loader
+    )
+
+    DETECTED_GPUS=$(lspci -nnk 2>/dev/null | grep -iE 'vga|3d|display' || true)
+    HAS_INTEL_GPU=false
+    HAS_AMD_GPU=false
+    HAS_NVIDIA_GPU=false
+
+    if echo "$DETECTED_GPUS" | grep -iq "intel"; then
+        HAS_INTEL_GPU=true
+    fi
+    if echo "$DETECTED_GPUS" | grep -iqE "amd|ati|radeon"; then
+        HAS_AMD_GPU=true
+    fi
+    if echo "$DETECTED_GPUS" | grep -iq "nvidia"; then
+        HAS_NVIDIA_GPU=true
+    fi
+
+    # Si se detecta GPU Intel o si no hay GPU dedicada (procesador Intel con iGPU o VM)
+    if [ "$HAS_INTEL_GPU" = true ] || ([ "$HAS_AMD_GPU" = false ] && [ "$HAS_NVIDIA_GPU" = false ]); then
+        echo "==> GPU Intel detectada / gráficos integrados: configurando vulkan-intel y aceleración VA-API..."
+        GPU_PACKAGES+=(
+            vulkan-intel
+            lib32-vulkan-intel
+            intel-media-driver
+        )
+    fi
+
+    if [ "$HAS_AMD_GPU" = true ]; then
+        echo "==> GPU AMD detectada: configurando vulkan-radeon y aceleración VA-API..."
+        GPU_PACKAGES+=(
+            vulkan-radeon
+            lib32-vulkan-radeon
+            libva-mesa-driver
+            lib32-libva-mesa-driver
+        )
+    fi
+
+    if [ "$HAS_NVIDIA_GPU" = true ]; then
+        echo "==> GPU NVIDIA detectada: configurando controladores y utilidades NVIDIA..."
+        GPU_PACKAGES+=(
+            nvidia-utils
+            lib32-nvidia-utils
+        )
+    fi
+
     BASE_PACKAGES=(
         base
         base-devel
@@ -1180,7 +1235,6 @@ perform_installation_worker() {
         ntfs-3g
         efibootmgr
         e2fsprogs
-        mesa
         xorg-xwayland
         polkit
         polkit-gnome
@@ -1226,6 +1280,7 @@ perform_installation_worker() {
         steam
     )
     [ -n "$UCODE_PKG" ] && BASE_PACKAGES+=("$UCODE_PKG")
+    [ "${#GPU_PACKAGES[@]}" -gt 0 ] && BASE_PACKAGES+=("${GPU_PACKAGES[@]}")
 
     # Habilitar repositorio multilib en el entorno de instalación para pacstrap
     sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf 2>/dev/null || true
