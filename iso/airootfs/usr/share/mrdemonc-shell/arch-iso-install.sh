@@ -1991,8 +1991,12 @@ KITTY_THEME
     mkdir -p "$USER_HOME/.local/state/mrdemonc/current/theme"
     cp -f "$USER_HOME/.config/kitty/theme.conf" "$USER_HOME/.local/state/mrdemonc/current/theme/kitty.conf" 2>/dev/null || true
 
-    # Enlace a la configuración principal de Quickshell
+    # Enlace a la configuración principal y recursos de Quickshell
     ln -sf /usr/share/mrdemonc-shell/shell.qml "$USER_HOME/.config/quickshell/shell.qml"
+    ln -sfn /usr/share/mrdemonc-shell/components "$USER_HOME/.config/quickshell/components"
+    ln -sfn /usr/share/mrdemonc-shell/scripts "$USER_HOME/.config/quickshell/scripts"
+    ln -sfn /usr/share/mrdemonc-shell/assets "$USER_HOME/.config/quickshell/assets"
+    ln -sfn /usr/share/mrdemonc-shell/bin "$USER_HOME/.config/quickshell/bin"
 
     cat << 'THEME_TOML' > "$USER_HOME/.local/state/mrdemonc/current/theme/colors.toml"
 accent = "#88c0d0"
