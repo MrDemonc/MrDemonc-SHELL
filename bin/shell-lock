@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Bloqueador de pantalla nativo de Quickshell para MrDemonc-SHELL (SUPER + L)
+# ==============================================================================
+#  MrDemonc-SHELL: Bloqueador de pantalla nativo con Quickshell (SUPER + L)
+# ==============================================================================
 
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
 LOCK_FILE="${RUNTIME_DIR}/quickshell_lock.toggle"
@@ -11,23 +13,31 @@ if [ "${1:-}" = "unlock" ]; then
     exit 1
 fi
 
-# Si ya está bloqueado y activo, salir de inmediato sin trabajo redundante
-if [ -f "$ACTIVE_FILE" ]; then
+# Si ya está bloqueado y quickshell está activo, salir de inmediato
+if [ -f "$ACTIVE_FILE" ] && pgrep -f "quickshell" >/dev/null 2>&1; then
     exit 0
 fi
 
-# Asegurar que quickshell esté en ejecución si no lo estaba
+# Si Hyprland tiene la sesión bloqueada huérfana (lockscreen colgada previa), limpiarla
+if hyprctl -j monitors 2>/dev/null | grep -q '"LOCK"'; then
+    hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
+fi
+
+# Asegurar que el supervisor / quickshell esté en ejecución
 if ! pgrep -f "quickshell" >/dev/null 2>&1; then
-    if [ -f "$HOME/Documentos/github/MrDemonc-SHELL/shell.qml" ]; then
+    rm -f "$ACTIVE_FILE" 2>/dev/null || true
+    if command -v shell-supervisor >/dev/null 2>&1; then
+        shell-supervisor &
+    elif [ -f "$HOME/Documentos/github/MrDemonc-SHELL/bin/shell-supervisor" ]; then
+        "$HOME/Documentos/github/MrDemonc-SHELL/bin/shell-supervisor" &
+    elif [ -f "$HOME/Documentos/github/MrDemonc-SHELL/shell.qml" ]; then
         quickshell -d -p "$HOME/Documentos/github/MrDemonc-SHELL" &
     elif [ -f "/usr/share/mrdemonc-shell/shell.qml" ]; then
         quickshell -p /usr/share/mrdemonc-shell &
-    elif [ -f "$HOME/Documentos/MrDemonc-SHELL/shell.qml" ]; then
-        quickshell -p "$HOME/Documentos/MrDemonc-SHELL" &
     else
         quickshell &
     fi
-    sleep 0.3
+    sleep 0.35
 fi
 
 # Notificar bloqueo inmediato a Quickshell (FIFO primero para latencia <1ms, respaldo archivo toggle)
@@ -42,5 +52,6 @@ for i in {1..150}; do
     fi
     sleep 0.02
 done
+
 echo "No se pudo confirmar el bloqueo de la sesión." >&2
 exit 1

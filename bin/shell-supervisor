@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Supervisor y auto-reparador de la Shell (Quickshell)
+# ==============================================================================
+# Inspirado en el supervisor de Omarchy (omarchy-launch-shell).
+# Monitorea continuamente el proceso de Quickshell. Si este sufre una caída
+# inesperada (crash por Wayland, cambio de pantallas, DPMS off/on, etc.):
+#
+# 1. Comprueba si el compositor Hyprland sigue en ejecución.
+# 2. Detecta si la pantalla quedó en estado colgado ("Oopsie daisy, it looks like
+#    you locked your screen but the lockscreen app died :(").
+# 3. Limpia automáticamente el bloqueo colgado con:
+#       hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()'
+# 4. Relauncha Quickshell inmediatamente.
+# 5. Si la sesión estaba bloqueada, restaura la pantalla de bloqueo nativa
+#    inmediatamente para que el usuario pueda ingresar su contraseña de forma segura.
+# 6. Registra los eventos en systemd journal (o logger) para diagnóstico.
+# ==============================================================================
+
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+PID_FILE="${RUNTIME_DIR}/mrdemonc_shell_supervisor.pid"
+
+# Evitar múltiples instancias del supervisor
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        exit 0
+    fi
+fi
+echo "$$" > "$PID_FILE"
+
+# Detectar directorio raíz de MrDemonc-SHELL
+USER_HOME="${HOME:-/home/${USER:-demonc}}"
+CANDIDATES=(
+    "$USER_HOME/Documentos/github/MrDemonc-SHELL"
+    "$USER_HOME/Documentos/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+    "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+)
+
+SHELL_DIR=""
+for c in "${CANDIDATES[@]}"; do
+    if [ -n "$c" ] && [ -f "$c/shell.qml" ]; then
+        SHELL_DIR="$c"
+        break
+    fi
+done
+
+if [ -z "$SHELL_DIR" ]; then
+    echo "Error: No se pudo localizar el directorio de MrDemonc-SHELL con shell.qml" >&2
+    exit 1
+fi
+
+# Variables de entorno optimizadas para estabilidad de Quickshell
+export QS_DISABLE_FILE_WATCHER=1
+export QS_NO_RELOAD_POPUP=1
+
+terminating=0
+shell_pid=""
+
+stop() {
+    terminating=1
+    rm -f "$PID_FILE" 2>/dev/null || true
+    if [ -n "$shell_pid" ]; then
+        kill -TERM "$shell_pid" 2>/dev/null || true
+    fi
+    return 0
+}
+trap stop HUP INT TERM
+
+# Verifica si el compositor Hyprland sigue respondiendo
+compositor_alive() {
+    for attempt in 1 2 3; do
+        hyprctl -j monitors >/dev/null 2>&1 && return 0
+        [ "$attempt" -lt 3 ] && sleep 0.3
+    done
+    return 1
+}
+
+# Ejecuta quickshell en primer plano supervisado (sin -d para no perder el PID)
+run_shell() {
+    if command -v systemd-cat >/dev/null 2>&1; then
+        systemd-cat -t mrdemonc-shell -- quickshell -n -p "$SHELL_DIR" 8>&- &
+    else
+        quickshell -n -p "$SHELL_DIR" 8>&- &
+    fi
+    shell_pid=$!
+
+    local status
+    while true; do
+        wait "$shell_pid"
+        status=$?
+        kill -0 "$shell_pid" 2>/dev/null || break
+    done
+
+    shell_pid=""
+    return $status
+}
+
+ACTIVE_LOCK="${RUNTIME_DIR}/quickshell_lock.active"
+RECOVER_LOCK="${RUNTIME_DIR}/quickshell_lock.recover"
+
+# Limpieza preventiva de cualquier bloqueo colgado previo al inicio
+if hyprctl -j monitors 2>/dev/null | grep -q '"LOCK"'; then
+    hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
+fi
+
+attempts=0
+window_started=$SECONDS
+
+while true; do
+    [ "$terminating" -eq 1 ] && exit 0
+
+    run_shell
+    status=$?
+
+    [ "$terminating" -eq 1 ] && exit 0
+    [ "$status" -eq 0 ] && exit 0
+
+    # Si Hyprland ya no está en ejecución (cierre de sesión o apagado), terminar
+    compositor_alive || exit 0
+
+    # Comprobar si el bloqueo estaba activo antes o durante la caída
+    WAS_LOCKED=false
+    if [ -f "$ACTIVE_LOCK" ] || hyprctl -j monitors 2>/dev/null | grep -q '"LOCK"'; then
+        WAS_LOCKED=true
+    fi
+
+    # Limpiar inmediatamente el estado de bloqueo colgado ("Oopsie daisy") en Hyprland
+    if hyprctl -j monitors 2>/dev/null | grep -q '"LOCK"'; then
+        logger -t mrdemonc-shell "Auto-reparación: Despejando pantalla de bloqueo colgada de Hyprland..."
+        hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
+    fi
+
+    if [ "$WAS_LOCKED" = "true" ]; then
+        touch "$RECOVER_LOCK"
+        logger -t mrdemonc-shell "Auto-reparación: Sesión bloqueada detectada. Marcando auto-recuperación de pantalla de bloqueo..."
+    fi
+
+    # Control de tasa de reinicios (máximo 6 reinicios en 60 segundos)
+    if [ $((SECONDS - window_started)) -gt 60 ]; then
+        attempts=0
+        window_started=$SECONDS
+    fi
+
+    attempts=$((attempts + 1))
+    if [ "$attempts" -gt 6 ]; then
+        logger -t mrdemonc-shell "Alerta: Quickshell ha fallado $attempts veces en 60s. Pausando 4 segundos..."
+        sleep 4
+        attempts=0
+    else
+        logger -t mrdemonc-shell "Quickshell finalizó inesperadamente (código $status). Auto-reparando e iniciando en 0.4s..."
+        sleep 0.4
+    fi
+
+    # Si estaba bloqueado, programar confirmación de rebloqueo seguro
+    if [ "$WAS_LOCKED" = "true" ]; then
+        (
+            sleep 0.6
+            if [ -f "$RECOVER_LOCK" ]; then
+                if [ -f "$SHELL_DIR/bin/shell-lock" ]; then
+                    "$SHELL_DIR/bin/shell-lock" >/dev/null 2>&1 || true
+                elif command -v shell-lock >/dev/null 2>&1; then
+                    shell-lock >/dev/null 2>&1 || true
+                fi
+                rm -f "$RECOVER_LOCK" 2>/dev/null || true
+            fi
+        ) &
+    fi
+done

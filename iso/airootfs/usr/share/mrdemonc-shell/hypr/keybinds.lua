@@ -62,8 +62,11 @@ hl.bind(mainMod .. " + T", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))
 
--- Bloquear pantalla (SUPER + L)
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(binDir .. "/shell-lock"))
+-- Bloquear pantalla (SUPER + L) con soporte en sesión bloqueada
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(binDir .. "/shell-lock"), { locked = true })
+
+-- Auto-recuperación de emergencia de pantalla de bloqueo colgada (SUPER + SHIFT + Escape)
+hl.bind(mainMod .. " + SHIFT + Escape", hl.dsp.exec_cmd(binDir .. "/shell-recover-lock"), { locked = true })
 
 -- Captura de Pantalla (Tecla Impr Pant / Print)
 hl.bind("Print", hl.dsp.exec_cmd(binDir .. "/shell-screenshot"))

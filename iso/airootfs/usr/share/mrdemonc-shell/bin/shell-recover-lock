@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Recuperación de emergencia de pantalla de bloqueo colgada
+# ==============================================================================
+# Si Hyprland muestra la pantalla de error "Oopsie daisy, it looks like you
+# locked your screen but the lockscreen app died :(", este comando limpia el
+# estado de bloqueo colgado del compositor e inmediatamente restaura la
+# pantalla de bloqueo nativa segura de Quickshell.
+
+# 1. Limpiar procesos de bloqueo muertos o colgados
+killall -9 hyprlock 2>/dev/null || true
+
+# 2. Despejar el estado de bloqueo colgado en Hyprland mediante la API Lua nativa
+hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
+
+# 3. Asegurar que quickshell / supervisor esté activo
+if ! pgrep -f "quickshell" >/dev/null 2>&1; then
+    if command -v shell-supervisor >/dev/null 2>&1; then
+        shell-supervisor &
+    elif [ -f "$HOME/Documentos/github/MrDemonc-SHELL/bin/shell-supervisor" ]; then
+        "$HOME/Documentos/github/MrDemonc-SHELL/bin/shell-supervisor" &
+    else
+        quickshell &
+    fi
+    sleep 0.4
+fi
+
+# 4. Volver a bloquear inmediatamente de forma segura
+if command -v shell-lock >/dev/null 2>&1; then
+    shell-lock
+elif [ -f "$HOME/Documentos/github/MrDemonc-SHELL/bin/shell-lock" ]; then
+    "$HOME/Documentos/github/MrDemonc-SHELL/bin/shell-lock"
+fi

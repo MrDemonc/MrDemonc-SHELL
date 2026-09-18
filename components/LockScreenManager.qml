@@ -183,10 +183,12 @@ Item {
         if (!isLocked || isChecking || isUnlocking) return;
         screenOff = true;
         requestDpms("off");
+        dpmsBounceCheckTimer.restart();
     }
 
     function turnScreenOn() {
         screenOff = false;
+        dpmsBounceCheckTimer.stop();
         requestDpms("on");
     }
 
@@ -202,14 +204,29 @@ Item {
         }
     }
 
-    // Temporizador guardián para asegurar que la pantalla se mantenga apagada en caso de reconexión DRM/HDMI
+    // Temporizador anti-rebote HDMI (evita el reencendido no deseado de monitores externos tras apagar)
+    // Se ejecuta una sola vez tras 2.5s para no saturar el driver DRM/KMS ni causar caídas de Wayland
     Timer {
-        id: dpmsKeepOffTimer
-        interval: 3000
-        repeat: true
-        running: lockMgr.isLocked && lockMgr.screenOff && !lockMgr.isChecking && !lockMgr.isUnlocking
+        id: dpmsBounceCheckTimer
+        interval: 2500
+        repeat: false
         onTriggered: {
-            lockMgr.requestDpms("off");
+            if (lockMgr.isLocked && lockMgr.screenOff && !lockMgr.isChecking && !lockMgr.isUnlocking) {
+                checkMonitorAwakeProc.running = false;
+                checkMonitorAwakeProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: checkMonitorAwakeProc
+        command: ["sh", "-c", "if hyprctl monitors -j 2>/dev/null | grep -q '\"dpmsStatus\":\\s*true'; then echo 'AWAKE'; fi"]
+        stdout: SplitParser {
+            onRead: function(data) {
+                if (String(data).trim() === "AWAKE" && lockMgr.isLocked && lockMgr.screenOff && !lockMgr.isChecking && !lockMgr.isUnlocking) {
+                    lockMgr.requestDpms("off");
+                }
+            }
         }
     }
 
@@ -232,9 +249,25 @@ Item {
         command: ["sh", "-c", "rm -f \"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.active\""]
     }
 
+    // Auto-recuperación de pantalla de bloqueo tras una caída o reinicio (inspirado en Omarchy)
+    Process {
+        id: recoverStrandedLockProc
+        command: ["sh", "-c", "RECOVER=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.recover\"; if [ -f \"$RECOVER\" ]; then rm -f \"$RECOVER\"; echo 'STRANDED'; exit 0; fi; if hyprctl -j monitors 2>/dev/null | grep -q '\"LOCK\"'; then echo 'STRANDED'; fi"]
+        stdout: SplitParser {
+            onRead: function(data) {
+                if (String(data).trim() === "STRANDED") {
+                    console.log("[MrDemonc-SHELL] Auto-recuperando pantalla de bloqueo tras caída o reinicio...");
+                    lockMgr.lock();
+                } else {
+                    markUnlockedProc.running = false;
+                    markUnlockedProc.running = true;
+                }
+            }
+        }
+    }
+
     Component.onCompleted: {
-        markUnlockedProc.running = false;
-        markUnlockedProc.running = true;
+        recoverStrandedLockProc.running = true;
     }
 
     function finishUnlock() {

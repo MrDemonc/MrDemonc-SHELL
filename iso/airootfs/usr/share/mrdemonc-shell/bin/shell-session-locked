@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  MrDemonc-SHELL: Detector de estado de bloqueo de sesión de Hyprland
+# ==============================================================================
+# Retorna:
+#   0: La sesión está bloqueada (o en estado de bloqueo colgado/huérfano)
+#   1: La sesión no está bloqueada
+#   2: No se puede determinar (ej. compositor apagado o no responde)
+
+monitors=$(hyprctl -j monitors 2>/dev/null) || exit 2
+
+if command -v jq >/dev/null 2>&1; then
+    state=$(jq '
+      def blockers: .solitaryBlockedBy // [];
+      def readable: blockers | index("WORKSPACE") | not;
+
+      if   any(.[]; blockers | index("LOCK")) then 0
+      elif any(.[]; readable)                 then 1
+      else                                         2
+      end
+    ' <<<"$monitors" 2>/dev/null)
+
+    case "$state" in
+      0|1) exit "$state" ;;
+      *) exit 2 ;;
+    esac
+else
+    if echo "$monitors" | grep -q '"LOCK"'; then
+        exit 0
+    else
+        exit 1
+    fi
+fi

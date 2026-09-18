@@ -75,7 +75,8 @@ hl.on("hyprland.start", function ()
         end
     end
     hl.exec_cmd("systemd-inhibit --what=handle-power-key:handle-suspend-key:handle-hibernate-key --who=MrDemonc-SHELL --why='Quickshell Power Menu' sleep infinity")
-    hl.exec_cmd("quickshell -d -p " .. shellPath)
+    -- Iniciar shell bajo el supervisor auto-reparador (evita bloqueos o muertes del lockscreen)
+    hl.exec_cmd("sh -c 'if command -v shell-supervisor >/dev/null 2>&1; then shell-supervisor; elif [ -f \"" .. userHome .. "/.local/bin/shell-supervisor\" ]; then \"" .. userHome .. "/.local/bin/shell-supervisor\"; else quickshell -d -p " .. shellPath .. "; fi'")
     hl.exec_cmd("hypridle")
     -- Restaurar modo cafeína persistente: si estaba activo antes del reinicio,
     -- mantener hypridle en pausa hasta que el usuario lo desactive con shell-caffeine

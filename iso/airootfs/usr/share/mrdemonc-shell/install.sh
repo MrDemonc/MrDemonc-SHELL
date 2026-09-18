@@ -80,6 +80,7 @@ PACKAGES=(
     curl
     git
     python
+    jq
     cups
     cups-filters
     cups-pdf
@@ -213,6 +214,9 @@ create_cli_wrapper "shell-volume" "bin/shell-volume"
 create_cli_wrapper "shell-audio-init" "bin/shell-audio-init"
 create_cli_wrapper "shell-terminal" "bin/shell-terminal"
 create_cli_wrapper "shell-steam-intel" "bin/shell-steam-intel"
+create_cli_wrapper "shell-supervisor" "bin/shell-supervisor"
+create_cli_wrapper "shell-session-locked" "bin/shell-session-locked"
+create_cli_wrapper "shell-recover-lock" "bin/shell-recover-lock"
 
 # Instalar también en /usr/local/bin para disponibilidad global en el sistema
 if command -v sudo >/dev/null 2>&1; then
