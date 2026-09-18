@@ -51,7 +51,7 @@ PanelWindow {
         anchors.centerIn: parent
 
         width: Math.min(840, parent.width - 48)
-        height: Math.min(560, parent.height - 48)
+        height: Math.min(520, parent.height - 48)
 
         color: Theme.bg
         border.color: Theme.border
@@ -83,106 +83,23 @@ PanelWindow {
             onActivated: ControlCenterManager.close()
         }
 
-        ColumnLayout {
+        // -------------------------------------------------------------
+        // CUERPO PRINCIPAL: BARRA LATERAL + ÁREA DE CONTENIDO
+        // -------------------------------------------------------------
+        RowLayout {
             anchors.fill: parent
             spacing: 0
 
-            // -------------------------------------------------------------
-            // CABECERA DEL MODAL
-            // -------------------------------------------------------------
+            // =========================================================
+            // BARRA LATERAL IZQUIERDA (NAVEGACIÓN)
+            // =========================================================
             Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 48
-                color: Theme.bgSurface
-                border.color: Theme.border
-                border.width: 0
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 18
-                    anchors.rightMargin: 14
-                    spacing: 12
-
-                    Text {
-                        text: "󰣇"
-                        color: Theme.primary
-                        font.family: Theme.iconFontFamily
-                        font.pixelSize: 18
-                    }
-
-                    ColumnLayout {
-                        spacing: 0
-                        Text {
-                            text: "CENTRO DE CONTROL"
-                            color: Theme.text
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 12
-                            font.bold: true
-                            font.letterSpacing: 1.0
-                        }
-                        Text {
-                            text: "MrDemonc Shell • Configuración Rápida del Sistema"
-                            color: Theme.overlay
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 10
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    // Botón de cerrar
-                    Rectangle {
-                        implicitWidth: 28
-                        implicitHeight: 28
-                        radius: Theme.radiusSmall
-                        color: closeMouse.containsMouse ? Theme.danger : "transparent"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "󰅖"
-                            color: closeMouse.containsMouse ? "#ffffff" : Theme.overlay
-                            font.family: Theme.iconFontFamily
-                            font.pixelSize: 13
-                        }
-
-                        MouseArea {
-                            id: closeMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: ControlCenterManager.close()
-                        }
-                    }
-                }
-
-                // Línea divisoria inferior
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    height: 1
-                    color: Theme.border
-                }
-            }
-
-            // -------------------------------------------------------------
-            // CUERPO PRINCIPAL: BARRA LATERAL + ÁREA DE CONTENIDO
-            // -------------------------------------------------------------
-            RowLayout {
-                Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 0
+                implicitWidth: 200
+                color: Theme.bgSurface
 
-                // =========================================================
-                // BARRA LATERAL IZQUIERDA (NAVEGACIÓN)
-                // =========================================================
+                // Línea divisoria derecha
                 Rectangle {
-                    Layout.fillHeight: true
-                    implicitWidth: 200
-                    color: Theme.bgSurface
-
-                    // Línea divisoria derecha
-                    Rectangle {
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         anchors.right: parent.right
@@ -1865,106 +1782,108 @@ PanelWindow {
                                 font.bold: true
                             }
 
-                            ScrollView {
+                            ListView {
+                                id: indListView
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
+                                spacing: 6
+                                boundsBehavior: Flickable.StopAtBounds
 
-                                ColumnLayout {
-                                    width: parent.width
-                                    spacing: 6
+                                model: [
+                                    { id: "workspaces", name: "Espacios de Trabajo", desc: "Selector interactivo de escritorios virtuales", icon: "󰍹" },
+                                    { id: "cava", name: "Visualizador de Audio (Cava)", desc: "Barras reactivas al sonido en tiempo real", icon: "󰎆" },
+                                    { id: "clock", name: "Reloj, Fecha y Calendario", desc: "Indicador horario y menú desplegable", icon: "󰥔" },
+                                    { id: "tray", name: "Bandeja del Sistema (Tray)", desc: "Iconos de apps en segundo plano", icon: "󰇮" },
+                                    { id: "audio", name: "Control de Audio", desc: "Nivel de volumen y selección de salida", icon: "󰕾" },
+                                    { id: "bluetooth", name: "Conexión Bluetooth", desc: "Estado y emparejamiento de dispositivos", icon: "󰂯" },
+                                    { id: "wifi", name: "Red Wi-Fi y Ethernet", desc: "Señal, redes e indicador de conexión", icon: "󰖩" },
+                                    { id: "battery", name: "Nivel de Batería", desc: "Carga y perfil de energía", icon: "󰂄" }
+                                ]
 
-                                    readonly property var indicators: [
-                                        { id: "workspaces", name: "Espacios de Trabajo", desc: "Selector interactivo de escritorios virtuales", icon: "󰍹" },
-                                        { id: "cava", name: "Visualizador de Audio (Cava)", desc: "Barras reactivas al sonido en tiempo real", icon: "󰎆" },
-                                        { id: "clock", name: "Reloj, Fecha y Calendario", desc: "Indicador horario y menú desplegable", icon: "󰥔" },
-                                        { id: "tray", name: "Bandeja del Sistema (Tray)", desc: "Iconos de apps en segundo plano", icon: "󰇮" },
-                                        { id: "audio", name: "Control de Audio", desc: "Nivel de volumen y selección de salida", icon: "󰕾" },
-                                        { id: "bluetooth", name: "Conexión Bluetooth", desc: "Estado y emparejamiento de dispositivos", icon: "󰂯" },
-                                        { id: "wifi", name: "Red Wi-Fi y Ethernet", desc: "Señal, redes e indicador de conexión", icon: "󰖩" },
-                                        { id: "battery", name: "Nivel de Batería", desc: "Carga y perfil de energía", icon: "󰂄" }
-                                    ]
+                                delegate: Rectangle {
+                                    width: indListView.width
+                                    height: 40
+                                    radius: Theme.radiusSmall
+                                    color: indMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                    border.color: Theme.border
+                                    border.width: 1
 
-                                    Repeater {
-                                        model: parent.indicators
+                                    readonly property bool isVisibleOnBar: PopoutManager.isModuleVisible(modelData.id)
 
-                                        delegate: Rectangle {
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 14
+                                        anchors.rightMargin: 14
+                                        spacing: 12
+
+                                        Text {
+                                            Layout.alignment: Qt.AlignVCenter
+                                            Layout.preferredWidth: 20
+                                            horizontalAlignment: Text.AlignHCenter
+                                            text: modelData.icon
+                                            color: isVisibleOnBar ? Theme.primary : Theme.overlay
+                                            font.family: Theme.iconFontFamily
+                                            font.pixelSize: 16
+                                        }
+
+                                        ColumnLayout {
                                             Layout.fillWidth: true
-                                            implicitHeight: 40
-                                            radius: Theme.radiusSmall
-                                            color: indMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                                            border.color: Theme.border
-                                            border.width: 1
+                                            Layout.alignment: Qt.AlignVCenter
+                                            spacing: 1
 
-                                            readonly property bool isVisibleOnBar: PopoutManager.isModuleVisible(modelData.id)
+                                            Text {
+                                                text: modelData.name
+                                                color: isVisibleOnBar ? Theme.text : Theme.subtext
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 11
+                                                font.bold: isVisibleOnBar
+                                            }
+                                            Text {
+                                                text: modelData.desc
+                                                color: Theme.overlay
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                            }
+                                        }
 
-                                            RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 12
-                                                anchors.rightMargin: 12
-                                                spacing: 12
+                                        // Switch perfectamente alineado a la derecha
+                                        Rectangle {
+                                            Layout.alignment: Qt.AlignVCenter
+                                            Layout.preferredWidth: 40
+                                            Layout.preferredHeight: 22
+                                            width: 40
+                                            height: 22
+                                            radius: 11
+                                            color: isVisibleOnBar ? Theme.primary : Theme.bgHover
 
-                                                Text {
-                                                    text: modelData.icon
-                                                    color: isVisibleOnBar ? Theme.primary : Theme.overlay
-                                                    font.family: Theme.iconFontFamily
-                                                    font.pixelSize: 16
-                                                }
+                                            Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
 
-                                                ColumnLayout {
-                                                    Layout.fillWidth: true
-                                                    spacing: 1
-                                                    Text {
-                                                        text: modelData.name
-                                                        color: isVisibleOnBar ? Theme.text : Theme.subtext
-                                                        font.family: Theme.fontFamily
-                                                        font.pixelSize: 11
-                                                        font.bold: isVisibleOnBar
-                                                    }
-                                                    Text {
-                                                        text: modelData.desc
-                                                        color: Theme.overlay
-                                                        font.family: Theme.fontFamily
-                                                        font.pixelSize: 9
-                                                    }
-                                                }
+                                            Rectangle {
+                                                x: isVisibleOnBar ? parent.width - width - 2 : 2
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 18
+                                                height: 18
+                                                radius: 9
+                                                color: "#ffffff"
 
-                                                // Switch para mostrar/ocultar
-                                                Rectangle {
-                                                    implicitWidth: 38
-                                                    implicitHeight: 20
-                                                    radius: 10
-                                                    color: isVisibleOnBar ? Theme.primary : Theme.bgHover
-
-                                                    Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
-
-                                                    Rectangle {
-                                                        x: isVisibleOnBar ? parent.width - width - 2 : 2
-                                                        anchors.verticalCenter: parent.verticalCenter
-                                                        width: 16
-                                                        height: 16
-                                                        radius: 8
-                                                        color: "#ffffff"
-
-                                                        Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
-                                                    }
-
-                                                    MouseArea {
-                                                        anchors.fill: parent
-                                                        cursorShape: Qt.PointingHandCursor
-                                                        onClicked: PopoutManager.toggleModuleVisibility(modelData.id)
-                                                    }
-                                                }
+                                                Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
                                             }
 
                                             MouseArea {
-                                                id: indMouse
                                                 anchors.fill: parent
-                                                hoverEnabled: true
-                                                z: -1
+                                                cursorShape: Qt.PointingHandCursor
                                                 onClicked: PopoutManager.toggleModuleVisibility(modelData.id)
                                             }
                                         }
+                                    }
+
+                                    MouseArea {
+                                        id: indMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        z: -1
+                                        onClicked: PopoutManager.toggleModuleVisibility(modelData.id)
                                     }
                                 }
                             }
@@ -2181,4 +2100,3 @@ PanelWindow {
             }
         }
     }
-}
