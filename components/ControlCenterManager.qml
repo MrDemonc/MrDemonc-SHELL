@@ -13,7 +13,7 @@ QtObject {
     // 1. MONITOREO DE ACTIVACIÓN (CLI & KEYBIND)
     // -------------------------------------------------------------------------
     property var watchToggleProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_control_center.toggle\"; while true; do if [ -f \"$STATE\" ] || [ -f \"/tmp/quickshell_control_center.toggle\" ]; then if [ -f \"$STATE\" ]; then CMD=$(cat \"$STATE\"); rm -f \"$STATE\"; else CMD=$(cat \"/tmp/quickshell_control_center.toggle\"); rm -f \"/tmp/quickshell_control_center.toggle\"; fi; echo \"CMD:$CMD\"; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_control_center.toggle\"; TMP_STATE=\"/tmp/quickshell_control_center.toggle\"; while true; do CMD=\"\"; if [ -f \"$STATE\" ]; then CMD=$(cat \"$STATE\"); elif [ -f \"$TMP_STATE\" ]; then CMD=$(cat \"$TMP_STATE\"); fi; if [ -n \"$CMD\" ]; then rm -f \"$STATE\" \"$TMP_STATE\" 2>/dev/null; echo \"CMD:$CMD\"; fi; sleep 0.15; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -53,6 +53,8 @@ QtObject {
         console.log("CONTROL CENTER open() called, tab=", tab);
         if (tab && tab.length > 0) {
             activeTab = tab;
+        } else {
+            activeTab = "network";
         }
         isOpen = true;
         refreshAll();

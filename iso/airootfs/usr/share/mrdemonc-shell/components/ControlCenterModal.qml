@@ -83,6 +83,12 @@ PanelWindow {
             onActivated: ControlCenterManager.close()
         }
 
+        // Consumir clics sobre la tarjeta para que no caigan en el scrim
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {}
+        }
+
         // -------------------------------------------------------------
         // CUERPO PRINCIPAL: BARRA LATERAL + ÁREA DE CONTENIDO
         // -------------------------------------------------------------
