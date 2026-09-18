@@ -18,7 +18,9 @@ fi
 
 # Asegurar que quickshell esté en ejecución si no lo estaba
 if ! pgrep -f "quickshell" >/dev/null 2>&1; then
-    if [ -f "/usr/share/mrdemonc-shell/shell.qml" ]; then
+    if [ -f "$HOME/Documentos/github/MrDemonc-SHELL/shell.qml" ]; then
+        quickshell -d -p "$HOME/Documentos/github/MrDemonc-SHELL" &
+    elif [ -f "/usr/share/mrdemonc-shell/shell.qml" ]; then
         quickshell -p /usr/share/mrdemonc-shell &
     elif [ -f "$HOME/Documentos/MrDemonc-SHELL/shell.qml" ]; then
         quickshell -p "$HOME/Documentos/MrDemonc-SHELL" &

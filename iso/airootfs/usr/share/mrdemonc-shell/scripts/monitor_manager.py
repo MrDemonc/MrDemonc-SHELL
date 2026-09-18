@@ -116,11 +116,65 @@ def save_monitors_lua(monitors):
     os.replace(temporary, path)
 
 
+def is_session_locked():
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    return os.path.isfile(os.path.join(runtime_dir, "quickshell_lock.active"))
+
+
+def is_any_monitor_dpms_off():
+    try:
+        data = json.loads(run_checked(["hyprctl", "monitors", "all", "-j"]))
+        enabled = [m for m in data if not m.get("disabled", False)]
+        if enabled and not any(m.get("dpmsStatus", True) for m in enabled):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def is_layout_different(target_layout, current_monitors):
+    curr_map = {m["name"]: m for m in current_monitors}
+    for target in target_layout:
+        name = target["name"]
+        curr = curr_map.get(name)
+        if curr is None:
+            return True
+        target_disabled = bool(target.get("disabled", False))
+        curr_disabled = bool(curr.get("disabled", False))
+        if target_disabled != curr_disabled:
+            return True
+        if not target_disabled:
+            target_mode = target.get("mode")
+            curr_mode = curr.get("current_mode")
+            if target_mode and curr_mode and target_mode != "preferred" and target_mode != curr_mode:
+                return True
+            target_pos = target.get("pos")
+            curr_pos = f"{curr.get('pos_x', 0)}x{curr.get('pos_y', 0)}"
+            if target_pos and target_pos != "auto" and target_pos != curr_pos:
+                return True
+            target_scale = float(target.get("scale", 1.0))
+            curr_scale = float(curr.get("scale", 1.0))
+            if abs(target_scale - curr_scale) > 0.01:
+                return True
+            if int(target.get("transform", 0)) != int(curr.get("transform", 0)):
+                return True
+            target_mirror = target.get("mirror", "")
+            curr_mirror = curr.get("mirror", "")
+            if curr_mirror == "none":
+                curr_mirror = ""
+            if target_mirror != curr_mirror:
+                return True
+    return False
+
+
 def apply_layout(layout, save_config=False):
     # One Lua request; do not also send legacy 'keyword monitor' commands.
     # Enable outputs before disabling the previous primary output.
+    dpms_was_off = is_any_monitor_dpms_off() or is_session_locked()
     ordered = sorted(layout, key=lambda m: m.get("disabled", False))
     eval_hyprland_lua("\n".join(map(monitor_rule, ordered)))
+    if dpms_was_off:
+        dpms_off()
     if save_config:
         save_monitors_lua(layout)
 
@@ -240,6 +294,8 @@ def apply_setting(output, enabled, mode, scale, transform, position="auto", mirr
 
 
 def handle_topology_change():
+    if is_session_locked():
+        return {"status": "ignored", "message": "Sesión bloqueada, topología diferida"}
     monitors = get_monitors()["monitors"]
     if not monitors:
         return {"status": "ignored", "message": "Esperando monitores"}
@@ -248,7 +304,10 @@ def handle_topology_change():
         preset = "external_only"
     else:
         preset = "extend"
-    apply_layout(build_preset(preset, monitors), save_config=(preset == "extend"))
+    target_layout = build_preset(preset, monitors)
+    if not is_layout_different(target_layout, monitors):
+        return {"status": "ignored", "message": "La configuración de pantallas ya está aplicada"}
+    apply_layout(target_layout, save_config=(preset == "extend"))
     return {"status": "ok", "message": "Pantallas conectadas configuradas automáticamente"}
 
 
@@ -366,8 +425,13 @@ def handle_lid_close():
     # Modo clamshell: NO bloquear, apagar sólo la pantalla integrada de la laptop y mantener la externa activa
     # IMPORTANTE: NO guardar en monitors.lua para evitar bucles de recarga de Hyprland
     if externals:
-        res = apply_preset("external_only", save_config=False)
-        dpms_on()
+        target_layout = build_preset("external_only", monitors)
+        if is_layout_different(target_layout, monitors):
+            res = apply_layout(target_layout, save_config=False)
+        else:
+            res = {"status": "ok", "message": "Ya en modo external_only"}
+        if not is_session_locked():
+            dpms_on()
         return res
     else:
         # Solo laptop sin pantalla externa: bloquear inmediatamente y apagar el display

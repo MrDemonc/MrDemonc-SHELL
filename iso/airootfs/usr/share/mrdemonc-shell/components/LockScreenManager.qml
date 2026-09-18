@@ -147,6 +147,20 @@ Item {
 
     property bool screenOff: false
     property string pendingDpms: ""
+    property bool isVM: false
+
+    Process {
+        id: detectVmProc
+        command: ["sh", "-c", "if command -v systemd-detect-virt >/dev/null 2>&1; then V=$(systemd-detect-virt 2>/dev/null); if [ -n \"$V\" ] && [ \"$V\" != \"none\" ]; then echo 'VM'; exit 0; fi; fi; if hyprctl monitors -j 2>/dev/null | grep -qiE '\"name\":\\s*\"Virtual-'; then echo 'VM'; else echo 'BAREMETAL'; fi"]
+        running: true
+        stdout: SplitParser {
+            onRead: function(data) {
+                if (String(data).trim() === "VM") {
+                    lockMgr.isVM = true;
+                }
+            }
+        }
+    }
 
     Process {
         id: dpmsProc
@@ -167,6 +181,7 @@ Item {
 
     function turnScreenOff() {
         if (!isLocked || isChecking || isUnlocking) return;
+        screenOff = true;
         requestDpms("off");
     }
 
@@ -184,6 +199,17 @@ Item {
             if (lockMgr.isLocked) {
                 turnScreenOff();
             }
+        }
+    }
+
+    // Temporizador guardián para asegurar que la pantalla se mantenga apagada en caso de reconexión DRM/HDMI
+    Timer {
+        id: dpmsKeepOffTimer
+        interval: 3000
+        repeat: true
+        running: lockMgr.isLocked && lockMgr.screenOff && !lockMgr.isChecking && !lockMgr.isUnlocking
+        onTriggered: {
+            lockMgr.requestDpms("off");
         }
     }
 

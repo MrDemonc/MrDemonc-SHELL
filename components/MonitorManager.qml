@@ -29,20 +29,32 @@ QtObject {
     property var monitorEvents: Connections {
         target: Hyprland
         function onRawEvent(event) {
+            if (LockScreenManager.isLocked) return;
             if (event.name.startsWith("monitoradded") || event.name.startsWith("monitorremoved"))
                 refreshDelay.restart();
         }
     }
     property var refreshDelay: Timer {
         interval: 600
-        onTriggered: mgr.refresh()
+        onTriggered: {
+            if (LockScreenManager.isLocked) return;
+            mgr.refresh();
+        }
     }
     property var monitorPoll: Timer {
         interval: 3000
-        running: true
+        running: !LockScreenManager.isLocked
         repeat: true
         triggeredOnStart: true
         onTriggered: mgr.refresh()
+    }
+    property var lockEvents: Connections {
+        target: LockScreenManager
+        function onIsLockedChanged() {
+            if (!LockScreenManager.isLocked) {
+                refreshDelay.restart();
+            }
+        }
     }
 
     property var fetchProc: Process {
@@ -104,6 +116,7 @@ QtObject {
     }
 
     function applyPendingTopology() {
+        if (LockScreenManager.isLocked) return;
         if (!pendingTopology || busy || autoAttempts >= 3 || monitorInfo.count === 0) return;
         autoAttempts++;
         automaticAction = true;

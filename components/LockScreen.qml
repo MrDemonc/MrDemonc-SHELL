@@ -577,8 +577,8 @@ WlSessionLock {
                     anchors.fill: parent
                     color: "#000000"
                     z: 999999
-                    visible: LockScreenManager.screenOff
-                    opacity: LockScreenManager.screenOff ? 1.0 : 0.0
+                    visible: LockScreenManager.isVM && LockScreenManager.screenOff
+                    opacity: (LockScreenManager.isVM && LockScreenManager.screenOff) ? 1.0 : 0.0
 
                     Behavior on opacity {
                         NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
@@ -586,12 +586,10 @@ WlSessionLock {
 
                     MouseArea {
                         anchors.fill: parent
-                        enabled: LockScreenManager.screenOff
+                        enabled: LockScreenManager.isVM && LockScreenManager.screenOff
                         cursorShape: Qt.BlankCursor
-                        hoverEnabled: true
-                        onPositionChanged: LockScreenManager.wakeScreen()
+                        hoverEnabled: false
                         onPressed: LockScreenManager.wakeScreen()
-                        onWheel: LockScreenManager.wakeScreen()
                     }
                 }
 

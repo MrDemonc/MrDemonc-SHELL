@@ -211,6 +211,8 @@ hl.config({
         force_default_wallpaper = 0,    -- Desactivar wallpapers por defecto
         disable_hyprland_logo   = true, -- Desactivar logos por defecto
         disable_watchdog_warning = true, -- Desactivar advertencia de start-hyprland
+        key_press_enables_dpms   = true, -- Despertar pantalla con pulsación de teclado
+        mouse_move_enables_dpms  = false, -- Evitar que micro-vibraciones del ratón enciendan la pantalla en reposo
     },
 })
 
