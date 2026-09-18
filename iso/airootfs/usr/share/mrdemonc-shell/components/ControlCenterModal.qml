@@ -51,7 +51,7 @@ PanelWindow {
         anchors.centerIn: parent
 
         width: Math.min(840, parent.width - 48)
-        height: Math.min(520, parent.height - 48)
+        height: Math.min(570, parent.height - 48)
 
         color: Theme.bg
         border.color: Theme.border
@@ -1811,70 +1811,75 @@ PanelWindow {
 
                                     readonly property bool isVisibleOnBar: PopoutManager.isModuleVisible(modelData.id)
 
-                                    RowLayout {
-                                        anchors.fill: parent
+                                    Text {
+                                        id: indIcon
+                                        anchors.left: parent.left
                                         anchors.leftMargin: 14
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 20
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: modelData.icon
+                                        color: isVisibleOnBar ? Theme.primary : Theme.overlay
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 16
+                                    }
+
+                                    // Switch perfectamente anclado a la derecha de la tarjeta
+                                    Rectangle {
+                                        id: indSwitch
+                                        anchors.right: parent.right
                                         anchors.rightMargin: 14
-                                        spacing: 12
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 40
+                                        height: 22
+                                        radius: 11
+                                        color: isVisibleOnBar ? Theme.primary : Theme.bgHover
+
+                                        Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
+
+                                        Rectangle {
+                                            x: isVisibleOnBar ? parent.width - width - 2 : 2
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: 18
+                                            height: 18
+                                            radius: 9
+                                            color: "#ffffff"
+
+                                            Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: PopoutManager.toggleModuleVisibility(modelData.id)
+                                        }
+                                    }
+
+                                    Column {
+                                        anchors.left: indIcon.right
+                                        anchors.leftMargin: 12
+                                        anchors.right: indSwitch.left
+                                        anchors.rightMargin: 12
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 2
 
                                         Text {
-                                            Layout.alignment: Qt.AlignVCenter
-                                            Layout.preferredWidth: 20
-                                            horizontalAlignment: Text.AlignHCenter
-                                            text: modelData.icon
-                                            color: isVisibleOnBar ? Theme.primary : Theme.overlay
-                                            font.family: Theme.iconFontFamily
-                                            font.pixelSize: 16
+                                            width: parent.width
+                                            text: modelData.name
+                                            color: isVisibleOnBar ? Theme.text : Theme.subtext
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 11
+                                            font.bold: isVisibleOnBar
+                                            elide: Text.ElideRight
                                         }
 
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            Layout.alignment: Qt.AlignVCenter
-                                            spacing: 1
-
-                                            Text {
-                                                text: modelData.name
-                                                color: isVisibleOnBar ? Theme.text : Theme.subtext
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: 11
-                                                font.bold: isVisibleOnBar
-                                            }
-                                            Text {
-                                                text: modelData.desc
-                                                color: Theme.overlay
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: 9
-                                            }
-                                        }
-
-                                        // Switch perfectamente alineado a la derecha
-                                        Rectangle {
-                                            Layout.alignment: Qt.AlignVCenter
-                                            Layout.preferredWidth: 40
-                                            Layout.preferredHeight: 22
-                                            width: 40
-                                            height: 22
-                                            radius: 11
-                                            color: isVisibleOnBar ? Theme.primary : Theme.bgHover
-
-                                            Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
-
-                                            Rectangle {
-                                                x: isVisibleOnBar ? parent.width - width - 2 : 2
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                width: 18
-                                                height: 18
-                                                radius: 9
-                                                color: "#ffffff"
-
-                                                Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
-                                            }
-
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: PopoutManager.toggleModuleVisibility(modelData.id)
-                                            }
+                                        Text {
+                                            width: parent.width
+                                            text: modelData.desc
+                                            color: Theme.overlay
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 9
+                                            elide: Text.ElideRight
                                         }
                                     }
 

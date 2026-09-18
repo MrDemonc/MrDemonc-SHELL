@@ -8,6 +8,7 @@ SEARCH_DIRS=(
     "$QUICKSHELL_DIR"
     "$SCRIPT_DIR/.."
     "$HOME/Documentos/MrDemonc-SHELL"
+    "$HOME/Documentos/github/MrDemonc-SHELL"
     "/usr/share/mrdemonc-shell"
 )
 
