@@ -35,6 +35,9 @@ hl.bind(mainMod .. " + space", hl.dsp.exec_cmd(binDir .. "/shell-apps"))
 -- Quickshell: Guía de Atajos de Teclado y Comandos (SUPER + K)
 hl.bind(mainMod .. " + K", hl.dsp.exec_cmd(binDir .. "/shell-keybinds"))
 
+-- Quickshell: Centro de Control del Sistema (SUPER + I)
+hl.bind(mainMod .. " + I", hl.dsp.exec_cmd(binDir .. "/shell-control-center"))
+
 -- Quickshell: Configuración de Pantallas y Monitores (SUPER + SHIFT + S)
 hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(binDir .. "/shell-monitors"))
 

@@ -115,6 +115,7 @@ PanelWindow {
     }
 
     function getModuleWidth(name) {
+        if (!PopoutManager.isModuleVisible(name) && barWindow.draggingModName !== name) return 0;
         if (PopoutManager.isVertical) return 22;
         let m = getModule(name);
         if (name === "tray") {
@@ -127,6 +128,7 @@ PanelWindow {
     }
 
     function getModuleHeight(name) {
+        if (!PopoutManager.isModuleVisible(name) && barWindow.draggingModName !== name) return 0;
         if (!PopoutManager.isVertical) return 24;
         if (name === "workspaces") {
             return modWorkspaces ? Math.max(24, modWorkspaces.implicitHeight) : (wsComp ? Math.max(24, wsComp.implicitHeight) : 60);
@@ -469,6 +471,7 @@ PanelWindow {
         Item {
             id: modWorkspaces
             property string modName: "workspaces"
+            visible: PopoutManager.isModuleVisible("workspaces") || isBeingDragged
             implicitWidth: PopoutManager.isVertical ? 22 : wsComp.implicitWidth
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? wsComp.implicitHeight : 26
@@ -484,7 +487,7 @@ PanelWindow {
                 NumberAnimation {
                     duration: Theme.anim.fastSpatial
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                    easing.bezierCurve: Theme.anim.expressiveFastSpatial
                 }
             }
             Behavior on y {
@@ -492,7 +495,7 @@ PanelWindow {
                 NumberAnimation {
                     duration: Theme.anim.fastSpatial
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                    easing.bezierCurve: Theme.anim.expressiveFastSpatial
                 }
             }
 
@@ -516,11 +519,11 @@ PanelWindow {
         Item {
             id: modCava
             property string modName: "cava"
+            visible: PopoutManager.isModuleVisible("cava") && (cavaComp.isPlaying || isBeingDragged)
             implicitWidth: PopoutManager.isVertical ? 22 : ((cavaComp.isPlaying || isBeingDragged) ? (cavaComp.implicitWidth + 8) : 0)
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? ((cavaComp.isPlaying || isBeingDragged) ? (cavaComp.implicitHeight + 8) : 0) : 24
             height: implicitHeight
-            visible: (cavaComp.isPlaying || isBeingDragged)
 
             Behavior on implicitWidth {
                 NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
@@ -629,6 +632,7 @@ PanelWindow {
         Item {
             id: modClock
             property string modName: "clock"
+            visible: PopoutManager.isModuleVisible("clock") || isBeingDragged
             implicitWidth: PopoutManager.isVertical ? 22 : (clockComp.implicitWidth + 14)
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? (clockComp.implicitHeight + 8) : 26
@@ -750,7 +754,7 @@ PanelWindow {
                 z: 1
             }
 
-            visible: (trayDrawer && trayDrawer.hasActiveApps) || isBeingDragged
+            visible: PopoutManager.isModuleVisible("tray") && ((trayDrawer && trayDrawer.hasActiveApps) || isBeingDragged)
             implicitWidth: PopoutManager.isVertical ? 22 : trayDrawer.implicitWidth
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? trayDrawer.implicitHeight : 24
@@ -760,6 +764,23 @@ PanelWindow {
 
             x: (!PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentX : barWindow.getSlotX(modName)
             y: (PopoutManager.isVertical && isBeingDragged) ? barWindow.dragCurrentY : barWindow.getSlotY(modName)
+
+            Behavior on x {
+                enabled: !PopoutManager.isVertical && !modTray.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
+            Behavior on y {
+                enabled: PopoutManager.isVertical && !modTray.isBeingDragged
+                NumberAnimation {
+                    duration: Theme.anim.fastSpatial
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Theme.anim.expressiveDefaultSpatial
+                }
+            }
 
             z: isBeingDragged ? 9999 : 2
             scale: isBeingDragged ? 1.15 : 1.0
@@ -831,6 +852,7 @@ PanelWindow {
         Item {
             id: modAudio
             property string modName: "audio"
+            visible: PopoutManager.isModuleVisible(modName) || isBeingDragged
             implicitWidth: PopoutManager.isVertical ? 22 : (audioRow.implicitWidth + 12)
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? 22 : 24
@@ -973,6 +995,7 @@ PanelWindow {
         Item {
             id: modBluetooth
             property string modName: "bluetooth"
+            visible: PopoutManager.isModuleVisible(modName) || isBeingDragged
             implicitWidth: PopoutManager.isVertical ? 22 : (btRow.implicitWidth + 12)
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? 22 : 24
@@ -1105,6 +1128,7 @@ PanelWindow {
         Item {
             id: modWifi
             property string modName: "wifi"
+            visible: PopoutManager.isModuleVisible(modName) || isBeingDragged
             implicitWidth: PopoutManager.isVertical ? 22 : (wifiRow.implicitWidth + 12)
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? 22 : 24
@@ -1241,6 +1265,7 @@ PanelWindow {
         Item {
             id: modBattery
             property string modName: "battery"
+            visible: PopoutManager.isModuleVisible(modName) || isBeingDragged
             implicitWidth: PopoutManager.isVertical ? 22 : (batRow.implicitWidth + 12)
             width: implicitWidth
             implicitHeight: PopoutManager.isVertical ? 22 : 24

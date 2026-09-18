@@ -1187,6 +1187,7 @@ perform_installation_worker() {
         unzip
         hyprland
         hypridle
+        hyprsunset
         quickshell
         kitty
         nautilus

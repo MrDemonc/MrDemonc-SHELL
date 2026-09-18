@@ -199,4 +199,74 @@ QtObject {
         savePositionProc.running = false;
         savePositionProc.running = true;
     }
+
+    // Visibilidad de los indicadores de la barra
+    property var indicatorsVisibility: ({
+        "workspaces": true,
+        "cava": true,
+        "clock": true,
+        "tray": true,
+        "audio": true,
+        "bluetooth": true,
+        "wifi": true,
+        "battery": true
+    })
+
+    function isModuleVisible(name) {
+        if (!name) return false;
+        if (indicatorsVisibility && indicatorsVisibility[name] !== undefined) {
+            return !!indicatorsVisibility[name];
+        }
+        return true;
+    }
+
+    function toggleModuleVisibility(name) {
+        let cur = Object.assign({}, indicatorsVisibility);
+        cur[name] = !isModuleVisible(name);
+        setModuleVisibility(cur);
+    }
+
+    property var saveVisibilityProc: Process {}
+
+    function setModuleVisibility(newVis) {
+        if (!newVis || typeof newVis !== "object") return;
+        indicatorsVisibility = Object.assign({}, newVis);
+        saveVisibilityProc.command = [Quickshell.shellDir + "/scripts/manage_order.py", "save_visibility", JSON.stringify(newVis)];
+        saveVisibilityProc.running = false;
+        saveVisibilityProc.running = true;
+    }
+
+    property var loadVisibilityProc: Process {
+        command: [Quickshell.shellDir + "/scripts/manage_order.py", "get_visibility"]
+        running: true
+        stdout: SplitParser {
+            onRead: function(data) {
+                try {
+                    let parsed = JSON.parse(String(data).trim());
+                    if (parsed.visibility && typeof parsed.visibility === "object") {
+                        popoutMgr.indicatorsVisibility = Object.assign({}, parsed.visibility);
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+
+    property var watchVisibilityProc: Process {
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_indicators_visibility.set\"; while true; do if [ -f \"$STATE\" ]; then VIS=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"VIS:$VIS\"; fi; sleep 0.15; done"]
+        running: true
+        stdout: SplitParser {
+            onRead: function(data) {
+                let str = String(data).trim();
+                if (str.indexOf("VIS:") === 0) {
+                    try {
+                        let parsed = JSON.parse(str.substring(4).trim());
+                        if (parsed && typeof parsed === "object") {
+                            popoutMgr.indicatorsVisibility = Object.assign({}, parsed);
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+    }
 }
+

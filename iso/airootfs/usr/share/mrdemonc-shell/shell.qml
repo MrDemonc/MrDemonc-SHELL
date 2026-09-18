@@ -13,6 +13,7 @@ ShellRoot {
     property var _osdMgr: OsdManager
     property var _powerMgr: PowerManager
     property var _monitorMgr: MonitorManager
+    property var _controlCenterMgr: ControlCenterManager
 
     // 1. Fondo de pantalla integrado por pantalla
     Variants {
@@ -223,5 +224,18 @@ ShellRoot {
             }
         }
     }
+
+    // 19. Centro de Control Flotante del Sistema (SUPER + I)
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            ControlCenterModal {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
 }
+
 

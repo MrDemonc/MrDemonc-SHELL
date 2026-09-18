@@ -40,6 +40,7 @@ echo -e "${YELLOW}[1/11] Verificando dependencias del sistema...${NC}"
 PACKAGES=(
     hyprland
     hypridle
+    hyprsunset
     pipewire
     wireplumber
     libpulse
@@ -222,6 +223,8 @@ create_cli_wrapper "shell-steam-intel" "bin/shell-steam-intel"
 create_cli_wrapper "shell-supervisor" "bin/shell-supervisor"
 create_cli_wrapper "shell-session-locked" "bin/shell-session-locked"
 create_cli_wrapper "shell-recover-lock" "bin/shell-recover-lock"
+create_cli_wrapper "shell-control-center" "bin/shell-control-center"
+create_cli_wrapper "shell-nightlight" "scripts/nightlight.py"
 
 # Instalar también en /usr/local/bin para disponibilidad global en el sistema
 if command -v sudo >/dev/null 2>&1; then

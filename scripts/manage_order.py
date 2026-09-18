@@ -80,6 +80,50 @@ def save_position(pos):
     except Exception:
         pass
 
+VISIBILITY_FILE = os.path.join(CONFIG_DIR, "indicators_visibility.json")
+DEFAULT_VISIBILITY = {
+    "workspaces": True,
+    "cava": True,
+    "clock": True,
+    "tray": True,
+    "audio": True,
+    "bluetooth": True,
+    "wifi": True,
+    "battery": True
+}
+
+def get_visibility():
+    res = dict(DEFAULT_VISIBILITY)
+    if not os.path.exists(VISIBILITY_FILE):
+        return res
+    try:
+        with open(VISIBILITY_FILE, "r") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if k in res:
+                        res[k] = bool(v)
+    except Exception:
+        pass
+    return res
+
+def save_visibility(vis):
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        cur = get_visibility()
+        if isinstance(vis, dict):
+            for k, v in vis.items():
+                if k in cur:
+                    cur[k] = bool(v)
+        with open(VISIBILITY_FILE, "w") as f:
+            json.dump(cur, f, indent=2)
+        runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+        notify_file = os.path.join(runtime_dir, "quickshell_indicators_visibility.set")
+        with open(notify_file, "w") as f:
+            f.write(json.dumps(cur))
+    except Exception:
+        pass
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         action = sys.argv[1]
@@ -104,4 +148,18 @@ if __name__ == "__main__":
         elif action == "get_sections":
             print(json.dumps({"sections": get_sections()}))
             sys.exit(0)
+        elif action == "get_visibility":
+            print(json.dumps({"visibility": get_visibility()}))
+            sys.exit(0)
+        elif action == "save_visibility" and len(sys.argv) > 2:
+            try:
+                new_vis = json.loads(sys.argv[2])
+                if isinstance(new_vis, dict):
+                    save_visibility(new_vis)
+                    print(json.dumps({"success": True, "visibility": get_visibility()}))
+                    sys.exit(0)
+            except Exception as e:
+                print(json.dumps({"success": False, "error": str(e)}))
+                sys.exit(1)
     print(json.dumps({"sections": get_sections()}))
+

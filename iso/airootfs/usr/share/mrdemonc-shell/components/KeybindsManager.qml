@@ -24,6 +24,13 @@ QtObject {
         {
             category: "quickshell",
             categoryName: "Lanzadores y Shell",
+            keys: ["SUPER", "I"],
+            title: "Centro de Control del Sistema",
+            description: "Abre el centro de control flotante para gestionar Wi-Fi, Bluetooth, Audio, Brillo, Luz Nocturna, Batería y configurar la barra."
+        },
+        {
+            category: "quickshell",
+            categoryName: "Lanzadores y Shell",
             keys: ["SUPER", "K"],
             title: "Guía de Atajos y Comandos",
             description: "Abre este centro visual para consultar todos los atajos de teclado y comandos del sistema."
