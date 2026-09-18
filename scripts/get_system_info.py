@@ -13,120 +13,39 @@ import subprocess
 import threading
 import urllib.request
 
-_cached_weather = {
-    "city": "Ubicación actual",
-    "country": "",
-    "temp": "--°C",
-    "feels_like": "--°C",
-    "desc": "Consultando clima...",
-    "icon": "󰖐",
-    "humidity": "--%",
-    "wind": "-- km/h",
-    "available": False
-}
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import weather_manager
+
+_cached_weather = weather_manager.load_initial_cached_weather()
 _last_weather_check = 0
+_last_weather_success = 0
+_weather_retry_delay = 10  # Reintentar en 10s si falla la conexión en el arranque del PC
+_fetching_lock = threading.Lock()
+_is_fetching = False
 
 def _fetch_weather_worker():
-    global _cached_weather, _last_weather_check
-    cache_file = "/tmp/mrdemonc_weather.json"
-    now = time.time()
-
-    loc_file = os.path.expanduser("~/.config/quickshell/weather_location.json")
-    custom_query = ""
-    custom_city = ""
-    custom_country = ""
-    if os.path.isfile(loc_file):
-        try:
-            with open(loc_file, "r") as f:
-                loc_cfg = json.load(f)
-                if not loc_cfg.get("auto", True):
-                    custom_query = loc_cfg.get("query", "")
-                    custom_city = loc_cfg.get("name", "")
-                    custom_country = loc_cfg.get("country", "")
-        except Exception:
-            pass
-
-    # Si hay caché en disco menor a 600 segundos y coincide con la ciudad elegida, usarlo
-    if os.path.isfile(cache_file):
-        try:
-            with open(cache_file, "r") as f:
-                cdata = json.load(f)
-                valid_city = (not custom_city) or (cdata.get("city") == custom_city)
-                if valid_city and (now - cdata.get("_time", 0) < 600):
-                    _cached_weather = cdata
-                    _last_weather_check = now
-                    return
-        except Exception:
-            pass
+    global _cached_weather, _last_weather_check, _last_weather_success, _is_fetching
+    with _fetching_lock:
+        if _is_fetching:
+            return
+        _is_fetching = True
 
     try:
-        endpoint = f"https://wttr.in/{urllib.parse.quote(custom_query)}?format=j1" if custom_query else "https://wttr.in/?format=j1"
-        req = urllib.request.Request(endpoint, headers={"User-Agent": "curl/7.88.1"})
-        with urllib.request.urlopen(req, timeout=3.5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            cur = data["current_condition"][0]
-            area = data.get("nearest_area", [{}])[0]
-            city = custom_city or area.get("areaName", [{}])[0].get("value", "Ubicación")
-            country = custom_country or area.get("country", [{}])[0].get("value", "")
-            temp = cur["temp_C"]
-            feels = cur.get("FeelsLikeC", temp)
-            desc_en = cur["weatherDesc"][0]["value"].strip()
-            code = int(cur.get("weatherCode", "113"))
-            humidity = cur.get("humidity", "0")
-            wind = cur.get("windspeedKmph", "0")
-
-            if code == 113:
-                icon = "󰖙"
-                desc = "Despejado"
-            elif code in (116,):
-                icon = "󰖕"
-                desc = "Parcialmente nublado"
-            elif code in (119, 122):
-                icon = "󰖐"
-                desc = "Nublado"
-            elif code in (143, 248, 260):
-                icon = "󰖑"
-                desc = "Niebla"
-            elif code in (200, 386, 389, 392, 395):
-                icon = "󰖓"
-                desc = "Tormenta"
-            elif 311 <= code <= 377:
-                icon = "󰼶"
-                desc = "Nieve"
-            elif "rain" in desc_en.lower() or "drizzle" in desc_en.lower() or code in (176, 263, 266, 293, 296, 299, 302, 305, 308, 353, 356):
-                icon = "󰖖"
-                desc = "Lluvia"
-            else:
-                icon = "󰖐"
-                desc = desc_en
-
-            w_data = {
-                "city": city,
-                "country": country,
-                "temp": f"{temp}°C",
-                "feels_like": f"{feels}°C",
-                "desc": desc,
-                "icon": icon,
-                "humidity": f"{humidity}%",
-                "wind": f"{wind} km/h",
-                "available": True,
-                "_time": now
-            }
-            _cached_weather = w_data
+        now = time.time()
+        w = weather_manager.fetch_current_weather()
+        if w and w.get("available", False):
+            _cached_weather = w
+            _last_weather_success = now
             _last_weather_check = now
-            try:
-                with open(cache_file, "w") as f:
-                    json.dump(w_data, f)
-            except Exception:
-                pass
-    except Exception:
-        if os.path.isfile(cache_file):
-            try:
-                with open(cache_file, "r") as f:
-                    _cached_weather = json.load(f)
-            except Exception:
-                pass
-        _last_weather_check = now
+        else:
+            # Si falla la red, reintentar pronto (10s) en vez de bloquear 5 minutos
+            _last_weather_check = now - (300 - _weather_retry_delay)
+            loc = weather_manager.get_current_location()
+            if not loc.get("auto", True) and loc.get("name"):
+                _cached_weather["city"] = loc.get("name")
+                _cached_weather["country"] = loc.get("country", "")
+    finally:
+        _is_fetching = False
 
 _last_cache_mtime = 0
 _last_loc_mtime = 0
@@ -134,8 +53,8 @@ _last_loc_mtime = 0
 def get_weather_info():
     global _last_weather_check, _cached_weather, _last_cache_mtime, _last_loc_mtime
     now = time.time()
-    cache_file = "/tmp/mrdemonc_weather.json"
-    loc_file = os.path.expanduser("~/.config/quickshell/weather_location.json")
+    cache_file = weather_manager.CACHE_FILE
+    loc_file = weather_manager.LOCATION_FILE
 
     # Si la ubicación cambió, invalidar para forzar fetch inmediato
     try:
@@ -144,10 +63,15 @@ def get_weather_info():
             if lm != _last_loc_mtime:
                 _last_loc_mtime = lm
                 _last_weather_check = 0
+                loc = weather_manager.get_current_location()
+                if not loc.get("auto", True):
+                    _cached_weather["city"] = loc.get("name", "Ubicación")
+                    _cached_weather["country"] = loc.get("country", "")
+                    _cached_weather["desc"] = "Consultando clima..."
     except Exception:
         pass
 
-    # Si el archivo de caché en disco fue actualizado por weather_manager.py, recargarlo de inmediato
+    # Si el archivo de caché en disco fue actualizado, recargarlo de inmediato
     try:
         if os.path.isfile(cache_file):
             cm = os.path.getmtime(cache_file)
@@ -312,8 +236,9 @@ def collect_all(prev_cpu_stat=None):
     return data, new_cpu_stat
 
 def main():
-    # Inicializar clima de inmediato
-    _fetch_weather_worker()
+    # Lanzar la actualización del clima en segundo plano para iniciar al instante con la caché
+    t = threading.Thread(target=_fetch_weather_worker, daemon=True)
+    t.start()
 
     if "--daemon" in sys.argv or "-d" in sys.argv:
         prev_cpu = None

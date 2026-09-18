@@ -232,7 +232,11 @@ Item {
                             }
 
                             Text {
-                                text: (root.sysData.weather && root.sysData.weather.city) ? (root.sysData.weather.city + (root.sysData.weather.country ? (", " + root.sysData.weather.country) : "")) : "Ubicación"
+                                text: {
+                                    let city = (root.sysData.weather && root.sysData.weather.city && root.sysData.weather.city !== "Ubicación actual") ? root.sysData.weather.city : ((WeatherLocationManager.currentLocation && !WeatherLocationManager.currentLocation.auto && WeatherLocationManager.currentLocation.name) ? WeatherLocationManager.currentLocation.name : ((root.sysData.weather && root.sysData.weather.city) ? root.sysData.weather.city : "Ubicación"));
+                                    let country = (root.sysData.weather && root.sysData.weather.country) ? root.sysData.weather.country : ((WeatherLocationManager.currentLocation && !WeatherLocationManager.currentLocation.auto && WeatherLocationManager.currentLocation.country) ? WeatherLocationManager.currentLocation.country : "");
+                                    return city + (country ? (", " + country) : "");
+                                }
                                 color: locMouseH.containsMouse ? Theme.primary : Theme.text
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -918,7 +922,10 @@ Item {
                                 spacing: 3
 
                                 Text {
-                                    text: "󰍎 " + ((root.sysData.weather && root.sysData.weather.city) ? root.sysData.weather.city : "Ubicación")
+                                    text: {
+                                        let city = (root.sysData.weather && root.sysData.weather.city && root.sysData.weather.city !== "Ubicación actual") ? root.sysData.weather.city : ((WeatherLocationManager.currentLocation && !WeatherLocationManager.currentLocation.auto && WeatherLocationManager.currentLocation.name) ? WeatherLocationManager.currentLocation.name : ((root.sysData.weather && root.sysData.weather.city) ? root.sysData.weather.city : "Ubicación"));
+                                        return "󰍎 " + city;
+                                    }
                                     color: locMouseV.containsMouse ? Theme.text : Theme.primary
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10

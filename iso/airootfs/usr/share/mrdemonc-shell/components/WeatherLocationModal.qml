@@ -262,6 +262,75 @@ PanelWindow {
             }
 
             // -----------------------------------------------------------------
+            // 3.1 UBICACIÓN PERSONALIZADA ACTIVA
+            // -----------------------------------------------------------------
+            Rectangle {
+                visible: WeatherLocationManager.currentLocation && !WeatherLocationManager.currentLocation.auto && WeatherLocationManager.currentLocation.name
+                Layout.fillWidth: true
+                implicitHeight: 44
+                radius: 10
+                color: Theme.bgSurface
+                border.color: Theme.primary
+                border.width: 1.5
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+
+                    Rectangle {
+                        implicitWidth: 26
+                        implicitHeight: 26
+                        radius: 13
+                        color: Theme.bgHover
+                        Text {
+                            anchors.centerIn: parent
+                            text: "󰍎"
+                            color: Theme.primary
+                            font.family: Theme.iconFontFamily
+                            font.pixelSize: 14
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+                        Text {
+                            text: WeatherLocationManager.currentLocation ? WeatherLocationManager.currentLocation.name : ""
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            font.bold: true
+                        }
+                        Text {
+                            text: (WeatherLocationManager.currentLocation && WeatherLocationManager.currentLocation.country) ? (WeatherLocationManager.currentLocation.country + (WeatherLocationManager.currentLocation.admin1 ? (" • " + WeatherLocationManager.currentLocation.admin1) : "")) : "Ubicación personalizada fijada"
+                            color: Theme.subtext
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 9
+                        }
+                    }
+
+                    Rectangle {
+                        implicitWidth: 20
+                        implicitHeight: 20
+                        radius: 10
+                        color: Theme.primary
+                        border.color: Theme.primary
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "󰄬"
+                            color: Theme.bg
+                            font.family: Theme.iconFontFamily
+                            font.pixelSize: 11
+                        }
+                    }
+                }
+            }
+
+            // -----------------------------------------------------------------
             // 4. LISTA DE RESULTADOS DE BÚSQUEDA
             // -----------------------------------------------------------------
             Rectangle {
