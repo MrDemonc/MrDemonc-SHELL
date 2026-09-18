@@ -44,8 +44,8 @@ PanelWindow {
         property real screenW: barMenuWindow.screen ? barMenuWindow.screen.width : 1280
         property real screenH: barMenuWindow.screen ? barMenuWindow.screen.height : 800
 
-        x: Math.max(10, Math.min(screenW - width - 10, PopoutManager.barMenuX - (width / 2)))
-        y: Math.max(10, Math.min(screenH - height - 10, PopoutManager.barMenuY))
+        x: Math.max(16, Math.min(screenW - width - 16, PopoutManager.barMenuX - (width / 2)))
+        y: Math.max(16, Math.min(screenH - height - 18, PopoutManager.barMenuY))
 
         opacity: PopoutManager.barMenuOpen ? 1.0 : 0.0
         scale: PopoutManager.barMenuOpen ? 1.0 : 0.95

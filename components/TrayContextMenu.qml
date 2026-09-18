@@ -35,11 +35,12 @@ PanelWindow {
     Rectangle {
         id: menuCard
         width: 190
-        height: cardContent.implicitHeight + 16
+        height: Math.min(screenH - 36, cardContent.implicitHeight + 16)
         radius: Theme.radiusSmall
         color: Theme.bgSurface
         border.color: Theme.border
         border.width: 1
+        clip: true
 
         property real screenW: contextWindow.screen ? contextWindow.screen.width : 1280
         property real screenH: contextWindow.screen ? contextWindow.screen.height : 800
@@ -53,7 +54,7 @@ PanelWindow {
             } else {
                 posX = TrayMenuManager.targetX - (width / 2);
             }
-            return Math.max(10, Math.min(screenW - width - 10, posX));
+            return Math.max(16, Math.min(screenW - width - 16, posX));
         }
 
         y: {
@@ -65,7 +66,7 @@ PanelWindow {
             } else {
                 posY = 32;
             }
-            return Math.max(10, Math.min(screenH - height - 10, posY));
+            return Math.max(16, Math.min(screenH - height - 18, posY));
         }
 
         opacity: TrayMenuManager.isOpen ? 1.0 : 0.0

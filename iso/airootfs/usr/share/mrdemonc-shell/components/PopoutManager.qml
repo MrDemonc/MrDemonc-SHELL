@@ -68,7 +68,7 @@ QtObject {
             if (centerX !== undefined && centerX > 0) {
                 popoutCenter = centerX;
             } else {
-                popoutCenter = 1750;
+                popoutCenter = isVertical ? 500 : 1750;
             }
         }
     }

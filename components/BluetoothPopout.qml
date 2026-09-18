@@ -8,12 +8,13 @@ Item {
     property var bluetoothRef: null
 
     implicitWidth: 320
-    implicitHeight: layout.implicitHeight + 28
+    implicitHeight: layout.implicitHeight + (PopoutManager.isVertical ? 36 : 28)
 
     ColumnLayout {
         id: layout
         anchors.fill: parent
         anchors.margins: 10
+        anchors.bottomMargin: PopoutManager.isVertical ? 14 : 10
         spacing: 8
 
         // 1. Header: Título + Botón Escanear + Toggle de Encendido

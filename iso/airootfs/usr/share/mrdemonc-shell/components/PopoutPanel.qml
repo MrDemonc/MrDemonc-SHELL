@@ -16,7 +16,7 @@ PanelWindow {
             if (PopoutManager.barPosition === "top") return 26;
             if (PopoutManager.barPosition === "bottom") return 0;
             let screenH = popoutWindow.screen ? popoutWindow.screen.height : 800;
-            return Math.max(10, Math.min(screenH - popout.preferredHeight - 10, PopoutManager.popoutCenter - popout.preferredHeight / 2));
+            return Math.max(16, Math.min(screenH - popout.preferredHeight - 18, PopoutManager.popoutCenter - popout.preferredHeight / 2));
         }
         bottom: PopoutManager.barPosition === "bottom" ? 26 : 0
         left: {
@@ -25,9 +25,9 @@ PanelWindow {
             let screenW = popoutWindow.screen ? popoutWindow.screen.width : 1280;
             let targetW = popout.preferredWidth;
             if (PopoutManager.popoutCenter > 0) {
-                return Math.max(10, Math.min(screenW - targetW - 10, PopoutManager.popoutCenter - targetW / 2));
+                return Math.max(16, Math.min(screenW - targetW - 16, PopoutManager.popoutCenter - targetW / 2));
             }
-            return Math.max(10, screenW - targetW - 10);
+            return Math.max(16, screenW - targetW - 16);
         }
         right: PopoutManager.barPosition === "right" ? 26 : 0
     }

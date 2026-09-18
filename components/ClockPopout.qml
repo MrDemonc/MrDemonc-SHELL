@@ -8,7 +8,7 @@ Item {
     id: root
 
     implicitWidth: PopoutManager.isVertical ? 320 : 600
-    implicitHeight: PopoutManager.isVertical ? 428 : 252
+    implicitHeight: PopoutManager.isVertical ? 456 : 252
 
     property var sysData: ({
         user: { username: "usuario", hostname: "archlinux", uptime: "0m", avatar: "" },
@@ -750,8 +750,8 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.topMargin: 6
-        anchors.bottomMargin: 6
+        anchors.topMargin: 8
+        anchors.bottomMargin: 10
         anchors.leftMargin: 8
         anchors.rightMargin: 8
         spacing: 7
@@ -1211,6 +1211,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 68
+            Layout.bottomMargin: 6
             color: Theme.bgSurface
             radius: 10
             border.color: Theme.border

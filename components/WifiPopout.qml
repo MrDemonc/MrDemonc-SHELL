@@ -12,7 +12,7 @@ Item {
     readonly property bool wantsKeyboard: connectingSsid !== "" || showHiddenPrompt
 
     implicitWidth: 320
-    implicitHeight: layout.implicitHeight + 20
+    implicitHeight: layout.implicitHeight + (PopoutManager.isVertical ? 28 : 20)
 
     onConnectingSsidChanged: {
         if (connectingSsid !== "") {
@@ -35,6 +35,7 @@ Item {
         id: layout
         anchors.fill: parent
         anchors.margins: 10
+        anchors.bottomMargin: PopoutManager.isVertical ? 14 : 10
         spacing: 8
 
         // 1. Header: Redes Wi-Fi + Rescan + Botón Red Oculta

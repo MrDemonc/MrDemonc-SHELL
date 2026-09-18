@@ -10,12 +10,13 @@ Item {
     property bool showDevicePicker: false
 
     implicitWidth: 320
-    implicitHeight: layout.implicitHeight + 20
+    implicitHeight: layout.implicitHeight + (PopoutManager.isVertical ? 28 : 20)
 
     ColumnLayout {
         id: layout
         anchors.fill: parent
         anchors.margins: 10
+        anchors.bottomMargin: PopoutManager.isVertical ? 14 : 10
         spacing: 8
 
         // 1. Header: Título + Botón de Silencio Rápido

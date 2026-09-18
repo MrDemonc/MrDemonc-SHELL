@@ -33,16 +33,16 @@ Item {
     }
 
     readonly property real preferredHeight: {
-        if (effectiveTab === "clock") return PopoutManager.isVertical ? 428 : 252;
+        if (effectiveTab === "clock") return PopoutManager.isVertical ? 456 : 252;
         if (activeChildItem && activeChildItem.implicitHeight > 0) {
-            return activeChildItem.implicitHeight + 20;
+            return activeChildItem.implicitHeight + (PopoutManager.isVertical ? 38 : 20);
         }
-        if (effectiveTab === "audio") return 260;
-        if (effectiveTab === "battery") return 270;
-        if (effectiveTab === "wifi") return 320;
-        if (effectiveTab === "bluetooth") return 300;
-        if (effectiveTab === "theme") return 280;
-        return 280;
+        if (effectiveTab === "audio") return PopoutManager.isVertical ? 320 : 260;
+        if (effectiveTab === "battery") return PopoutManager.isVertical ? 320 : 270;
+        if (effectiveTab === "wifi") return PopoutManager.isVertical ? 370 : 320;
+        if (effectiveTab === "bluetooth") return PopoutManager.isVertical ? 350 : 300;
+        if (effectiveTab === "theme") return PopoutManager.isVertical ? 330 : 280;
+        return PopoutManager.isVertical ? 330 : 280;
     }
 
     anchors.fill: parent
