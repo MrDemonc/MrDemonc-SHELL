@@ -597,8 +597,8 @@ PanelWindow {
 
                             Rectangle {
                                 anchors.centerIn: parent
-                                implicitWidth: 200
-                                implicitHeight: 38
+                                implicitWidth: Math.max(260, startBtnRow.implicitWidth + 40)
+                                implicitHeight: 40
                                 radius: 10
                                 color: startTestMouse.containsMouse ? Theme.primary : Theme.bgHover
                                 border.color: Theme.primary
@@ -607,19 +607,20 @@ PanelWindow {
                                 Behavior on color { ColorAnimation { duration: 150 } }
 
                                 RowLayout {
+                                    id: startBtnRow
                                     anchors.centerIn: parent
                                     spacing: 8
 
                                     Text {
                                         text: "󰓅"
-                                        color: startTestMouse.containsMouse ? Theme.bgSurface : Theme.primary
+                                        color: startTestMouse.containsMouse ? (Theme.isDark ? "#11111b" : "#ffffff") : Theme.primary
                                         font.family: Theme.iconFontFamily
                                         font.pixelSize: 14
                                     }
 
                                     Text {
                                         text: "Iniciar Test de Velocidad"
-                                        color: startTestMouse.containsMouse ? Theme.bgSurface : Theme.text
+                                        color: startTestMouse.containsMouse ? (Theme.isDark ? "#11111b" : "#ffffff") : Theme.text
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 12
                                         font.bold: true
