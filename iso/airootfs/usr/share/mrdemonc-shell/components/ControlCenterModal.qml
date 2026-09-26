@@ -125,6 +125,54 @@ PanelWindow {
                         anchors.bottomMargin: 12
                         spacing: 4
 
+                        // Encabezado de Usuario (Centrado arriba, antes de Wi-Fi y pestañas)
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: 38
+                            Layout.topMargin: 2
+                            Layout.bottomMargin: 6
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 8
+
+                                Rectangle {
+                                    implicitWidth: 26
+                                    implicitHeight: 26
+                                    radius: 13
+                                    color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                                    border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.5)
+                                    border.width: 1
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "󰀉"
+                                        color: Theme.primary
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 13
+                                    }
+                                }
+
+                                Text {
+                                    text: ControlCenterManager.sysUser ? ControlCenterManager.sysUser : "usuario"
+                                    color: Theme.text
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                }
+                            }
+                        }
+
+                        // Divisor sutil
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 12
+                            Layout.rightMargin: 12
+                            Layout.bottomMargin: 4
+                            implicitHeight: 1
+                            color: Theme.border
+                        }
+
                         readonly property var tabs: [
                             { id: "network", label: "Wi-Fi y Red", icon: "󰖩" },
                             { id: "bluetooth", label: "Bluetooth", icon: "󰂯" },
@@ -299,40 +347,6 @@ PanelWindow {
                                             PowerManager.open();
                                         });
                                     }
-                                }
-                            }
-                        }
-
-                        // Chip de estado rápido en el pie de la barra lateral
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 10
-                            Layout.rightMargin: 10
-                            implicitHeight: 34
-                            radius: Theme.radiusSmall
-                            color: Theme.bg
-                            border.color: Theme.border
-                            border.width: 1
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 6
-                                spacing: 6
-
-                                Text {
-                                    text: "󰌢"
-                                    color: Theme.primary
-                                    font.family: Theme.iconFontFamily
-                                    font.pixelSize: 12
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: (ControlCenterManager.sysUser ? ControlCenterManager.sysUser : "usuario") + "@" + (ControlCenterManager.sysHost ? ControlCenterManager.sysHost : "arch")
-                                    color: Theme.overlay
-                                    font.family: Theme.monoFontFamily
-                                    font.pixelSize: 9
-                                    elide: Text.ElideRight
                                 }
                             }
                         }

@@ -495,7 +495,7 @@ QtObject {
     // -------------------------------------------------------------------------
     // 7. INFORMACIÓN DEL SISTEMA
     // -------------------------------------------------------------------------
-    property string sysUser: ""
+    property string sysUser: Quickshell.env("USER") || ""
     property string sysHost: ""
     property string sysKernel: ""
     property string sysUptime: ""
