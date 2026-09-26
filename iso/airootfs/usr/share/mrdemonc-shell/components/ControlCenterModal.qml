@@ -1467,56 +1467,6 @@ PanelWindow {
                             }
 
                             Item { Layout.fillHeight: true }
-
-                            // Enlace directo a Monitor Modal
-                            Rectangle {
-                                Layout.fillWidth: true
-                                implicitHeight: 38
-                                radius: Theme.radiusSmall
-                                color: Theme.bgSurface
-                                border.color: Theme.border
-                                border.width: 1
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 10
-                                    spacing: 8
-
-                                    Text {
-                                        text: "󰍹"
-                                        color: Theme.primary
-                                        font.family: Theme.iconFontFamily
-                                        font.pixelSize: 14
-                                    }
-
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: "Configuración Avanzada de Monitores y Escala HiDPI"
-                                        color: Theme.text
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 11
-                                    }
-
-                                    Text {
-                                        text: "󰁔"
-                                        color: Theme.overlay
-                                        font.family: Theme.iconFontFamily
-                                        font.pixelSize: 12
-                                    }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        ControlCenterManager.close();
-                                        Qt.callLater(() => {
-                                            MonitorManager.open();
-                                        });
-                                    }
-                                }
-                            }
                         }
                     }
 
@@ -1739,66 +1689,6 @@ PanelWindow {
                             }
 
                             Item { Layout.fillHeight: true }
-
-                            // Botones Rápidos de Sesión
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 8
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 32
-                                    radius: Theme.radiusSmall
-                                    color: Theme.bgSurface
-                                    border.color: Theme.border
-                                    border.width: 1
-
-                                    RowLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 4
-                                        Text { text: "󰌾"; color: Theme.primary; font.family: Theme.iconFontFamily; font.pixelSize: 12 }
-                                        Text { text: "Bloquear"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 10 }
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            ControlCenterManager.close();
-                                            Qt.callLater(() => {
-                                                LockScreenManager.lock();
-                                            });
-                                        }
-                                    }
-                                }
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 32
-                                    radius: Theme.radiusSmall
-                                    color: Theme.bgSurface
-                                    border.color: Theme.border
-                                    border.width: 1
-
-                                    RowLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 4
-                                        Text { text: "󰐥"; color: Theme.danger; font.family: Theme.iconFontFamily; font.pixelSize: 12 }
-                                        Text { text: "Menú de Apagado"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 10 }
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            ControlCenterManager.close();
-                                            Qt.callLater(() => {
-                                                PowerManager.open();
-                                            });
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
 
@@ -2012,67 +1902,7 @@ PanelWindow {
                                 }
                             }
 
-                            // Acceso directo a la Guía de Atajos de Teclado
-                            Rectangle {
-                                Layout.fillWidth: true
-                                implicitHeight: 44
-                                radius: Theme.radiusSmall
-                                color: keybindsBtnMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                                border.color: Theme.border
-                                border.width: 1
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 10
-                                    spacing: 10
-
-                                    Text {
-                                        text: "󰌌"
-                                        color: Theme.primary
-                                        font.family: Theme.iconFontFamily
-                                        font.pixelSize: 16
-                                    }
-
-                                    ColumnLayout {
-                                        spacing: 1
-                                        Text {
-                                            text: "Guía de Atajos de Teclado del Sistema"
-                                            color: Theme.text
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 11
-                                            font.bold: true
-                                        }
-                                        Text {
-                                            text: "Consultar todas las combinaciones y atajos del entorno de escritorio"
-                                            color: Theme.overlay
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 9
-                                        }
-                                    }
-
-                                    Item { Layout.fillWidth: true }
-
-                                    Text {
-                                        text: "󰁔"
-                                        color: Theme.overlay
-                                        font.family: Theme.iconFontFamily
-                                        font.pixelSize: 12
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: keybindsBtnMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        ControlCenterManager.close();
-                                        Qt.callLater(() => {
-                                            KeybindsManager.open();
-                                        });
-                                    }
-                                }
-                            }
+                            Item { Layout.fillHeight: true }
                         }
                     }
 

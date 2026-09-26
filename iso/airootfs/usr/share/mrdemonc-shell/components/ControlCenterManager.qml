@@ -631,15 +631,15 @@ QtObject {
         }
     }
 
-    property var sudoAuthProc: Process {
+    property Process sudoAuthProc: Process {
         property string passwordToVerify: ""
         command: ["python3", Quickshell.shellDir + "/scripts/package_manager.py", "auth"]
         onStarted: {
             write(passwordToVerify + "\n");
             passwordToVerify = "";
-            stdinEnabled = false;
         }
         onExited: function(exitCode, exitStatus) {
+            authTimeoutTimer.stop();
             mgr.isAuthChecking = false;
             passwordToVerify = "";
             if (exitCode === 0) {
@@ -650,6 +650,20 @@ QtObject {
                 mgr.executeSudoAction(act);
             } else {
                 mgr.authErrorMessage = "Contraseña incorrecta. Inténtalo de nuevo.";
+            }
+        }
+    }
+
+    property var authTimeoutTimer: Timer {
+        interval: 10000
+        repeat: false
+        onTriggered: {
+            if (mgr.isAuthChecking) {
+                mgr.isAuthChecking = false;
+                mgr.authErrorMessage = "Tiempo de espera agotado. Inténtalo de nuevo.";
+                if (sudoAuthProc.running) {
+                    sudoAuthProc.running = false;
+                }
             }
         }
     }
@@ -672,12 +686,15 @@ QtObject {
         }
         isAuthChecking = true;
         authErrorMessage = "";
+        authTimeoutTimer.restart();
         sudoAuthProc.passwordToVerify = password;
+        sudoAuthProc.stdinEnabled = true;
         sudoAuthProc.running = false;
         sudoAuthProc.running = true;
     }
 
     function cancelSudoAuth() {
+        authTimeoutTimer.stop();
         isAuthModalOpen = false;
         isAuthChecking = false;
         authErrorMessage = "";
