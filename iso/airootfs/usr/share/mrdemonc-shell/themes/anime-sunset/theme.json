@@ -1,0 +1,21 @@
+{
+  "id": "anime-sunset",
+  "name": "Anime Sunset",
+  "description": "Tema artístico inspirado en cielos de anime al atardecer, nubes iluminadas por el sol poniente y horizontes crepusculares",
+  "author": "MrDemonc",
+  "isDark": true,
+  "wallpaper": "wallpaper.jpg",
+  "bg": "#191519",
+  "bgSurface": "#231e23",
+  "bgHover": "#322b32",
+  "border": "#483d47",
+  "text": "#faede8",
+  "subtext": "#d1bbb4",
+  "overlay": "#7e6c77",
+  "primary": "#f0997c",
+  "success": "#8ab896",
+  "warning": "#e5b567",
+  "danger": "#df5d52",
+  "cyan": "#68a9b8",
+  "pink": "#d687a8"
+}

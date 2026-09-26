@@ -270,6 +270,58 @@ Tema oficial preinstalado en `~/.config/quickshell/themes/mountains/theme.json`:
 }
 ```
 
+### Ejemplo 5: Noir (Monocromático / Blanco y Negro Dark)
+Tema oficial preinstalado en `~/.config/quickshell/themes/noir/theme.json`:
+```json
+{
+  "id": "noir",
+  "name": "Noir",
+  "description": "Tema oscuro monocromático en blanco y negro puro, con tonos grafito, platas y acentos de alto contraste",
+  "author": "MrDemonc",
+  "isDark": true,
+  "wallpaper": "wallpaper.jpg",
+  "bg": "#0f1113",
+  "bgSurface": "#181a1d",
+  "bgHover": "#24272c",
+  "border": "#393e46",
+  "text": "#f4f5f6",
+  "subtext": "#b8bec6",
+  "overlay": "#6f7682",
+  "primary": "#e2e6eb",
+  "success": "#88c999",
+  "warning": "#e5c07b",
+  "danger": "#e06c75",
+  "cyan": "#98c5e0",
+  "pink": "#c8a8d8"
+}
+```
+
+### Ejemplo 6: Anime Sunset (Atardecer y Nubes Anime)
+Tema oficial preinstalado en `~/.config/quickshell/themes/anime-sunset/theme.json`:
+```json
+{
+  "id": "anime-sunset",
+  "name": "Anime Sunset",
+  "description": "Tema artístico inspirado en cielos de anime al atardecer, nubes iluminadas por el sol poniente y horizontes crepusculares",
+  "author": "MrDemonc",
+  "isDark": true,
+  "wallpaper": "wallpaper.jpg",
+  "bg": "#191519",
+  "bgSurface": "#231e23",
+  "bgHover": "#322b32",
+  "border": "#483d47",
+  "text": "#faede8",
+  "subtext": "#d1bbb4",
+  "overlay": "#7e6c77",
+  "primary": "#f0997c",
+  "success": "#8ab896",
+  "warning": "#e5b567",
+  "danger": "#df5d52",
+  "cyan": "#68a9b8",
+  "pink": "#d687a8"
+}
+```
+
 ---
 
 ## 📦 7. Compartir tus Temas

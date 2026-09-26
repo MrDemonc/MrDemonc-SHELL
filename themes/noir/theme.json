@@ -1,0 +1,21 @@
+{
+  "id": "noir",
+  "name": "Noir",
+  "description": "Tema oscuro monocromático en blanco y negro puro, con tonos grafito, platas y acentos de alto contraste",
+  "author": "MrDemonc",
+  "isDark": true,
+  "wallpaper": "wallpaper.jpg",
+  "bg": "#0f1113",
+  "bgSurface": "#181a1d",
+  "bgHover": "#24272c",
+  "border": "#393e46",
+  "text": "#f4f5f6",
+  "subtext": "#b8bec6",
+  "overlay": "#6f7682",
+  "primary": "#e2e6eb",
+  "success": "#88c999",
+  "warning": "#e5c07b",
+  "danger": "#e06c75",
+  "cyan": "#98c5e0",
+  "pink": "#c8a8d8"
+}
