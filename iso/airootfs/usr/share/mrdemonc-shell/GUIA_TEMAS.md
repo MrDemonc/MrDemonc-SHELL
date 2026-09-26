@@ -244,6 +244,32 @@ Guarda esto en `~/.config/quickshell/themes/catppuccin-latte/theme.json`:
 }
 ```
 
+### Ejemplo 4: Mountains (Alpino / Glaciar)
+Tema oficial preinstalado en `~/.config/quickshell/themes/mountains/theme.json`:
+```json
+{
+  "id": "mountains",
+  "name": "Mountains",
+  "description": "Tema alpino inspirado en picos montañosos con niebla glaciar, bosques de coníferas y lagos turquesa",
+  "author": "MrDemonc",
+  "isDark": true,
+  "wallpaper": "wallpaper.jpg",
+  "bg": "#141a1a",
+  "bgSurface": "#1a2222",
+  "bgHover": "#253231",
+  "border": "#354746",
+  "text": "#edf5f5",
+  "subtext": "#aec4c3",
+  "overlay": "#667f7e",
+  "primary": "#5db1c7",
+  "success": "#7eb886",
+  "warning": "#e8b356",
+  "danger": "#df5c68",
+  "cyan": "#7ad7ea",
+  "pink": "#c589a8"
+}
+```
+
 ---
 
 ## 📦 7. Compartir tus Temas

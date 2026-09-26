@@ -54,11 +54,32 @@ BUILTIN_THEMES = {
         "danger": "#c85a42",
         "cyan": "#77a2b2",
         "pink": "#b67d8f"
+    },
+    "mountains": {
+        "name": "Mountains",
+        "description": "Tema alpino inspirado en picos montañosos con niebla glaciar, bosques de coníferas y lagos turquesa",
+        "author": "MrDemonc",
+        "isDark": True,
+        "wallpaper": "wallpaper.jpg",
+        "bg": "#141a1a",
+        "bgSurface": "#1a2222",
+        "bgHover": "#253231",
+        "border": "#354746",
+        "text": "#edf5f5",
+        "subtext": "#aec4c3",
+        "overlay": "#667f7e",
+        "primary": "#5db1c7",
+        "success": "#7eb886",
+        "warning": "#e8b356",
+        "danger": "#df5c68",
+        "cyan": "#7ad7ea",
+        "pink": "#c589a8"
     }
 }
 
 THEME_SEARCH_DIRS = [
     os.path.expanduser("~/.config/quickshell/themes"),
+    os.path.expanduser("~/Documentos/github/MrDemonc-SHELL/themes"),
     os.path.expanduser("~/Documentos/MrDemonc-SHELL/themes"),
     "/usr/share/mrdemonc-shell/themes"
 ]
