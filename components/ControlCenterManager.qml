@@ -62,6 +62,7 @@ QtObject {
 
     function close() {
         console.log("CONTROL CENTER close() called");
+        cancelSudoAuth();
         isOpen = false;
     }
 
@@ -604,17 +605,122 @@ QtObject {
         });
     }
 
+    // -------------------------------------------------------------------------
+    // 8.1 AUTENTICACIÓN SUDO NATIVA (QUICKSHELL)
+    // -------------------------------------------------------------------------
+    property bool isAuthModalOpen: false
+    property bool isAuthChecking: false
+    property string authErrorMessage: ""
+    property string authActionDescription: ""
+    property var pendingSudoAction: null
+
+    property var sudoCheckProc: Process {
+        command: ["sudo", "-n", "true"]
+        onExited: function(exitCode, exitStatus) {
+            if (exitCode === 0) {
+                // Ya se tiene sesión sudo activa en el kernel, ejecutar directamente
+                let act = mgr.pendingSudoAction;
+                mgr.pendingSudoAction = null;
+                mgr.executeSudoAction(act);
+            } else {
+                // Requiere contraseña: abrir modal nativo de Quickshell
+                mgr.isAuthChecking = false;
+                mgr.authErrorMessage = "";
+                mgr.isAuthModalOpen = true;
+            }
+        }
+    }
+
+    property var sudoAuthProc: Process {
+        property string passwordToVerify: ""
+        command: ["python3", Quickshell.shellDir + "/scripts/package_manager.py", "auth"]
+        onStarted: {
+            write(passwordToVerify + "\n");
+            passwordToVerify = "";
+            stdinEnabled = false;
+        }
+        onExited: function(exitCode, exitStatus) {
+            mgr.isAuthChecking = false;
+            passwordToVerify = "";
+            if (exitCode === 0) {
+                mgr.isAuthModalOpen = false;
+                mgr.authErrorMessage = "";
+                let act = mgr.pendingSudoAction;
+                mgr.pendingSudoAction = null;
+                mgr.executeSudoAction(act);
+            } else {
+                mgr.authErrorMessage = "Contraseña incorrecta. Inténtalo de nuevo.";
+            }
+        }
+    }
+
+    function requestSudoAction(actionObj) {
+        if (!actionObj) return;
+        mgr.pendingSudoAction = actionObj;
+        mgr.authActionDescription = actionObj.desc || "completar la operación";
+        mgr.authErrorMessage = "";
+        mgr.isAuthChecking = false;
+
+        sudoCheckProc.running = false;
+        sudoCheckProc.running = true;
+    }
+
+    function verifySudoPassword(password) {
+        if (!password || password.length === 0) {
+            authErrorMessage = "Por favor ingresa tu contraseña.";
+            return;
+        }
+        isAuthChecking = true;
+        authErrorMessage = "";
+        sudoAuthProc.passwordToVerify = password;
+        sudoAuthProc.running = false;
+        sudoAuthProc.running = true;
+    }
+
+    function cancelSudoAuth() {
+        isAuthModalOpen = false;
+        isAuthChecking = false;
+        authErrorMessage = "";
+        pendingSudoAction = null;
+        if (sudoAuthProc.running) {
+            sudoAuthProc.running = false;
+        }
+    }
+
+    function executeSudoAction(act) {
+        if (!act) return;
+        if (act.type === "update") {
+            Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "update", act.target]);
+        } else if (act.type === "update-all") {
+            Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "update-all"]);
+        } else if (act.type === "remove") {
+            Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "remove", act.target]);
+        }
+    }
+
     function updatePackage(pkgName) {
         if (!pkgName) return;
-        Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "update", pkgName]);
+        requestSudoAction({
+            type: "update",
+            target: pkgName,
+            desc: "actualizar \"" + pkgName + "\""
+        });
     }
 
     function updateAllPackages() {
-        Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "update-all"]);
+        requestSudoAction({
+            type: "update-all",
+            target: "",
+            desc: "actualizar todas las aplicaciones del sistema"
+        });
     }
 
     function removePackage(pkgName) {
         if (!pkgName) return;
-        Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "remove", pkgName]);
+        requestSudoAction({
+            type: "remove",
+            target: pkgName,
+            desc: "desinstalar \"" + pkgName + "\""
+        });
     }
 }

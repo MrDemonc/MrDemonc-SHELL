@@ -189,23 +189,41 @@ def clear_cache():
         except Exception:
             pass
 
-def ensure_sudo_auth():
-    # 1. Comprobar si sudo ya está validado sin contraseña
+def check_sudo():
     res = subprocess.run(["sudo", "-n", "true"], capture_output=True)
-    if res.returncode == 0:
+    return res.returncode == 0
+
+def auth_sudo(password: str) -> bool:
+    if not password:
+        return False
+    try:
+        p = subprocess.Popen(
+            ["sudo", "-S", "-v", "-p", ""],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        p.communicate(input=password.encode("utf-8") + b"\n", timeout=12)
+        return p.returncode == 0
+    except Exception:
+        return False
+
+def ensure_sudo_auth():
+    # 1. Comprobar si sudo ya está validado sin contraseña en la sesión del kernel
+    if check_sudo():
         return True
 
-    # 2. Localizar askpass.sh
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    askpass_path = os.path.join(script_dir, "askpass.sh")
-    env = os.environ.copy()
-    if os.path.isfile(askpass_path):
-        env["SUDO_ASKPASS"] = askpass_path
-        env["SUDO_PROMPT"] = ""
+    # 2. Si hay entrada disponible en stdin no interactivo, intentar autenticar
+    if not sys.stdin.isatty():
+        try:
+            line = sys.stdin.readline().strip()
+            if line and auth_sudo(line):
+                return True
+        except Exception:
+            pass
 
-    # Solicitar validación gráfica de sudo mediante SUDO_ASKPASS
-    res = subprocess.run(["sudo", "-A", "-v"], env=env)
-    return res.returncode == 0
+    return False
+
 
 def update_package(pkg_name):
     if not pkg_name:
@@ -291,6 +309,25 @@ def main():
         force = "--force" in sys.argv or "-f" in sys.argv
         res = get_installed_packages(force=force)
         print(json.dumps(res, indent=2))
+    elif action in ("check-sudo", "check_sudo"):
+        if check_sudo():
+            print(json.dumps({"authenticated": True}))
+            sys.exit(0)
+        else:
+            print(json.dumps({"authenticated": False}))
+            sys.exit(1)
+    elif action == "auth":
+        try:
+            raw = sys.stdin.buffer.read()
+            pwd = raw.decode("utf-8").rstrip("\r\n")
+        except Exception:
+            pwd = ""
+        if auth_sudo(pwd):
+            print(json.dumps({"success": True}))
+            sys.exit(0)
+        else:
+            print(json.dumps({"success": False, "error": "Contraseña incorrecta"}))
+            sys.exit(1)
     elif action == "update" and len(sys.argv) > 2:
         update_package(sys.argv[2])
     elif action in ("update-all", "update_all"):

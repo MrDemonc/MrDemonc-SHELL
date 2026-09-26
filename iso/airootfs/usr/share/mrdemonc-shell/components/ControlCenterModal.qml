@@ -80,7 +80,13 @@ PanelWindow {
         Shortcut {
             sequence: "Escape"
             enabled: ControlCenterManager.isOpen
-            onActivated: ControlCenterManager.close()
+            onActivated: {
+                if (ControlCenterManager.isAuthModalOpen) {
+                    ControlCenterManager.cancelSudoAuth();
+                } else {
+                    ControlCenterManager.close();
+                }
+            }
         }
 
         // Consumir clics sobre la tarjeta para que no caigan en el scrim
@@ -1492,10 +1498,10 @@ PanelWindow {
                                     }
 
                                     Text {
-                                        text: "SUPER + SHIFT + S  󰁔"
+                                        text: "󰁔"
                                         color: Theme.overlay
-                                        font.family: Theme.monoFontFamily
-                                        font.pixelSize: 9
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 12
                                     }
                                 }
 
@@ -2047,10 +2053,10 @@ PanelWindow {
                                     Item { Layout.fillWidth: true }
 
                                     Text {
-                                        text: "SUPER + K  󰁔"
+                                        text: "󰁔"
                                         color: Theme.overlay
-                                        font.family: Theme.monoFontFamily
-                                        font.pixelSize: 9
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 12
                                     }
                                 }
 
@@ -2784,6 +2790,302 @@ PanelWindow {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // =========================================================================
+        // MODAL DE AUTENTICACIÓN SUDO NATIVO (QUICKSHELL)
+        // =========================================================================
+        Rectangle {
+            id: sudoAuthOverlay
+            anchors.fill: parent
+            z: 1000
+            visible: ControlCenterManager.isAuthModalOpen
+            color: Qt.rgba(0, 0, 0, 0.75)
+            radius: Theme.radiusLarge
+
+            // Consumir clics sobre el scrim del modal
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {}
+            }
+
+            Connections {
+                target: ControlCenterManager
+                function onIsAuthModalOpenChanged() {
+                    if (ControlCenterManager.isAuthModalOpen) {
+                        sudoPwdInput.text = "";
+                        Qt.callLater(function() {
+                            sudoPwdInput.forceActiveFocus();
+                        });
+                    }
+                }
+            }
+
+            Rectangle {
+                id: sudoAuthCard
+                anchors.centerIn: parent
+                width: Math.min(430, parent.width - 48)
+                implicitHeight: authCol.implicitHeight + 40
+                color: Theme.bgSurface
+                border.color: ControlCenterManager.authErrorMessage !== "" ? Theme.danger : Theme.border
+                border.width: 1
+                radius: Theme.radiusMedium
+
+                ColumnLayout {
+                    id: authCol
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 20
+                    spacing: 16
+
+                    // Encabezado
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        Rectangle {
+                            implicitWidth: 42
+                            implicitHeight: 42
+                            radius: 21
+                            color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                            border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.3)
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "󰌾"
+                                color: Theme.primary
+                                font.family: Theme.iconFontFamily
+                                font.pixelSize: 20
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            Text {
+                                text: "Autenticación Requerida"
+                                color: Theme.text
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 13
+                                font.bold: true
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                text: "Se requieren privilegios para " + (ControlCenterManager.authActionDescription || "continuar") + "."
+                                color: Theme.overlay
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                            }
+                        }
+                    }
+
+                    // Campo de entrada de contraseña
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Text {
+                            text: "Contraseña sudo:"
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+
+                        Rectangle {
+                            id: inputContainer
+                            Layout.fillWidth: true
+                            implicitHeight: 38
+                            radius: Theme.radiusSmall
+                            color: Theme.bg
+                            border.color: ControlCenterManager.authErrorMessage !== "" ? Theme.danger : (sudoPwdInput.activeFocus ? Theme.primary : Theme.border)
+                            border.width: sudoPwdInput.activeFocus ? 2 : 1
+
+                            property bool showPassword: false
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 8
+                                spacing: 8
+
+                                Text {
+                                    text: "󰌋"
+                                    color: sudoPwdInput.activeFocus ? Theme.primary : Theme.overlay
+                                    font.family: Theme.iconFontFamily
+                                    font.pixelSize: 14
+                                }
+
+                                TextInput {
+                                    id: sudoPwdInput
+                                    Layout.fillWidth: true
+                                    echoMode: inputContainer.showPassword ? TextInput.Normal : TextInput.Password
+                                    color: Theme.text
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 12
+                                    clip: true
+                                    enabled: !ControlCenterManager.isAuthChecking
+
+                                    Text {
+                                        anchors.fill: parent
+                                        text: "Ingresa tu contraseña..."
+                                        color: Theme.overlay
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 12
+                                        visible: !sudoPwdInput.text && !sudoPwdInput.activeFocus
+                                    }
+
+                                    Keys.onReturnPressed: {
+                                        if (sudoPwdInput.text.length > 0 && !ControlCenterManager.isAuthChecking) {
+                                            ControlCenterManager.verifySudoPassword(sudoPwdInput.text);
+                                        }
+                                    }
+                                    Keys.onEnterPressed: {
+                                        if (sudoPwdInput.text.length > 0 && !ControlCenterManager.isAuthChecking) {
+                                            ControlCenterManager.verifySudoPassword(sudoPwdInput.text);
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    implicitWidth: 26
+                                    implicitHeight: 26
+                                    radius: 13
+                                    color: eyeMouseArea.containsMouse ? Qt.rgba(255, 255, 255, 0.08) : "transparent"
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: inputContainer.showPassword ? "󰈈" : "󰈉"
+                                        color: Theme.overlay
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 13
+                                    }
+
+                                    MouseArea {
+                                        id: eyeMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: inputContainer.showPassword = !inputContainer.showPassword
+                                    }
+                                }
+                            }
+                        }
+
+                        // Mensaje de Error
+                        RowLayout {
+                            Layout.fillWidth: true
+                            visible: ControlCenterManager.authErrorMessage !== ""
+                            spacing: 6
+
+                            Text {
+                                text: "󰅚"
+                                color: Theme.danger
+                                font.family: Theme.iconFontFamily
+                                font.pixelSize: 12
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: ControlCenterManager.authErrorMessage
+                                color: Theme.danger
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                wrapMode: Text.Wrap
+                            }
+                        }
+                    }
+
+                    // Botones Cancelar / Autenticar
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        Item { Layout.fillWidth: true }
+
+                        Rectangle {
+                            implicitWidth: 90
+                            implicitHeight: 32
+                            radius: Theme.radiusSmall
+                            color: cancelBtnMouse.containsMouse ? Qt.rgba(255, 255, 255, 0.08) : "transparent"
+                            border.color: Theme.border
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Cancelar"
+                                color: Theme.text
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                            }
+
+                            MouseArea {
+                                id: cancelBtnMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    sudoPwdInput.text = "";
+                                    ControlCenterManager.cancelSudoAuth();
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            implicitWidth: 120
+                            implicitHeight: 32
+                            radius: Theme.radiusSmall
+                            color: ControlCenterManager.isAuthChecking ? Qt.darker(Theme.primary, 1.2) : (authConfirmMouse.containsMouse ? Qt.lighter(Theme.primary, 1.1) : Theme.primary)
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 6
+
+                                Text {
+                                    text: ControlCenterManager.isAuthChecking ? "󰑐" : "󰄬"
+                                    color: "#ffffff"
+                                    font.family: Theme.iconFontFamily
+                                    font.pixelSize: 12
+
+                                    RotationAnimation on rotation {
+                                        running: ControlCenterManager.isAuthChecking
+                                        from: 0
+                                        to: 360
+                                        duration: 1000
+                                        loops: Animation.Infinite
+                                    }
+                                }
+
+                                Text {
+                                    text: ControlCenterManager.isAuthChecking ? "Verificando..." : "Autenticar"
+                                    color: "#ffffff"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+
+                            MouseArea {
+                                id: authConfirmMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                enabled: !ControlCenterManager.isAuthChecking
+                                onClicked: {
+                                    if (sudoPwdInput.text.length > 0) {
+                                        ControlCenterManager.verifySudoPassword(sudoPwdInput.text);
                                     }
                                 }
                             }
