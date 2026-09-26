@@ -1140,6 +1140,90 @@ def sync_opencode_theme(theme_data):
     except Exception:
         pass
 
+def sync_starship_theme(theme_data):
+    try:
+        primary = validate_color(theme_data.get("primary"), "#88c0d0")
+        fg = validate_color(theme_data.get("text"), "#eceff4")
+        subtext = validate_color(theme_data.get("subtext"), "#d8dee9")
+        dir_color = validate_color(theme_data.get("cyan", primary), "#81a1c1")
+        branch_color = validate_color(theme_data.get("pink", primary), "#b48ead")
+        user_color = fg
+        warning = validate_color(theme_data.get("warning"), "#ebcb8b")
+        danger = validate_color(theme_data.get("danger"), "#bf616a")
+        success = validate_color(theme_data.get("success"), "#a3be8c")
+
+        starship_content = f"""# Generado automáticamente por MrDemonc Theme Manager
+add_newline = false
+palette = "current_theme"
+
+format = \"\"\"$os$username$directory$git_branch$git_status$character\"\"\"
+
+[os]
+disabled = false
+format = "[$symbol](bold primary) "
+
+[os.symbols]
+Arch = "󰣇"
+
+[username]
+disabled = false
+show_always = true
+format = "[$user](bold user_color) "
+
+[directory]
+style = "bold dir_color"
+home_symbol = "~"
+
+[git_branch]
+symbol = " "
+style = "bold branch_color"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+format = "[$all_status$ahead_behind]($style) "
+style = "bold warning"
+
+modified = "● "
+staged = "✓ "
+untracked = "+ "
+deleted = "✕ "
+renamed = "➜ "
+conflicted = "‼ "
+ahead = "↑${{count}}"
+behind = "↓${{count}}"
+diverged = "↕"
+stashed = "≡ "
+
+[character]
+success_symbol = "[❯](bold primary) "
+error_symbol = "[❯](bold danger) "
+
+[palettes.current_theme]
+primary = "{primary}"
+text = "{fg}"
+subtext = "{subtext}"
+dir_color = "{dir_color}"
+branch_color = "{branch_color}"
+user_color = "{user_color}"
+success = "{success}"
+warning = "{warning}"
+danger = "{danger}"
+"""
+
+        # 1. Guardar en ~/.config/starship.toml (usado directamente por Starship Prompt en el shell)
+        user_starship = os.path.expanduser("~/.config/starship.toml")
+        os.makedirs(os.path.dirname(user_starship), exist_ok=True)
+        with open(user_starship, "w", encoding="utf-8") as f:
+            f.write(starship_content)
+
+        # 2. Guardar en el estado actual de MrDemonc
+        state_dir = os.path.expanduser("~/.local/state/mrdemonc/current/theme")
+        os.makedirs(state_dir, exist_ok=True)
+        with open(os.path.join(state_dir, "starship.toml"), "w", encoding="utf-8") as f:
+            f.write(starship_content)
+    except Exception:
+        pass
+
 def set_theme(name):
     ensure_dirs()
     all_themes = get_all_themes()
@@ -1193,6 +1277,7 @@ def set_theme(name):
     sync_gtk_theme(theme_obj)
     sync_limine_theme(theme_obj)
     sync_opencode_theme(theme_obj)
+    sync_starship_theme(theme_obj)
     return True
 
 def sanitize_theme_id(name):
@@ -1206,8 +1291,12 @@ def validate_color(col, default="#ffffff"):
     c = col.strip()
     if not c.startswith('#'):
         c = '#' + c
-    if re.match(r'^#[0-9a-fA-F]{3}$', c) or re.match(r'^#[0-9a-fA-F]{6}$', c) or re.match(r'^#[0-9a-fA-F]{8}$', c):
+    if re.match(r'^#[0-9a-fA-F]{3}$', c):
+        return ('#' + c[1]*2 + c[2]*2 + c[3]*2).lower()
+    if re.match(r'^#[0-9a-fA-F]{6}$', c):
         return c.lower()
+    if re.match(r'^#[0-9a-fA-F]{8}$', c):
+        return c[:7].lower()
     return default
 
 def install_theme(source, target_id=None, apply_after=False):
@@ -1458,7 +1547,8 @@ def print_help():
 Comandos disponibles:
   (sin argumentos)              Abre el Selector Gráfico de Temas de Quickshell
   list                          Lista todos los temas instalados en formato JSON
-  set, apply <id>               Aplica un tema inmediatamente en Quickshell, Hyprland y Kitty
+  set, apply <id>               Aplica un tema inmediatamente en Quickshell, Hyprland, Kitty y Starship
+  sync, sync-all                Resincroniza el tema actual en todos los componentes del sistema
   install <origen> [--apply]    Instala un nuevo tema desde archivo, carpeta, .zip o URL
   create <id> [--name <nombre>] Crea una plantilla para un nuevo tema en ~/.config/quickshell/themes/
   export <id> [archivo.zip]     Empaqueta un tema en un archivo .zip para compartirlo
@@ -1479,6 +1569,13 @@ def main():
         if cmd in ("help", "-h", "--help"):
             print_help()
             return
+        elif cmd in ("sync", "sync-all"):
+            cur = get_current_theme_name()
+            if set_theme(cur):
+                print(f"✔ Tema '{cur}' sincronizado en todo el sistema (Starship, terminales, Hyprland, GTK, OpenCode, VSCode, Neovim).")
+                sys.exit(0)
+            else:
+                sys.exit(1)
         elif cmd == "list":
             all_themes = get_all_themes()
             res = []

@@ -1,27 +1,33 @@
+# Generado automáticamente por MrDemonc Theme Manager
 add_newline = false
+palette = "current_theme"
 
-format = """
-$os$username$directory$git_branch$git_status$character"""
+format = """$os$username$directory$git_branch$git_status$character"""
 
 [os]
 disabled = false
-format = "[$symbol](bold blue) "
+format = "[$symbol](bold primary) "
 
 [os.symbols]
 Arch = "󰣇"
 
+[username]
+disabled = false
+show_always = true
+format = "[$user](bold user_color) "
+
 [directory]
-style = "white"
+style = "bold dir_color"
 home_symbol = "~"
 
 [git_branch]
 symbol = " "
-style = "bold blue"
+style = "bold branch_color"
 format = "[$symbol$branch]($style) "
 
 [git_status]
 format = "[$all_status$ahead_behind]($style) "
-style = "yellow"
+style = "bold warning"
 
 modified = "● "
 staged = "✓ "
@@ -34,11 +40,17 @@ behind = "↓${count}"
 diverged = "↕"
 stashed = "≡ "
 
-[username]
-disabled = false
-show_always = true
-format = "[$user](bold white) "
-
 [character]
-success_symbol = "[❯](bold blue) "
-error_symbol = "[❯](bold red) "
+success_symbol = "[❯](bold primary) "
+error_symbol = "[❯](bold danger) "
+
+[palettes.current_theme]
+primary = "#88c0d0"
+text = "#eceff4"
+subtext = "#d8dee9"
+dir_color = "#81a1c1"
+branch_color = "#b48ead"
+user_color = "#eceff4"
+success = "#a3be8c"
+warning = "#ebcb8b"
+danger = "#bf616a"

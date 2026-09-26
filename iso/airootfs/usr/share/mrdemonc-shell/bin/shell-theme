@@ -25,7 +25,7 @@ if [ -z "$TARGET_DIR" ]; then
 fi
 
 case "$1" in
-    set|apply|list|install|create|export|remove|delete|info|help|-h|--help)
+    set|apply|sync|sync-all|list|install|create|export|remove|delete|info|help|-h|--help)
         exec python3 "$TARGET_DIR/scripts/theme_manager.py" "$@"
         ;;
     *)
