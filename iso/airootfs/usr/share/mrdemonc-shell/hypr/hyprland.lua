@@ -87,6 +87,8 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("sh -c 'sleep 1; if command -v shell-audio-init >/dev/null 2>&1; then shell-audio-init; else for c in $(pactl list cards short 2>/dev/null | awk \"{print \\$1}\"); do pactl set-card-profile \"$c\" \"HiFi (HDMI1, HDMI2, HDMI3, Mic1, Mic2, Speaker)\" 2>/dev/null || true; done; fi'")
     -- Automontador de discos y unidades extraíbles con soporte de bandeja del sistema (udiskie)
     hl.exec_cmd("sh -c 'if command -v udiskie >/dev/null 2>&1 && ! pgrep -x udiskie >/dev/null 2>&1; then udiskie --no-appindicator -s & fi'")
+    -- Asegurar directorios de usuario y marcadores estándar en Files / Nautilus (Descargas, Documentos, Imágenes, Vídeos, Música)
+    hl.exec_cmd("sh -c 'if command -v shell-bookmarks >/dev/null 2>&1; then shell-bookmarks -q; elif [ -f \"" .. shellPath .. "/scripts/setup_bookmarks.py\" ]; then python3 \"" .. shellPath .. "/scripts/setup_bookmarks.py\" -q; fi'")
 end)
 
 

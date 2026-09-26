@@ -2423,8 +2423,12 @@ MIME_CONF
     cp -f "$USER_HOME/.zlogin" /mnt/etc/skel/
     cp -f "$USER_HOME/.bash_profile" /mnt/etc/skel/
     cp -f "$USER_HOME/.bashrc" /mnt/etc/skel/
-    cp -f "$USER_HOME/.config/starship.toml" /mnt/etc/skel/.config/ 2>/dev/null || true
+    # Sincronizar marcadores predeterminados de Files / Nautilus para el usuario
+    if [ -f "$SYSTEM_SHELL/scripts/setup_bookmarks.py" ]; then
+        python3 "$SYSTEM_SHELL/scripts/setup_bookmarks.py" --home "$USER_HOME" -q 2>/dev/null || true
+    fi
     cp -rf "$USER_HOME/.config/gtk-3.0" /mnt/etc/skel/.config/ 2>/dev/null || true
+    rm -f /mnt/etc/skel/.config/gtk-3.0/bookmarks 2>/dev/null || true
     cp -rf "$USER_HOME/.config/gtk-4.0" /mnt/etc/skel/.config/ 2>/dev/null || true
     cp -r "$USER_HOME/.local/bin/." /mnt/etc/skel/.local/bin/ 2>/dev/null || true
 

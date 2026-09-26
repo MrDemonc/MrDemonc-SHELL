@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Wrapper para shell-bookmarks: asegura y sincroniza marcadores de usuario en Files / Nautilus
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_DIRS=(
+    "$QUICKSHELL_DIR"
+    "$SCRIPT_DIR/.."
+    "$HOME/Documentos/github/MrDemonc-SHELL"
+    "$HOME/Documentos/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+)
+
+TARGET_DIR=""
+for d in "${SEARCH_DIRS[@]}"; do
+    if [ -n "$d" ] && [ -f "$d/scripts/setup_bookmarks.py" ]; then
+        TARGET_DIR="$d"
+        break
+    fi
+done
+
+if [ -z "$TARGET_DIR" ]; then
+    echo "Error: No se encontró el directorio de MrDemonc-SHELL" >&2
+    exit 1
+fi
+
+exec python3 "$TARGET_DIR/scripts/setup_bookmarks.py" "$@"

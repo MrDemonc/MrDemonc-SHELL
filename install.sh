@@ -52,6 +52,7 @@ PACKAGES=(
     power-profiles-daemon
     brightnessctl
     xdg-utils
+    xdg-user-dirs
     libnotify
     grim
     slurp
@@ -227,6 +228,9 @@ create_cli_wrapper "shell-recover-lock" "bin/shell-recover-lock"
 create_cli_wrapper "shell-control-center" "bin/shell-control-center"
 create_cli_wrapper "shell-nightlight" "scripts/nightlight.py"
 create_cli_wrapper "shell-power-profile" "scripts/power_profile.py"
+create_cli_wrapper "shell-calendar" "bin/shell-calendar"
+create_cli_wrapper "shell-speedtest" "bin/shell-speedtest"
+create_cli_wrapper "shell-bookmarks" "bin/shell-bookmarks"
 
 # Instalar también en /usr/local/bin para disponibilidad global en el sistema
 if command -v sudo >/dev/null 2>&1; then
@@ -442,6 +446,14 @@ if command -v xdg-mime >/dev/null 2>&1; then
     xdg-mime default shell-image.desktop image/png image/jpeg image/jpg image/webp image/gif image/svg+xml image/avif image/bmp image/tiff image/heic image/heif image/jxl 2>/dev/null || true
     xdg-mime default shell-pdf.desktop application/pdf application/x-pdf application/x-bzpdf application/x-gzpdf 2>/dev/null || true
     xdg-mime default shell-video.desktop video/mp4 video/webm video/x-matroska video/quicktime video/x-msvideo video/ogg video/mpeg video/avi video/x-flv video/x-ms-wmv video/3gpp video/3gpp2 video/mp2t 2>/dev/null || true
+fi
+
+# Inicializar directorios de usuario y anclar marcadores estándar en Files / Nautilus
+if command -v xdg-user-dirs-update >/dev/null 2>&1; then
+    xdg-user-dirs-update --force 2>/dev/null || true
+fi
+if [ -f "$REPO_DIR/scripts/setup_bookmarks.py" ]; then
+    python3 "$REPO_DIR/scripts/setup_bookmarks.py" -q 2>/dev/null || true
 fi
 
 # Habilitar servicios de red, bluetooth e impresión
