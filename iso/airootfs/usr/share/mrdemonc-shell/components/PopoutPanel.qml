@@ -59,7 +59,7 @@ PanelWindow {
     WlrLayershell.keyboardFocus: (PopoutManager.hasPopout && popout.wantsKeyboard) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    visible: PopoutManager.hasPopout || popout.animProgress > 0.001
+    visible: (PopoutManager.hasPopout && (!PopoutManager.activeScreenName || (popoutWindow.screen && popoutWindow.screen.name === PopoutManager.activeScreenName))) || popout.animProgress > 0.001
 
     Shortcut {
         sequence: "Escape"

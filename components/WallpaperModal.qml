@@ -32,6 +32,7 @@ PanelWindow {
                     break;
                 }
             }
+            carousel.forceFocus();
         }
     }
 

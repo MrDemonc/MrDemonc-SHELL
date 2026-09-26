@@ -726,7 +726,7 @@ PanelWindow {
                     } else {
                         if (!PopoutManager.isDraggingAny) {
                             let centerCoord = PopoutManager.isVertical ? (modClock.y + modClock.height / 2) : (modClock.x + modClock.width / 2);
-                            PopoutManager.toggle("clock", centerCoord);
+                            PopoutManager.toggle("clock", centerCoord, barWindow.screen ? barWindow.screen.name : "");
                         }
                     }
                 }
@@ -967,7 +967,7 @@ PanelWindow {
                     } else {
                         if (!PopoutManager.isDraggingAny) {
                             let centerCoord = PopoutManager.isVertical ? (modAudio.y + modAudio.height / 2) : (modAudio.x + modAudio.width / 2);
-                            PopoutManager.toggle("audio", centerCoord);
+                            PopoutManager.toggle("audio", centerCoord, barWindow.screen ? barWindow.screen.name : "");
                         }
                     }
                 }
@@ -1110,7 +1110,7 @@ PanelWindow {
                     } else {
                         if (!PopoutManager.isDraggingAny) {
                             let centerCoord = PopoutManager.isVertical ? (modBluetooth.y + modBluetooth.height / 2) : (modBluetooth.x + modBluetooth.width / 2);
-                            PopoutManager.toggle("bluetooth", centerCoord);
+                            PopoutManager.toggle("bluetooth", centerCoord, barWindow.screen ? barWindow.screen.name : "");
                         }
                     }
                 }
@@ -1247,7 +1247,7 @@ PanelWindow {
                     } else {
                         if (!PopoutManager.isDraggingAny) {
                             let centerCoord = PopoutManager.isVertical ? (modWifi.y + modWifi.height / 2) : (modWifi.x + modWifi.width / 2);
-                            PopoutManager.toggle("wifi", centerCoord);
+                            PopoutManager.toggle("wifi", centerCoord, barWindow.screen ? barWindow.screen.name : "");
                         }
                     }
                 }
@@ -1393,7 +1393,7 @@ PanelWindow {
                     } else {
                         if (!PopoutManager.isDraggingAny) {
                             let centerCoord = PopoutManager.isVertical ? (modBattery.y + modBattery.height / 2) : (modBattery.x + modBattery.width / 2);
-                            PopoutManager.toggle("battery", centerCoord);
+                            PopoutManager.toggle("battery", centerCoord, barWindow.screen ? barWindow.screen.name : "");
                         }
                     }
                 }

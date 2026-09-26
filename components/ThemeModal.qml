@@ -45,6 +45,7 @@ PanelWindow {
         if (visible) {
             syncCurrentIndex();
             Theme.refresh();
+            carousel.forceFocus();
         }
     }
 

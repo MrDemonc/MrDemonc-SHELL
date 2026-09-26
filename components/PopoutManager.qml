@@ -61,10 +61,19 @@ QtObject {
 
     property var saveOrderProc: Process {}
 
-    function open(name, centerX) {
+    property string activeScreenName: ""
+
+    function open(name, centerX, screenName) {
         if (!isDraggingAny) {
             activePopout = name;
             lastActivePopout = name;
+            if (screenName !== undefined && screenName !== "") {
+                activeScreenName = screenName;
+            } else if (typeof Hyprland !== "undefined" && Hyprland.focusedMonitor && Hyprland.focusedMonitor.name) {
+                activeScreenName = Hyprland.focusedMonitor.name;
+            } else {
+                activeScreenName = "";
+            }
             if (centerX !== undefined && centerX > 0) {
                 popoutCenter = centerX;
             } else {
@@ -75,13 +84,14 @@ QtObject {
 
     function close() {
         activePopout = "";
+        activeScreenName = "";
     }
 
-    function toggle(name, centerX) {
+    function toggle(name, centerX, screenName) {
         if (!name || name === "close" || activePopout === name) {
             close();
         } else {
-            open(name, centerX);
+            open(name, centerX, screenName);
         }
     }
 

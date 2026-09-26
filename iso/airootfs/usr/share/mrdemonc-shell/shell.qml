@@ -1,5 +1,6 @@
 import Quickshell
 import QtQuick
+import Quickshell.Hyprland
 import "./components"
 
 ShellRoot {
@@ -14,6 +15,19 @@ ShellRoot {
     property var _powerMgr: PowerManager
     property var _monitorMgr: MonitorManager
     property var _controlCenterMgr: ControlCenterManager
+
+    // Pantalla activa / enfocada actualmente por Hyprland (con fallback seguro a la primera pantalla disponible)
+    readonly property var focusedScreen: {
+        let focusedName = (Hyprland.focusedMonitor && Hyprland.focusedMonitor.name) ? Hyprland.focusedMonitor.name : "";
+        if (focusedName !== "") {
+            for (let i = 0; i < Quickshell.screens.length; i++) {
+                if (Quickshell.screens[i].name === focusedName) {
+                    return Quickshell.screens[i];
+                }
+            }
+        }
+        return Quickshell.screens.length > 0 ? Quickshell.screens[0] : null;
+    }
 
     // 1. Fondo de pantalla integrado por pantalla
     Variants {
@@ -63,40 +77,19 @@ ShellRoot {
         }
     }
 
-    // 4. Modal flotante central de selección de temas
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            ThemeModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    // 4. Modal flotante central de selección de temas (Enfocado en pantalla activa)
+    ThemeModal {
+        screen: rootShell.focusedScreen
     }
 
-    // 5. Modal flotante central de selección de fondos de pantalla (Wallpapers)
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            WallpaperModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    // 5. Modal flotante central de selección de fondos de pantalla (Enfocado en pantalla activa)
+    WallpaperModal {
+        screen: rootShell.focusedScreen
     }
 
-    // 6. Modal flotante de Búsqueda y Lanzador de Aplicaciones
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            AppLauncherModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    // 6. Modal flotante de Búsqueda y Lanzador de Aplicaciones (Enfocado en pantalla activa)
+    AppLauncherModal {
+        screen: rootShell.focusedScreen
     }
 
     // 7. Guía visual de acoplamiento de la barra al arrastrar
@@ -124,54 +117,33 @@ ShellRoot {
     }
 
     // 8. Modal flotante de Atajos de Teclado y Comandos del Sistema (SUPER + K)
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            KeybindsModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    KeybindsModal {
+        screen: rootShell.focusedScreen
     }
 
     // 9. Modal flotante de Configuración de Pantallas y Monitores (SUPER + SHIFT + S)
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            MonitorModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    MonitorModal {
+        screen: rootShell.focusedScreen
     }
 
     // 10. Modal flotante de Selección y Búsqueda de Ubicación del Clima
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            WeatherLocationModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    WeatherLocationModal {
+        screen: rootShell.focusedScreen
     }
 
-    // 11. Modal flotante de Menú de Energía y Apagado (SUPER + ESC) - Única instancia global
+    // 11. Modal flotante de Menú de Energía y Apagado (SUPER + ESC)
     PowerModal {
-        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        screen: rootShell.focusedScreen
     }
 
-    // 12. Banners flotantes de Notificaciones (Toasts emergentes)
+    // 12. Banners flotantes de Notificaciones (Toasts emergentes en pantalla activa)
     NotificationPopups {
-        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        screen: rootShell.focusedScreen
     }
 
-    // 13. Panel lateral del Centro de Notificaciones (SUPER + N)
+    // 13. Panel lateral del Centro de Notificaciones (SUPER + N en pantalla activa)
     NotificationSidebar {
-        screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        screen: rootShell.focusedScreen
     }
 
     // 14. Menú contextual emergente para apps del Tray (Clic derecho)
@@ -187,55 +159,25 @@ ShellRoot {
     }
 
     // 15. Modal flotante de Grabación de Pantalla (SUPER + SHIFT + R)
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            ScreenRecordModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    ScreenRecordModal {
+        screen: rootShell.focusedScreen
     }
 
     // 16. Modal flotante de Cuentagotas / Selector de Color (SUPER + SHIFT + P)
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            ColorPickerModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    ColorPickerModal {
+        screen: rootShell.focusedScreen
     }
 
     // 17. Pantalla de Bloqueo Nativa Quickshell (SUPER + L / Inactividad)
     LockScreen {}
 
-    // 18. Indicador OSD de Volumen y Brillo
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            OsdModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    // 18. Indicador OSD de Volumen y Brillo (en pantalla activa)
+    OsdModal {
+        screen: rootShell.focusedScreen
     }
 
-    // 19. Centro de Control Flotante del Sistema (SUPER + I)
-    Variants {
-        model: Quickshell.screens
-
-        delegate: Component {
-            ControlCenterModal {
-                required property var modelData
-                screen: modelData
-            }
-        }
+    // 19. Centro de Control Flotante del Sistema (SUPER + I en pantalla activa)
+    ControlCenterModal {
+        screen: rootShell.focusedScreen
     }
 }
-
-

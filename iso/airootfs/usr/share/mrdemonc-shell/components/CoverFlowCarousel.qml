@@ -62,6 +62,16 @@ Item {
         Component.onCompleted: forceActiveFocus()
     }
 
+    function forceFocus() {
+        keyHandler.forceActiveFocus();
+    }
+
+    onVisibleChanged: {
+        if (visible) {
+            keyHandler.forceActiveFocus();
+        }
+    }
+
     // Fondo oscurecido con click para cerrar
     Rectangle {
         id: scrim
