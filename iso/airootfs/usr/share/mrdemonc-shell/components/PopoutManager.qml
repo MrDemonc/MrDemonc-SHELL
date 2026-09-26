@@ -14,7 +14,7 @@ QtObject {
     property bool themeModalOpen: false
 
     property var watchToggleProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_theme_picker.toggle\"; while true; do if [ -f \"$STATE\" ] || [ -f \"/tmp/quickshell_theme_picker.toggle\" ]; then rm -f \"$STATE\" /tmp/quickshell_theme_picker.toggle 2>/dev/null; echo 'TOGGLE'; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_theme_picker.toggle\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$STATE\" ] || [ -f \"/tmp/quickshell_theme_picker.toggle\" ]; then rm -f \"$STATE\" /tmp/quickshell_theme_picker.toggle 2>/dev/null; echo 'TOGGLE'; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -27,7 +27,7 @@ QtObject {
 
     // Monitoreo de popouts por comando CLI / atajo
     property var watchPopoutProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle\"; while true; do if [ -f \"$STATE\" ]; then T=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"POPOUT:$T\"; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_popout.toggle\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$STATE\" ]; then T=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"POPOUT:$T\"; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -183,7 +183,7 @@ QtObject {
 
     // Monitoreo de cambio de posición de la barra por comando CLI
     property var watchPositionProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_bar_position.set\"; while true; do if [ -f \"$STATE\" ]; then POS=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"POS:$POS\"; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_bar_position.set\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$STATE\" ]; then POS=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"POS:$POS\"; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -262,7 +262,7 @@ QtObject {
     }
 
     property var watchVisibilityProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_indicators_visibility.set\"; while true; do if [ -f \"$STATE\" ]; then VIS=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"VIS:$VIS\"; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_indicators_visibility.set\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$STATE\" ]; then VIS=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"VIS:$VIS\"; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

@@ -60,7 +60,7 @@ QtObject {
 
     // Observador para atajo SUPER + N o comandos CLI
     property var watchToggleProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_notifications.toggle\"; while true; do if [ -f \"$STATE\" ]; then CMD=$(cat \"$STATE\" 2>/dev/null); rm -f \"$STATE\"; echo \"${CMD:-TOGGLE}\"; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_notifications.toggle\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$STATE\" ]; then CMD=$(cat \"$STATE\" 2>/dev/null); rm -f \"$STATE\"; echo \"${CMD:-TOGGLE}\"; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

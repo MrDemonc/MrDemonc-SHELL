@@ -336,7 +336,7 @@ Item {
 
     // Escuchar peticiones de bloqueo y desbloqueo por FIFO runtime (<1ms) y archivo de respaldo
     property var watchLockProc: Process {
-        command: ["sh", "-c", "FIFO=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.fifo\"; LOCK=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.toggle\"; rm -f \"$FIFO\"; mkfifo \"$FIFO\"; ( while true; do if [ -f \"$LOCK\" ]; then VAL=$(cat \"$LOCK\" 2>/dev/null); rm -f \"$LOCK\"; if [ -p \"$FIFO\" ]; then echo \"$VAL\" > \"$FIFO\" 2>/dev/null || true; fi; fi; sleep 0.05; done ) & BG_PID=$!; trap 'kill $BG_PID 2>/dev/null; rm -f \"$FIFO\"' EXIT; while true; do if read -r line < \"$FIFO\"; then echo \"$line\"; fi; done"]
+        command: ["sh", "-c", "FIFO=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.fifo\"; LOCK=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_lock.toggle\"; rm -f \"$FIFO\"; mkfifo \"$FIFO\"; ( while kill -0 $PPID 2>/dev/null; do if [ -f \"$LOCK\" ]; then VAL=$(cat \"$LOCK\" 2>/dev/null); rm -f \"$LOCK\"; if [ -p \"$FIFO\" ]; then echo \"$VAL\" > \"$FIFO\" 2>/dev/null || true; fi; fi; sleep 0.04; done ) & BG_PID=$!; trap 'kill $BG_PID 2>/dev/null; rm -f \"$FIFO\"' EXIT; while kill -0 $PPID 2>/dev/null; do if read -r line < \"$FIFO\"; then echo \"$line\"; fi; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

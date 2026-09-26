@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-weather-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WeatherLocationManager.modalOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: WeatherLocationManager.modalOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: WeatherLocationManager.modalOpen || modalCard.opacity > 0.01

@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-keybinds-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: KeybindsManager.keybindsOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: KeybindsManager.keybindsOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: KeybindsManager.keybindsOpen || modalCard.opacity > 0.01

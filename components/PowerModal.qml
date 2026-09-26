@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-power-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: PowerManager.powerOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: PowerManager.powerOpen || modalCard.opacity > 0.01

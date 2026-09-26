@@ -129,7 +129,7 @@ Item {
     }
 
     property var watchPickerProc: Process {
-        command: ["sh", "-c", "DATA=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_colorpicker.data\"; while true; do if [ -f \"$DATA\" ]; then VAL=$(cat \"$DATA\"); rm -f \"$DATA\"; echo \"$VAL\"; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "DATA=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_colorpicker.data\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$DATA\" ]; then VAL=$(cat \"$DATA\"); rm -f \"$DATA\"; echo \"$VAL\"; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

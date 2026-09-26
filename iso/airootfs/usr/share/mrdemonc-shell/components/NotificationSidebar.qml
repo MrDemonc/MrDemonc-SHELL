@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-notification-sidebar"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: NotificationManager.sidebarOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: NotificationManager.sidebarOpen || scrim.opacity > 0.01

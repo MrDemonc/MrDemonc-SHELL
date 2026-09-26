@@ -58,12 +58,22 @@ export QS_NO_RELOAD_POPUP=1
 terminating=0
 shell_pid=""
 
+cleanup_shell_children() {
+    pkill -f "quickshell_.*\.toggle" 2>/dev/null || true
+    pkill -f "quickshell_.*\.fifo" 2>/dev/null || true
+    pkill -f "quickshell_.*\.set" 2>/dev/null || true
+    pkill -f "quickshell_.*\.data" 2>/dev/null || true
+    pkill -f "quickshell_.*\.start" 2>/dev/null || true
+    pkill -f "quickshell_.*\.stop" 2>/dev/null || true
+}
+
 stop() {
     terminating=1
     rm -f "$PID_FILE" 2>/dev/null || true
     if [ -n "$shell_pid" ]; then
         kill -TERM "$shell_pid" 2>/dev/null || true
     fi
+    cleanup_shell_children
     return 0
 }
 trap stop HUP INT TERM
@@ -111,8 +121,10 @@ window_started=$SECONDS
 while true; do
     [ "$terminating" -eq 1 ] && exit 0
 
+    cleanup_shell_children
     run_shell
     status=$?
+    cleanup_shell_children
 
     [ "$terminating" -eq 1 ] && exit 0
     [ "$status" -eq 0 ] && exit 0

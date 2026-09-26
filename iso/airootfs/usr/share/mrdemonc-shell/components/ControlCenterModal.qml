@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-control-center-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: ControlCenterManager.isOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: ControlCenterManager.isOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: ControlCenterManager.isOpen || modalCard.opacity > 0.01

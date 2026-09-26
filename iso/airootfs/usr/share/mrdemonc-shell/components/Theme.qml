@@ -107,7 +107,7 @@ QtObject {
 
     // Observador para cambios externos de tema (vía shell-theme o script)
     property var watchThemeChangeProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_theme_reload.toggle\"; while true; do if [ -f \"$STATE\" ]; then rm -f \"$STATE\"; echo 'RELOAD'; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_theme_reload.toggle\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$STATE\" ]; then rm -f \"$STATE\"; echo 'RELOAD'; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

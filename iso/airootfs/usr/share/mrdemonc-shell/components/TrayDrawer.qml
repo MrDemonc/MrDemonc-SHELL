@@ -110,7 +110,7 @@ Item {
 
     // Verificación continua de procesos activos (cada 2.5s)
     property var checkProc: Process {
-        command: ["sh", "-c", "while true; do " + Quickshell.shellDir + "/scripts/check_background_apps.sh; sleep 2.5; done"]
+        command: ["sh", "-c", "while kill -0 $PPID 2>/dev/null; do " + Quickshell.shellDir + "/scripts/check_background_apps.sh; sleep 2.5; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

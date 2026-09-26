@@ -20,7 +20,7 @@ QtObject {
     }
 
     property var watchMenuProc: Process {
-        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_tray_menu.toggle\"; while true; do if [ -f \"$STATE\" ]; then T=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"MENU:$T\"; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "STATE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_tray_menu.toggle\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$STATE\" ]; then T=$(cat \"$STATE\"); rm -f \"$STATE\"; echo \"MENU:$T\"; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

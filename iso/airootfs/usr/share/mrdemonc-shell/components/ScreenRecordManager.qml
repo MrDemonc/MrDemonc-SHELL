@@ -64,7 +64,7 @@ Item {
 
     // 1. Escuchar eventos de cambio de estado (START / STOP)
     property var watchStateProc: Process {
-        command: ["sh", "-c", "START=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_recorder.start\"; STOP=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_recorder.stop\"; while true; do if [ -f \"$START\" ]; then rm -f \"$START\"; echo 'START'; elif [ -f \"$STOP\" ]; then rm -f \"$STOP\"; echo 'STOP'; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "START=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_recorder.start\"; STOP=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_recorder.stop\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$START\" ]; then rm -f \"$START\"; echo 'START'; elif [ -f \"$STOP\" ]; then rm -f \"$STOP\"; echo 'STOP'; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {
@@ -84,7 +84,7 @@ Item {
 
     // 2. Escuchar peticiones de Toggle por atajo de teclado
     property var watchToggleProc: Process {
-        command: ["sh", "-c", "TOGGLE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_recorder.toggle\"; while true; do if [ -f \"$TOGGLE\" ]; then rm -f \"$TOGGLE\"; echo 'TOGGLE'; fi; sleep 0.15; done"]
+        command: ["sh", "-c", "TOGGLE=\"${XDG_RUNTIME_DIR:-/tmp}/quickshell_recorder.toggle\"; while kill -0 $PPID 2>/dev/null; do if [ -f \"$TOGGLE\" ]; then rm -f \"$TOGGLE\"; echo 'TOGGLE'; fi; sleep 0.04; done"]
         running: true
         stdout: SplitParser {
             onRead: function(data) {

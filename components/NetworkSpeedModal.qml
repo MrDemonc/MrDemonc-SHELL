@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-network-speed-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: NetworkSpeedManager.modalOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: NetworkSpeedManager.modalOpen || modalCard.opacity > 0.01

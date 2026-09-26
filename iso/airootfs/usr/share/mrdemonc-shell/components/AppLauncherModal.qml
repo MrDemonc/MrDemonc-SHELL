@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-app-launcher"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: AppLauncherManager.appLauncherOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: AppLauncherManager.appLauncherOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: AppLauncherManager.appLauncherOpen || modalCard.scale > 0.01
