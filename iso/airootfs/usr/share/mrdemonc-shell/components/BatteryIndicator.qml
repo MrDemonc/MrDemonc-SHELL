@@ -57,7 +57,7 @@ Item {
 
     function setProfile(profile) {
         root.currentProfile = profile;
-        setProfileProc.command = ["powerprofilesctl", "set", profile];
+        setProfileProc.command = [Quickshell.shellDir + "/scripts/power_profile.py", "set", profile];
         setProfileProc.running = false;
         setProfileProc.running = true;
     }

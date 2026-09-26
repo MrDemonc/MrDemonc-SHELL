@@ -49,6 +49,7 @@ PACKAGES=(
     bluez
     bluez-utils
     upower
+    power-profiles-daemon
     brightnessctl
     xdg-utils
     libnotify
@@ -225,6 +226,7 @@ create_cli_wrapper "shell-session-locked" "bin/shell-session-locked"
 create_cli_wrapper "shell-recover-lock" "bin/shell-recover-lock"
 create_cli_wrapper "shell-control-center" "bin/shell-control-center"
 create_cli_wrapper "shell-nightlight" "scripts/nightlight.py"
+create_cli_wrapper "shell-power-profile" "scripts/power_profile.py"
 
 # Instalar también en /usr/local/bin para disponibilidad global en el sistema
 if command -v sudo >/dev/null 2>&1; then
@@ -446,6 +448,7 @@ fi
 if command -v systemctl >/dev/null 2>&1; then
     sudo systemctl enable --now NetworkManager 2>/dev/null || true
     sudo systemctl enable --now bluetooth 2>/dev/null || true
+    sudo systemctl enable --now power-profiles-daemon.service 2>/dev/null || true
     sudo systemctl enable --now cups 2>/dev/null || true
     sudo systemctl enable --now avahi-daemon 2>/dev/null || true
     # Dar prioridad exclusiva al servidor nativo de notificaciones de Quickshell

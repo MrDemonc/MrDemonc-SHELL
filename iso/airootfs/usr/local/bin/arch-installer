@@ -1220,6 +1220,7 @@ perform_installation_worker() {
         bluez
         bluez-utils
         upower
+        power-profiles-daemon
         brightnessctl
         xdg-utils
         xdg-user-dirs
@@ -1663,6 +1664,7 @@ systemctl enable cups.service 2>/dev/null || true
 systemctl enable avahi-daemon.service 2>/dev/null || true
 systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null || true
 systemctl enable udisks2.service 2>/dev/null || true
+systemctl enable power-profiles-daemon.service 2>/dev/null || true
 
 # Configurar reglas de Polkit para permitir montaje de discos y particiones sin contraseña
 mkdir -p /etc/polkit-1/rules.d

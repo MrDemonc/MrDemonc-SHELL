@@ -58,26 +58,36 @@ def load_state():
 def save_state(state):
     try:
         os.makedirs(CONFIG_DIR, exist_ok=True)
-        with open(CONFIG_FILE, "w") as f:
+        tmp_cfg = CONFIG_FILE + ".tmp"
+        with open(tmp_cfg, "w") as f:
             json.dump(state, f, indent=2)
-        with open(NOTIFY_FILE, "w") as f:
+        os.replace(tmp_cfg, CONFIG_FILE)
+
+        tmp_not = NOTIFY_FILE + ".tmp"
+        with open(tmp_not, "w") as f:
             f.write(json.dumps(state))
+        os.replace(tmp_not, NOTIFY_FILE)
     except Exception:
         pass
 
 def generate_shader(r, g, b):
-    content = f"""precision highp float;
-varying vec2 v_texcoord;
+    # Formato GLSL 3.00 ES estándar para Hyprland moderno
+    content = f"""#version 300 es
+precision mediump float;
+in vec2 v_texcoord;
+layout(location = 0) out vec4 fragColor;
 uniform sampler2D tex;
 
 void main() {{
-    vec4 pixColor = texture2D(tex, v_texcoord);
-    gl_FragColor = vec4(pixColor.r * {r:.4f}, pixColor.g * {g:.4f}, pixColor.b * {b:.4f}, pixColor.a);
+    vec4 pixColor = texture(tex, v_texcoord);
+    fragColor = vec4(pixColor.r * {r:.4f}, pixColor.g * {g:.4f}, pixColor.b * {b:.4f}, pixColor.a);
 }}
 """
     try:
-        with open(SHADER_FILE, "w") as f:
+        tmp_sh = SHADER_FILE + ".tmp"
+        with open(tmp_sh, "w") as f:
             f.write(content)
+        os.replace(tmp_sh, SHADER_FILE)
         return True
     except Exception:
         return False
@@ -86,25 +96,47 @@ def apply_state(state):
     enabled = state.get("enabled", False)
     temp = state.get("temperature", 4000)
 
-    # 1. Si existe hyprsunset, usarlo como complemento
     has_hyprsunset = shutil.which("hyprsunset") is not None
-    if has_hyprsunset:
-        subprocess.run(["pkill", "-x", "hyprsunset"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if enabled:
-            subprocess.Popen(["hyprsunset", "-t", str(temp)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    has_wlsunset = shutil.which("wlsunset") is not None
 
-    # 2. Aplicar de forma nativa vía Hyprland Screen Shader
-    try:
-        if enabled:
+    if not enabled:
+        # Desactivar todas las herramientas de luz nocturna
+        if has_hyprsunset:
+            subprocess.run(["pkill", "-x", "hyprsunset"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if has_wlsunset:
+            subprocess.run(["pkill", "-x", "wlsunset"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # Limpiar screen_shader en Hyprland tanto con eval como con keyword
+        subprocess.run(["hyprctl", "eval", "hl.config({ decoration = { screen_shader = '' } })"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["hyprctl", "keyword", "decoration:screen_shader", "''"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return
+
+    # Si está activado:
+    if has_hyprsunset:
+        # Limpiar screen_shader previo para evitar doble tinte
+        subprocess.run(["hyprctl", "eval", "hl.config({ decoration = { screen_shader = '' } })"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["pkill", "-x", "hyprsunset"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(["hyprsunset", "-t", str(temp)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif has_wlsunset:
+        subprocess.run(["hyprctl", "eval", "hl.config({ decoration = { screen_shader = '' } })"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["pkill", "-x", "wlsunset"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(["wlsunset", "-t", str(temp), "-T", str(temp)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        # Fallback nativo: Hyprland Screen Shader GLSL 3.00 ES
+        try:
             r, g, b = kelvin_to_rgb(temp)
             if generate_shader(r, g, b):
-                lua_cmd = f"hl.config({{ decoration = {{ screen_shader = '{SHADER_FILE}' }} }})"
-                subprocess.run(["hyprctl", "eval", lua_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        else:
-            lua_cmd = "hl.config({ decoration = { screen_shader = '' } })"
-            subprocess.run(["hyprctl", "eval", lua_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception:
-        pass
+                res = subprocess.run(["hyprctl", "eval", f"hl.config({{ decoration = {{ screen_shader = '{SHADER_FILE}' }} }})"],
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if res.returncode != 0 or "unknown" in res.stderr.lower():
+                    subprocess.run(["hyprctl", "keyword", "decoration:screen_shader", SHADER_FILE],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
 
 def main():
     state = load_state()

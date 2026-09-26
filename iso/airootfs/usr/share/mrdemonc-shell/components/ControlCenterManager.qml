@@ -382,9 +382,15 @@ QtObject {
         stdout: SplitParser {
             onRead: data => {
                 try {
-                    let info = JSON.parse(String(data).trim());
-                    mgr.nightLightEnabled = !!info.enabled;
-                    mgr.nightLightTemp = info.temperature || 4000;
+                    let s = String(data).trim();
+                    if (!s) return;
+                    let info = JSON.parse(s);
+                    if (info && typeof info.enabled === "boolean") {
+                        mgr.nightLightEnabled = info.enabled;
+                    }
+                    if (info && info.temperature) {
+                        mgr.nightLightTemp = info.temperature;
+                    }
                 } catch (e) {}
             }
         }
@@ -393,6 +399,17 @@ QtObject {
     property var setNightLightProc: Process {
         onExited: {
             mgr.refreshNightLight();
+        }
+    }
+
+    property int _pendingNightLightTemp: 4000
+    property var nightLightDebounceTimer: Timer {
+        interval: 90
+        repeat: false
+        onTriggered: {
+            setNightLightProc.command = [Quickshell.shellDir + "/scripts/nightlight.py", "set", mgr._pendingNightLightTemp.toString()];
+            setNightLightProc.running = false;
+            setNightLightProc.running = true;
         }
     }
 
@@ -415,9 +432,8 @@ QtObject {
     function setNightLightTemp(val) {
         val = Math.max(2500, Math.min(6500, Math.round(val)));
         mgr.nightLightTemp = val;
-        setNightLightProc.command = [Quickshell.shellDir + "/scripts/nightlight.py", "set", val.toString()];
-        setNightLightProc.running = false;
-        setNightLightProc.running = true;
+        mgr._pendingNightLightTemp = val;
+        nightLightDebounceTimer.restart();
     }
 
     // -------------------------------------------------------------------------
@@ -467,7 +483,7 @@ QtObject {
 
     function setPowerProfile(profile) {
         mgr.currentPowerProfile = profile;
-        setProfileProc.command = ["powerprofilesctl", "set", profile];
+        setProfileProc.command = [Quickshell.shellDir + "/scripts/power_profile.py", "set", profile];
         setProfileProc.running = false;
         setProfileProc.running = true;
     }

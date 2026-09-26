@@ -8,8 +8,9 @@
 # --- Entorno de Ventanas & Compositor ---
 hyprland
 
-# --- Gestión de Inactividad (Idle Daemon) ---
+# --- Gestión de Inactividad & Luz Nocturna ---
 hypridle
+hyprsunset
 
 # --- Servidor de Sonido & Control Multimedia ---
 pipewire
@@ -33,6 +34,7 @@ bluez-utils
 
 # --- Control de Energía, Brillo & Integración de Escritorio ---
 upower
+power-profiles-daemon
 brightnessctl
 xdg-utils
 xdg-user-dirs

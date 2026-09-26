@@ -16,10 +16,10 @@ O instalando individualmente desde el archivo de texto:
 
 ```bash
 sudo pacman -S --needed \
-    hyprland hypridle \
+    hyprland hypridle hyprsunset \
     pipewire wireplumber libpulse playerctl \
     networkmanager bluez bluez-utils \
-    upower brightnessctl xdg-utils libnotify \
+    upower power-profiles-daemon brightnessctl xdg-utils libnotify \
     grim slurp wl-clipboard wtype \
     kitty dolphin ttf-jetbrains-mono-nerd \
     zsh starship fastfetch chafa python curl git
@@ -46,6 +46,7 @@ paru -S --needed quickshell
 ### 1. Entorno de Ventanas y Gestión de Inactividad
 * **`hyprland`**: Compositor dinámico en mosaico Wayland.
 * **`hypridle`**: Demonio de inactividad que atenúa la pantalla a los 5m, bloquea con Quickshell Lock Screen a los 10m y apaga el monitor a los 15m.
+* **`hyprsunset`**: Demonio oficial de Hyprland para filtro de luz azul (luz nocturna / modo de protección visual) por hardware gamma / CTM.
 
 ### 2. Audio y Multimedia
 * **`pipewire`**: Servidor de audio moderno y de baja latencia.
@@ -61,6 +62,7 @@ paru -S --needed quickshell
 
 ### 4. Batería, Brillo y Utilidades del Sistema
 * **`upower`**: Demonio para consultar el estado, porcentaje y ciclo de carga de la batería en laptops.
+* **`power-profiles-daemon`**: Demonio estándar de D-Bus (`powerprofilesctl`) para conmutar perfiles de energía (Ahorro, Equilibrado y Alto Rendimiento).
 * **`brightnessctl`**: Ajuste suave del brillo de retroiluminación de pantalla.
 * **`xdg-utils`**: Herramientas estándar (`xdg-open`) para abrir URLs, carpetas y archivos con sus aplicaciones asociadas.
 * **`libnotify`**: Proporciona el comando `notify-send` para notificaciones visuales en el escritorio.

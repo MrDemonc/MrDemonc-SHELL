@@ -22,9 +22,35 @@ def get_battery_info():
     # Perfil de energía
     profile = "balanced"
     try:
-        profile = subprocess.check_output(["powerprofilesctl", "get"], stderr=subprocess.DEVNULL, timeout=1).decode().strip() or "balanced"
+        out = subprocess.check_output(["powerprofilesctl", "get"], stderr=subprocess.DEVNULL, timeout=1).decode().strip()
+        if out in ("power-saver", "balanced", "performance"):
+            profile = out
     except Exception:
         pass
+
+    if profile == "balanced":
+        # Fallback a estado persistido en ~/.config/quickshell/power_profile.json
+        cfg_file = os.path.expanduser("~/.config/quickshell/power_profile.json")
+        if os.path.isfile(cfg_file):
+            try:
+                with open(cfg_file, "r") as f:
+                    p = json.load(f).get("profile", "")
+                    if p in ("power-saver", "balanced", "performance"):
+                        profile = p
+            except Exception:
+                pass
+        else:
+            epp_file = "/sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference"
+            if os.path.isfile(epp_file):
+                try:
+                    with open(epp_file, "r") as f:
+                        val = f.read().strip()
+                        if "perf" in val:
+                            profile = "performance"
+                        elif "power" in val:
+                            profile = "power-saver"
+                except Exception:
+                    pass
 
     if bat_dirs and os.path.isdir(bat_dirs[0]):
         bpath = bat_dirs[0]

@@ -172,3 +172,5 @@ gvfs-smb
 ntfs-3g
 udisks2
 udiskie
+power-profiles-daemon
+hyprsunset
