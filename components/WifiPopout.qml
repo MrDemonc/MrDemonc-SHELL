@@ -53,6 +53,35 @@ Item {
 
             Item { Layout.fillWidth: true }
 
+            // Botón Medidor de Velocidad de Red (󰓅)
+            Rectangle {
+                implicitWidth: 28
+                implicitHeight: 28
+                radius: 7
+                color: speedMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+
+                Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "󰓅"
+                    color: speedMouse.containsMouse ? Theme.primary : Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 13
+                }
+
+                MouseArea {
+                    id: speedMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        PopoutManager.close();
+                        NetworkSpeedManager.open();
+                    }
+                }
+            }
+
             // Botón Red Oculta (+)
             Rectangle {
                 implicitWidth: 28

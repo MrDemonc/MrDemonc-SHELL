@@ -17,6 +17,7 @@ ShellRoot {
     property var _keybindsMgr: KeybindsManager
     property var _controlCenterMgr: ControlCenterManager
     property var _calendarMgr: CalendarManager
+    property var _netSpeedMgr: NetworkSpeedManager
 
     // Pantalla activa / enfocada actualmente por Hyprland (con fallback seguro a la primera pantalla disponible)
     readonly property var focusedScreen: {
@@ -185,6 +186,11 @@ ShellRoot {
 
     // 20. Modal flotante de Calendario y Reloj (SUPER + ALT en pantalla activa)
     CalendarModal {
+        screen: rootShell.focusedScreen
+    }
+
+    // 21. Modal flotante de Medidor de Velocidad y Red
+    NetworkSpeedModal {
         screen: rootShell.focusedScreen
     }
 }
