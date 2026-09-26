@@ -614,6 +614,8 @@ QtObject {
     property string authActionDescription: ""
     property var pendingSudoAction: null
 
+    property string lastVerifiedPassword: ""
+
     property var sudoCheckProc: Process {
         command: ["sudo", "-n", "true"]
         onExited: function(exitCode, exitStatus) {
@@ -621,7 +623,7 @@ QtObject {
                 // Ya se tiene sesión sudo activa en el kernel, ejecutar directamente
                 let act = mgr.pendingSudoAction;
                 mgr.pendingSudoAction = null;
-                mgr.executeSudoAction(act);
+                mgr.executeSudoAction(act, "");
             } else {
                 // Requiere contraseña: abrir modal nativo de Quickshell
                 mgr.isAuthChecking = false;
@@ -636,7 +638,9 @@ QtObject {
         command: ["python3", Quickshell.shellDir + "/scripts/package_manager.py", "auth"]
         onStarted: {
             write(passwordToVerify + "\n");
+            mgr.lastVerifiedPassword = passwordToVerify;
             passwordToVerify = "";
+            stdinEnabled = false;
         }
         onExited: function(exitCode, exitStatus) {
             authTimeoutTimer.stop();
@@ -645,9 +649,12 @@ QtObject {
                 mgr.isAuthModalOpen = false;
                 mgr.authErrorMessage = "";
                 let act = mgr.pendingSudoAction;
+                let pwd = mgr.lastVerifiedPassword;
                 mgr.pendingSudoAction = null;
-                mgr.executeSudoAction(act);
+                mgr.lastVerifiedPassword = "";
+                mgr.executeSudoAction(act, pwd);
             } else {
+                mgr.lastVerifiedPassword = "";
                 mgr.authErrorMessage = "Contraseña incorrecta. Inténtalo de nuevo.";
             }
         }
@@ -664,6 +671,21 @@ QtObject {
                     sudoAuthProc.running = false;
                 }
             }
+        }
+    }
+
+    property Process packageActionProc: Process {
+        property string passwordToPass: ""
+        onStarted: {
+            if (passwordToPass.length > 0) {
+                write(passwordToPass + "\n");
+                passwordToPass = "";
+                stdinEnabled = false;
+            }
+        }
+        onExited: function(exitCode, exitStatus) {
+            passwordToPass = "";
+            mgr.refreshPackages(true);
         }
     }
 
@@ -699,21 +721,28 @@ QtObject {
         isAuthChecking = false;
         authErrorMessage = "";
         pendingSudoAction = null;
+        lastVerifiedPassword = "";
         sudoAuthProc.passwordToVerify = "";
         if (sudoAuthProc.running) {
             sudoAuthProc.running = false;
         }
     }
 
-    function executeSudoAction(act) {
+    function executeSudoAction(act, pwd) {
         if (!act) return;
+        let args = ["python3", Quickshell.shellDir + "/scripts/package_manager.py"];
         if (act.type === "update") {
-            Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "update", act.target]);
+            args.push("update", act.target);
         } else if (act.type === "update-all") {
-            Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "update-all"]);
+            args.push("update-all");
         } else if (act.type === "remove") {
-            Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "remove", act.target]);
+            args.push("remove", act.target);
         }
+        packageActionProc.passwordToPass = pwd || "";
+        packageActionProc.stdinEnabled = !!(pwd && pwd.length > 0);
+        packageActionProc.command = args;
+        packageActionProc.running = false;
+        packageActionProc.running = true;
     }
 
     function updatePackage(pkgName) {
