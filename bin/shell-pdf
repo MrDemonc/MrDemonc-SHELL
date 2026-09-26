@@ -5,6 +5,7 @@ REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
 SEARCH_DIRS=(
     "$SCRIPT_DIR/../viewers/shell-pdf"
+    "$HOME/Documentos/github/MrDemonc-SHELL/viewers/shell-pdf"
     "$HOME/Documentos/MrDemonc-SHELL/viewers/shell-pdf"
     "/usr/share/mrdemonc-shell/viewers/shell-pdf"
 )

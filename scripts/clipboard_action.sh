@@ -16,54 +16,43 @@ case "$ACTIVE_CLASS" in
         ;;
 esac
 
-# 1. Si wtype está instalado, usar virtual keyboard de Wayland
-if command -v wtype >/dev/null 2>&1; then
-    case "$ACTION" in
-        copy)
-            if [ "$IS_TERMINAL" = true ]; then
-                wtype -s 10 -m logo -M ctrl -M shift -k c -m shift -m ctrl
-            else
-                wtype -s 10 -m logo -M ctrl -k c -m ctrl
-            fi
-            ;;
-        cut)
-            if [ "$IS_TERMINAL" = true ]; then
-                wtype -s 10 -m logo -M ctrl -M shift -k c -m shift -m ctrl
-            else
-                wtype -s 10 -m logo -M ctrl -k x -m ctrl
-            fi
-            ;;
-        paste)
-            if [ "$IS_TERMINAL" = true ]; then
-                wtype -s 10 -m logo -M ctrl -M shift -k v -m shift -m ctrl
-            else
-                wtype -s 10 -m logo -M ctrl -k v -m ctrl
-            fi
-            ;;
-    esac
-else
-    # 2. Fallback usando el dispatcher estándar sendshortcut de Hyprland
-    case "$ACTION" in
-        copy)
-            if [ "$IS_TERMINAL" = true ]; then
-                hyprctl dispatch sendshortcut "CTRL SHIFT, c, activewindow" >/dev/null 2>&1
-            else
-                hyprctl dispatch sendshortcut "CTRL, c, activewindow" >/dev/null 2>&1
-            fi
-            ;;
-        cut)
-            if [ "$IS_TERMINAL" = true ]; then
-                hyprctl dispatch sendshortcut "CTRL SHIFT, c, activewindow" >/dev/null 2>&1
-            else
-                hyprctl dispatch sendshortcut "CTRL, x, activewindow" >/dev/null 2>&1
-            fi
-            ;;
-        paste)
-            if [ "$IS_TERMINAL" = true ]; then
-                hyprctl dispatch sendshortcut "CTRL SHIFT, v, activewindow" >/dev/null 2>&1
-            else
-                hyprctl dispatch sendshortcut "CTRL, v, activewindow" >/dev/null 2>&1
-            fi
-            ;;
-    esac
+MODS="CTRL"
+KEY="c"
+
+case "$ACTION" in
+    copy)
+        if [ "$IS_TERMINAL" = true ]; then
+            MODS="CTRL + SHIFT"
+        fi
+        KEY="c"
+        ;;
+    cut)
+        if [ "$IS_TERMINAL" = true ]; then
+            MODS="CTRL + SHIFT"
+            KEY="c"
+        else
+            KEY="x"
+        fi
+        ;;
+    paste)
+        if [ "$IS_TERMINAL" = true ]; then
+            MODS="CTRL + SHIFT"
+        fi
+        KEY="v"
+        ;;
+esac
+
+# 1. Enviar atajo directamente a través del dispatcher de Hyprland Lua (instantáneo, confiable y nativo)
+if hyprctl eval "hl.dispatch(hl.dsp.send_shortcut({ mods = \"$MODS\", key = \"$KEY\" }))" >/dev/null 2>&1; then
+    exit 0
 fi
+
+# 2. Fallback con wtype si no se puede comunicar con Hyprland
+if command -v wtype >/dev/null 2>&1; then
+    if [ "$MODS" = "CTRL + SHIFT" ]; then
+        wtype -M ctrl -M shift -k "$KEY" -m shift -m ctrl
+    else
+        wtype -M ctrl -k "$KEY" -m ctrl
+    fi
+fi
+

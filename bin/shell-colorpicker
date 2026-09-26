@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
 
 SEARCH_SCRIPTS=(
     "$SCRIPT_DIR/../scripts/pick_color.sh"
+    "$HOME/Documentos/github/MrDemonc-SHELL/scripts/pick_color.sh"
     "$HOME/Documentos/MrDemonc-SHELL/scripts/pick_color.sh"
     "/usr/share/mrdemonc-shell/scripts/pick_color.sh"
 )

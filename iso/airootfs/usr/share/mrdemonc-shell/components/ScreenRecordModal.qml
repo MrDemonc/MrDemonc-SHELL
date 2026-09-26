@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-recorder-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: ScreenRecordManager.modalOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: ScreenRecordManager.modalOpen || modalCard.opacity > 0.01

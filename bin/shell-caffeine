@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
 
 SEARCH_SCRIPTS=(
     "$SCRIPT_DIR/../scripts/toggle_caffeine.sh"
+    "$HOME/Documentos/github/MrDemonc-SHELL/scripts/toggle_caffeine.sh"
     "$HOME/Documentos/MrDemonc-SHELL/scripts/toggle_caffeine.sh"
     "/usr/share/mrdemonc-shell/scripts/toggle_caffeine.sh"
 )

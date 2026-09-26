@@ -86,18 +86,35 @@ hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(binDir .. "/shell-power"))
 -------------------------------------------------------------
 -- PORTAPAPELES COMPATIBLE CON WAYLAND (SUPER + C / X / V)
 -------------------------------------------------------------
--- Se utiliza { release = true } para asegurar que la tecla física esté
--- completamente liberada antes de simular la combinación en Wayland,
--- evitando bucles de autorepetición (vvvvv...) y estados trabados de teclas.
+local function handleClipboard(action)
+    local w = hl.get_active_window()
+    local class = (w and w.class and string.lower(w.class)) or ""
+    local isTerminal = string.find(class, "kitty")
+        or string.find(class, "alacritty")
+        or string.find(class, "foot")
+        or string.find(class, "terminal")
+        or string.find(class, "wezterm")
+        or string.find(class, "console")
+
+    local mods = isTerminal and "CTRL + SHIFT" or "CTRL"
+    local key = "c"
+    if action == "cut" then
+        key = isTerminal and "c" or "x"
+    elseif action == "paste" then
+        key = "v"
+    end
+
+    hl.dispatch(hl.dsp.send_shortcut({ mods = mods, key = key }))
+end
 
 -- 1. SUPER + C: COPIAR
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd(binDir .. "/clipboard-action copy"), { release = true })
+hl.bind(mainMod .. " + C", function() handleClipboard("copy") end)
 
 -- 2. SUPER + X: CORTAR
-hl.bind(mainMod .. " + X", hl.dsp.exec_cmd(binDir .. "/clipboard-action cut"), { release = true })
+hl.bind(mainMod .. " + X", function() handleClipboard("cut") end)
 
 -- 3. SUPER + V: PEGAR
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(binDir .. "/clipboard-action paste"), { release = true })
+hl.bind(mainMod .. " + V", function() handleClipboard("paste") end)
 
 -------------------------------------------------------------
 -- NAVEGACIÓN Y ESPACIOS DE TRABAJO (WORKSPACES)

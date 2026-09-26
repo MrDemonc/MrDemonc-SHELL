@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-calendar-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: CalendarManager.calendarOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: CalendarManager.calendarOpen || modalCard.opacity > 0.01

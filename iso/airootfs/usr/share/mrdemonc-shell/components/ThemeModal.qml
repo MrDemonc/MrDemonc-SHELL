@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-theme-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: PopoutManager.themeModalOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: PopoutManager.themeModalOpen

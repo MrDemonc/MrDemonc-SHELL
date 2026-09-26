@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
 SEARCH_DIRS=(
     "$QUICKSHELL_DIR"
     "$SCRIPT_DIR/.."
+    "$HOME/Documentos/github/MrDemonc-SHELL"
     "$HOME/Documentos/MrDemonc-SHELL"
     "/usr/share/mrdemonc-shell"
 )

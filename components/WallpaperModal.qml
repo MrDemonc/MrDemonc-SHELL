@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-wallpaper-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: WallpaperManager.wallpaperModalOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: WallpaperManager.wallpaperModalOpen

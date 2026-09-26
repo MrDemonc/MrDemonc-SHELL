@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
 
 SEARCH_SCRIPTS=(
     "$SCRIPT_DIR/../scripts/record_screen.sh"
+    "$HOME/Documentos/github/MrDemonc-SHELL/scripts/record_screen.sh"
     "$HOME/Documentos/MrDemonc-SHELL/scripts/record_screen.sh"
     "/usr/share/mrdemonc-shell/scripts/record_screen.sh"
 )

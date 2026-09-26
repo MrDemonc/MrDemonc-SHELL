@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-colorpicker-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: ColorPickerManager.isOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: ColorPickerManager.isOpen || modalCard.opacity > 0.01

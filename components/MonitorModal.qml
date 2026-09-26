@@ -18,7 +18,7 @@ PanelWindow {
 
     WlrLayershell.namespace: "shell-monitors-modal"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: MonitorManager.monitorsOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
     visible: MonitorManager.monitorsOpen || modalCard.opacity > 0.01
