@@ -7,6 +7,7 @@ QtObject {
     id: powerMgr
 
     property bool powerOpen: false
+    property alias powerModalOpen: powerMgr.powerOpen
     property int selectedIndex: 0
     property var pendingAction: null
 

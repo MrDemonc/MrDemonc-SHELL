@@ -130,6 +130,13 @@ QtObject {
         applyProc.command = ["python3", Quickshell.shellDir + "/scripts/monitor_manager.py"].concat(args);
         applyProc.running = true;
     }
+    function open() {
+        monitorsOpen = true;
+        refresh();
+    }
+    function close() {
+        monitorsOpen = false;
+    }
     function toggle() {
         monitorsOpen = !monitorsOpen;
         if (monitorsOpen) refresh();

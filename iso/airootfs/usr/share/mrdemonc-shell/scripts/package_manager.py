@@ -173,36 +173,39 @@ def get_installed_packages(force=False):
 
     return result
 
-def launch_terminal(title, command):
-    # Envolver comando con banner visual y pausa antes de cerrar
-    shell_cmd = f"""
-echo -e '\\033[1;36m==> MrDemonc-SHELL: {title}\\033[0m'
-echo -e '\\033[0;34mEjecutando: {command}\\033[0m'
-echo ''
-{command}
-EXIT_CODE=$?
-echo ''
-if [ $EXIT_CODE -eq 0 ]; then
-    echo -e '\\033[1;32m[✓] Operación completada exitosamente.\\033[0m'
-else
-    echo -e '\\033[1;31m[✗] Error durante la operación (Código: '$EXIT_CODE').\\033[0m'
-fi
-# Limpiar caché de paquetes para actualizar la UI
-rm -f "{CACHE_FILE}" 2>/dev/null || true
-echo ''
-read -n 1 -s -p 'Presiona cualquier tecla para cerrar...'
-"""
-    terminals = [
-        ("kitty", ["kitty", "--class", "shell-update", "--title", title, "bash", "-c", shell_cmd]),
-        ("foot", ["foot", "--app-id", "shell-update", "--title", title, "bash", "-c", shell_cmd]),
-        ("alacritty", ["alacritty", "--class", "shell-update", "--title", title, "-e", "bash", "-c", shell_cmd]),
-        ("xterm", ["xterm", "-class", "shell-update", "-title", title, "-e", "bash", "-c", shell_cmd])
-    ]
-    for term_name, term_argv in terminals:
-        if shutil.which(term_name):
-            subprocess.Popen(term_argv, start_new_session=True)
-            return True
-    return False
+def notify(title, message, urgency="normal", icon="system-software-update"):
+    cmd = ["notify-send", title, message, "-u", urgency, "-a", "MrDemonc-SHELL"]
+    if icon:
+        cmd.extend(["-i", icon])
+    try:
+        subprocess.run(cmd, capture_output=True)
+    except Exception:
+        pass
+
+def clear_cache():
+    if os.path.exists(CACHE_FILE):
+        try:
+            os.remove(CACHE_FILE)
+        except Exception:
+            pass
+
+def ensure_sudo_auth():
+    # 1. Comprobar si sudo ya está validado sin contraseña
+    res = subprocess.run(["sudo", "-n", "true"], capture_output=True)
+    if res.returncode == 0:
+        return True
+
+    # 2. Localizar askpass.sh
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    askpass_path = os.path.join(script_dir, "askpass.sh")
+    env = os.environ.copy()
+    if os.path.isfile(askpass_path):
+        env["SUDO_ASKPASS"] = askpass_path
+        env["SUDO_PROMPT"] = ""
+
+    # Solicitar validación gráfica de sudo mediante SUDO_ASKPASS
+    res = subprocess.run(["sudo", "-A", "-v"], env=env)
+    return res.returncode == 0
 
 def update_package(pkg_name):
     if not pkg_name:
@@ -213,30 +216,69 @@ def update_package(pkg_name):
     if res_aur.returncode == 0 and pkg_name in res_aur.stdout.split():
         is_aur = True
 
-    if is_aur and shutil.which("yay"):
-        cmd = f"yay -S --needed {pkg_name}"
-    else:
-        cmd = f"sudo pacman -S --needed {pkg_name}"
+    if not ensure_sudo_auth():
+        notify("Operación cancelada", f"Se canceló la autenticación para actualizar {pkg_name}.", urgency="low")
+        return
 
-    launch_terminal(f"Actualizar {pkg_name}", cmd)
+    notify("Actualizando aplicación", f"Descargando e instalando {pkg_name} en segundo plano...", icon="system-software-update")
+
+    if is_aur and shutil.which("yay"):
+        cmd = ["yay", "-S", "--needed", "--noconfirm", "--sudoloop", pkg_name]
+    else:
+        cmd = ["sudo", "pacman", "-S", "--needed", "--noconfirm", pkg_name]
+
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    clear_cache()
+
+    if res.returncode == 0:
+        notify("Actualización completada", f"{pkg_name} se actualizó exitosamente.", icon="software-update-available")
+    else:
+        err_msg = res.stderr.strip() or res.stdout.strip()
+        notify("Error al actualizar", f"No se pudo actualizar {pkg_name}.\n{err_msg[:120]}", urgency="critical", icon="dialog-error")
 
 def update_all():
+    if not ensure_sudo_auth():
+        notify("Operación cancelada", "Se canceló la autenticación para actualizar el sistema.", urgency="low")
+        return
+
+    notify("Actualizando sistema", "Buscando e instalando todas las actualizaciones disponibles...", icon="system-software-update")
+
     if shutil.which("yay"):
-        cmd = "yay -Syu"
+        cmd = ["yay", "-Syu", "--noconfirm", "--sudoloop"]
     else:
-        cmd = "sudo pacman -Syu"
-    launch_terminal("Actualización Completa del Sistema", cmd)
+        cmd = ["sudo", "pacman", "-Syu", "--noconfirm"]
+
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    clear_cache()
+
+    if res.returncode == 0:
+        notify("Sistema al día", "Todas las aplicaciones y paquetes se actualizaron correctamente.", icon="software-update-available")
+    else:
+        notify("Error en actualización", "Ocurrió un error al actualizar los paquetes del sistema.", urgency="critical", icon="dialog-error")
 
 def remove_package(pkg_name):
     if not pkg_name:
         return
-    # Preferir yay para limpiar dependencias si está disponible, o pacman -Rns
-    if shutil.which("yay"):
-        cmd = f"yay -Rns {pkg_name}"
-    else:
-        cmd = f"sudo pacman -Rns {pkg_name}"
 
-    launch_terminal(f"Desinstalar {pkg_name}", cmd)
+    if not ensure_sudo_auth():
+        notify("Operación cancelada", f"Se canceló la autenticación para desinstalar {pkg_name}.", urgency="low")
+        return
+
+    notify("Desinstalando paquete", f"Eliminando {pkg_name} y dependencias no utilizadas...", icon="system-software-update")
+
+    if shutil.which("yay"):
+        cmd = ["yay", "-Rns", "--noconfirm", pkg_name]
+    else:
+        cmd = ["sudo", "pacman", "-Rns", "--noconfirm", pkg_name]
+
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    clear_cache()
+
+    if res.returncode == 0:
+        notify("Desinstalación completada", f"{pkg_name} se desinstaló correctamente.", icon="software-update-available")
+    else:
+        err_msg = res.stderr.strip() or res.stdout.strip()
+        notify("Error al desinstalar", f"No se pudo desinstalar {pkg_name}.\n{err_msg[:120]}", urgency="critical", icon="dialog-error")
 
 def main():
     if len(sys.argv) < 2:

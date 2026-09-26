@@ -126,6 +126,7 @@ wvdial
 xdg-utils
 xfsprogs
 xl2tpd
+zenity
 zsh
 zsh-completions
 bash-completion

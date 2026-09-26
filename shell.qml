@@ -14,6 +14,7 @@ ShellRoot {
     property var _osdMgr: OsdManager
     property var _powerMgr: PowerManager
     property var _monitorMgr: MonitorManager
+    property var _keybindsMgr: KeybindsManager
     property var _controlCenterMgr: ControlCenterManager
 
     // Pantalla activa / enfocada actualmente por Hyprland (con fallback seguro a la primera pantalla disponible)

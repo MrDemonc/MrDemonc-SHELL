@@ -196,6 +196,107 @@ PanelWindow {
 
                         Item { Layout.fillHeight: true }
 
+                        // Accesos rápidos del sistema (Atajos, Pantallas, Apagado)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 10
+                            Layout.rightMargin: 10
+                            spacing: 6
+
+                            // Botón Atajos de Teclado
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: 28
+                                radius: 6
+                                color: btnSideKeyMouse.containsMouse ? Theme.bgHover : Theme.bg
+                                border.color: Theme.border
+                                border.width: 1
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "󰌌"
+                                    color: btnSideKeyMouse.containsMouse ? Theme.primary : Theme.overlay
+                                    font.family: Theme.iconFontFamily
+                                    font.pixelSize: 13
+                                }
+
+                                MouseArea {
+                                    id: btnSideKeyMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        ControlCenterManager.close();
+                                        Qt.callLater(() => {
+                                            KeybindsManager.open();
+                                        });
+                                    }
+                                }
+                            }
+
+                            // Botón Pantallas
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: 28
+                                radius: 6
+                                color: btnSideMonMouse.containsMouse ? Theme.bgHover : Theme.bg
+                                border.color: Theme.border
+                                border.width: 1
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "󰍹"
+                                    color: btnSideMonMouse.containsMouse ? Theme.cyan : Theme.overlay
+                                    font.family: Theme.iconFontFamily
+                                    font.pixelSize: 13
+                                }
+
+                                MouseArea {
+                                    id: btnSideMonMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        ControlCenterManager.close();
+                                        Qt.callLater(() => {
+                                            MonitorManager.open();
+                                        });
+                                    }
+                                }
+                            }
+
+                            // Botón Apagado
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: 28
+                                radius: 6
+                                color: btnSidePowMouse.containsMouse ? Qt.rgba(Theme.danger.r, Theme.danger.g, Theme.danger.b, 0.2) : Theme.bg
+                                border.color: btnSidePowMouse.containsMouse ? Theme.danger : Theme.border
+                                border.width: 1
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "󰐥"
+                                    color: btnSidePowMouse.containsMouse ? Theme.danger : Theme.overlay
+                                    font.family: Theme.iconFontFamily
+                                    font.pixelSize: 13
+                                }
+
+                                MouseArea {
+                                    id: btnSidePowMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        ControlCenterManager.close();
+                                        Qt.callLater(() => {
+                                            PowerManager.open();
+                                        });
+                                    }
+                                }
+                            }
+                        }
+
                         // Chip de estado rápido en el pie de la barra lateral
                         Rectangle {
                             Layout.fillWidth: true
@@ -1404,7 +1505,9 @@ PanelWindow {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         ControlCenterManager.close();
-                                        MonitorManager.open();
+                                        Qt.callLater(() => {
+                                            MonitorManager.open();
+                                        });
                                     }
                                 }
                             }
@@ -1656,7 +1759,9 @@ PanelWindow {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             ControlCenterManager.close();
-                                            LockScreenManager.lock();
+                                            Qt.callLater(() => {
+                                                LockScreenManager.lock();
+                                            });
                                         }
                                     }
                                 }
@@ -1681,7 +1786,9 @@ PanelWindow {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             ControlCenterManager.close();
-                                            PowerManager.powerModalOpen = true;
+                                            Qt.callLater(() => {
+                                                PowerManager.open();
+                                            });
                                         }
                                     }
                                 }
@@ -1898,6 +2005,68 @@ PanelWindow {
                                     }
                                 }
                             }
+
+                            // Acceso directo a la Guía de Atajos de Teclado
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: 44
+                                radius: Theme.radiusSmall
+                                color: keybindsBtnMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                border.color: Theme.border
+                                border.width: 1
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    spacing: 10
+
+                                    Text {
+                                        text: "󰌌"
+                                        color: Theme.primary
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 16
+                                    }
+
+                                    ColumnLayout {
+                                        spacing: 1
+                                        Text {
+                                            text: "Guía de Atajos de Teclado del Sistema"
+                                            color: Theme.text
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 11
+                                            font.bold: true
+                                        }
+                                        Text {
+                                            text: "Consultar todas las combinaciones y atajos del entorno de escritorio"
+                                            color: Theme.overlay
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 9
+                                        }
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    Text {
+                                        text: "SUPER + K  󰁔"
+                                        color: Theme.overlay
+                                        font.family: Theme.monoFontFamily
+                                        font.pixelSize: 9
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: keybindsBtnMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        ControlCenterManager.close();
+                                        Qt.callLater(() => {
+                                            KeybindsManager.open();
+                                        });
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -1915,14 +2084,14 @@ PanelWindow {
                             spacing: 10
 
                             // ---------------------------------------------------------
-                            // ENCABEZADO Y RESUMEN DE PAQUETES
+                            // ENCABEZADO Y RESUMEN DE PAQUETES (CON FILTROS INTERACTIVOS)
                             // ---------------------------------------------------------
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 10
 
                                 ColumnLayout {
-                                    spacing: 3
+                                    spacing: 4
                                     Text {
                                         text: "APLICACIONES Y PAQUETES INSTALADOS"
                                         color: Theme.overlay
@@ -1931,41 +2100,47 @@ PanelWindow {
                                         font.bold: true
                                     }
 
-                                    // Chips de conteo rápido
+                                    // Chips interactivos de filtro y conteo rápido
                                     RowLayout {
                                         spacing: 6
 
-                                        // Total
+                                        // Total / Todas
                                         Rectangle {
-                                            implicitHeight: 20
-                                            implicitWidth: totalTxt.implicitWidth + 12
-                                            radius: 10
-                                            color: Theme.bgSurface
-                                            border.color: Theme.border
+                                            implicitHeight: 22
+                                            implicitWidth: totalTxt.implicitWidth + 14
+                                            radius: 11
+                                            color: ControlCenterManager.packagesFilter === "all" ? Theme.primary : Theme.bgSurface
+                                            border.color: ControlCenterManager.packagesFilter === "all" ? Theme.primary : Theme.border
                                             border.width: 1
                                             Text {
                                                 id: totalTxt
                                                 anchors.centerIn: parent
-                                                text: "Total: " + ControlCenterManager.totalPackagesCount
-                                                color: Theme.text
+                                                text: "Todas: " + ControlCenterManager.totalPackagesCount
+                                                color: ControlCenterManager.packagesFilter === "all" ? Theme.bg : Theme.text
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: 9
+                                                font.bold: ControlCenterManager.packagesFilter === "all"
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: ControlCenterManager.packagesFilter = "all"
                                             }
                                         }
 
                                         // Pacman
                                         Rectangle {
-                                            implicitHeight: 20
-                                            implicitWidth: pacCountTxt.implicitWidth + 12
-                                            radius: 10
-                                            color: Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.14)
+                                            implicitHeight: 22
+                                            implicitWidth: pacCountTxt.implicitWidth + 14
+                                            radius: 11
+                                            color: ControlCenterManager.packagesFilter === "pacman" ? Theme.cyan : Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.14)
                                             border.color: Theme.cyan
                                             border.width: 1
                                             Text {
                                                 id: pacCountTxt
                                                 anchors.centerIn: parent
                                                 text: "󰮯 Pacman: " + ControlCenterManager.pacmanPackagesCount
-                                                color: Theme.cyan
+                                                color: ControlCenterManager.packagesFilter === "pacman" ? Theme.bg : Theme.cyan
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: 9
                                                 font.bold: true
@@ -1979,17 +2154,17 @@ PanelWindow {
 
                                         // AUR
                                         Rectangle {
-                                            implicitHeight: 20
-                                            implicitWidth: aurCountTxt.implicitWidth + 12
-                                            radius: 10
-                                            color: Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.14)
+                                            implicitHeight: 22
+                                            implicitWidth: aurCountTxt.implicitWidth + 14
+                                            radius: 11
+                                            color: ControlCenterManager.packagesFilter === "aur" ? Theme.warning : Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.14)
                                             border.color: Theme.warning
                                             border.width: 1
                                             Text {
                                                 id: aurCountTxt
                                                 anchors.centerIn: parent
                                                 text: "󰣇 AUR (yay): " + ControlCenterManager.aurPackagesCount
-                                                color: Theme.warning
+                                                color: ControlCenterManager.packagesFilter === "aur" ? Theme.bg : Theme.warning
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: 9
                                                 font.bold: true
@@ -2004,17 +2179,17 @@ PanelWindow {
                                         // Actualizaciones
                                         Rectangle {
                                             visible: ControlCenterManager.updatesPackagesCount > 0
-                                            implicitHeight: 20
-                                            implicitWidth: upCountTxt.implicitWidth + 12
-                                            radius: 10
-                                            color: Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.18)
+                                            implicitHeight: 22
+                                            implicitWidth: upCountTxt.implicitWidth + 14
+                                            radius: 11
+                                            color: ControlCenterManager.packagesFilter === "updates" ? Theme.success : Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.18)
                                             border.color: Theme.success
                                             border.width: 1
                                             Text {
                                                 id: upCountTxt
                                                 anchors.centerIn: parent
                                                 text: "󰚰 " + ControlCenterManager.updatesPackagesCount + " actualizables"
-                                                color: Theme.success
+                                                color: ControlCenterManager.packagesFilter === "updates" ? Theme.bg : Theme.success
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: 9
                                                 font.bold: true
@@ -2029,58 +2204,10 @@ PanelWindow {
                                 }
 
                                 Item { Layout.fillWidth: true }
-
-                                // Botón Actualizar Todo
-                                Rectangle {
-                                    implicitHeight: 30
-                                    implicitWidth: btnUpAllLayout.implicitWidth + 16
-                                    radius: Theme.radiusSmall
-                                    color: btnUpAllMouse.containsMouse ? Qt.lighter(Theme.primary, 1.1) : Theme.primary
-
-                                    RowLayout {
-                                        id: btnUpAllLayout
-                                        anchors.centerIn: parent
-                                        spacing: 6
-                                        Text { text: "󰚰"; color: Theme.bg; font.family: Theme.iconFontFamily; font.pixelSize: 12; font.bold: true }
-                                        Text { text: "Actualizar Todo"; color: Theme.bg; font.family: Theme.fontFamily; font.pixelSize: 10; font.bold: true }
-                                    }
-                                    MouseArea {
-                                        id: btnUpAllMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: ControlCenterManager.updateAllPackages()
-                                    }
-                                }
-
-                                // Botón Refrescar
-                                Rectangle {
-                                    implicitHeight: 30
-                                    implicitWidth: 32
-                                    radius: Theme.radiusSmall
-                                    color: btnRefMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                                    border.color: Theme.border
-                                    border.width: 1
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "󰑐"
-                                        color: ControlCenterManager.isPackagesLoading ? Theme.primary : Theme.text
-                                        font.family: Theme.iconFontFamily
-                                        font.pixelSize: 13
-                                    }
-                                    MouseArea {
-                                        id: btnRefMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: ControlCenterManager.refreshPackages(true)
-                                    }
-                                }
                             }
 
                             // ---------------------------------------------------------
-                            // BARRA DE BÚSQUEDA Y FILTROS POR ORIGEN (PACMAN / AUR)
+                            // BARRA DE BÚSQUEDA Y ACCIONES DE ACTUALIZACIÓN
                             // ---------------------------------------------------------
                             RowLayout {
                                 Layout.fillWidth: true
@@ -2149,50 +2276,73 @@ PanelWindow {
                                     }
                                 }
 
-                                // Selector de Filtros (Pills)
-                                RowLayout {
-                                    spacing: 4
+                                // Botón Buscar Actualizaciones
+                                Rectangle {
+                                    implicitHeight: 32
+                                    implicitWidth: btnCheckUpLayout.implicitWidth + 16
+                                    radius: Theme.radiusSmall
+                                    color: btnCheckUpMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                    border.color: Theme.border
+                                    border.width: 1
 
-                                    Repeater {
-                                        model: [
-                                            { id: "all", label: "Todas" },
-                                            { id: "pacman", label: "󰮯 Pacman" },
-                                            { id: "aur", label: "󰣇 AUR (yay)" },
-                                            { id: "updates", label: "󰚰 Actualizables" }
-                                        ]
+                                    RowLayout {
+                                        id: btnCheckUpLayout
+                                        anchors.centerIn: parent
+                                        spacing: 6
 
-                                        delegate: Rectangle {
-                                            id: pillBtn
-                                            implicitHeight: 32
-                                            implicitWidth: pillText.implicitWidth + 14
-                                            radius: Theme.radiusSmall
-                                            color: {
-                                                if (ControlCenterManager.packagesFilter === modelData.id) {
-                                                    return Theme.primary;
-                                                }
-                                                return pillMouse.containsMouse ? Theme.bgHover : Theme.bgSurface;
-                                            }
-                                            border.color: ControlCenterManager.packagesFilter === modelData.id ? Theme.primary : Theme.border
-                                            border.width: 1
+                                        Text {
+                                            text: "󰑐"
+                                            color: ControlCenterManager.isPackagesLoading ? Theme.primary : Theme.subtext
+                                            font.family: Theme.iconFontFamily
+                                            font.pixelSize: 12
 
-                                            Text {
-                                                id: pillText
-                                                anchors.centerIn: parent
-                                                text: modelData.label
-                                                color: ControlCenterManager.packagesFilter === modelData.id ? Theme.bg : (pillMouse.containsMouse ? Theme.text : Theme.subtext)
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: 10
-                                                font.bold: ControlCenterManager.packagesFilter === modelData.id
-                                            }
-
-                                            MouseArea {
-                                                id: pillMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: ControlCenterManager.packagesFilter = modelData.id
+                                            RotationAnimation on rotation {
+                                                from: 0
+                                                to: 360
+                                                duration: 900
+                                                loops: Animation.Infinite
+                                                running: ControlCenterManager.isPackagesLoading
                                             }
                                         }
+
+                                        Text {
+                                            text: "Buscar actualizaciones"
+                                            color: btnCheckUpMouse.containsMouse ? Theme.text : Theme.subtext
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 10
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: btnCheckUpMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: ControlCenterManager.refreshPackages(true)
+                                    }
+                                }
+
+                                // Botón Actualizar Todas
+                                Rectangle {
+                                    implicitHeight: 32
+                                    implicitWidth: btnUpAllLayout.implicitWidth + 16
+                                    radius: Theme.radiusSmall
+                                    color: btnUpAllMouse.containsMouse ? Qt.lighter(Theme.primary, 1.1) : Theme.primary
+
+                                    RowLayout {
+                                        id: btnUpAllLayout
+                                        anchors.centerIn: parent
+                                        spacing: 6
+                                        Text { text: "󰚰"; color: Theme.bg; font.family: Theme.iconFontFamily; font.pixelSize: 12; font.bold: true }
+                                        Text { text: "Actualizar todas"; color: Theme.bg; font.family: Theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                                    }
+
+                                    MouseArea {
+                                        id: btnUpAllMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: ControlCenterManager.updateAllPackages()
                                     }
                                 }
                             }
@@ -2279,7 +2429,7 @@ PanelWindow {
 
                                     delegate: Rectangle {
                                         id: pkgCard
-                                        width: appsList.width
+                                        width: appsList.width - 12
                                         implicitHeight: 62
                                         radius: Theme.radiusSmall
                                         color: pkgMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
@@ -2361,26 +2511,6 @@ PanelWindow {
                                                         elide: Text.ElideRight
                                                     }
 
-                                                    // Badge AUR o Pacman
-                                                    Rectangle {
-                                                        implicitHeight: 16
-                                                        implicitWidth: tagText.implicitWidth + 8
-                                                        radius: 4
-                                                        color: modelData.source === "aur" ? Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.16) : Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.15)
-                                                        border.color: modelData.source === "aur" ? Theme.warning : Theme.cyan
-                                                        border.width: 1
-
-                                                        Text {
-                                                            id: tagText
-                                                            anchors.centerIn: parent
-                                                            text: modelData.source === "aur" ? "󰣇 AUR (yay)" : "󰮯 Pacman"
-                                                            color: modelData.source === "aur" ? Theme.warning : Theme.cyan
-                                                            font.family: Theme.fontFamily
-                                                            font.pixelSize: 8
-                                                            font.bold: true
-                                                        }
-                                                    }
-
                                                     // Badge de Actualización Disponible
                                                     Rectangle {
                                                         visible: !!modelData.hasUpdate
@@ -2435,38 +2565,28 @@ PanelWindow {
                                                 }
                                             }
 
-                                            // Botones de Acción
+                                            // Botones de Acción (Solo Iconos)
                                             RowLayout {
                                                 spacing: 6
                                                 Layout.alignment: Qt.AlignVCenter
 
-                                                // Botón Actualizar
+                                                // Botón Actualizar (Solo icono)
                                                 Rectangle {
-                                                    implicitHeight: 28
-                                                    implicitWidth: btnActText.implicitWidth + 16
+                                                    implicitHeight: 30
+                                                    implicitWidth: 30
                                                     radius: 6
                                                     color: modelData.hasUpdate ? Theme.primary : (btnActMouse.containsMouse ? Theme.bgHover : Theme.bgSurface)
                                                     border.color: modelData.hasUpdate ? Theme.primary : Theme.border
                                                     border.width: 1
 
-                                                    RowLayout {
+                                                    Text {
                                                         anchors.centerIn: parent
-                                                        spacing: 4
-                                                        Text {
-                                                            text: "󰚰"
-                                                            color: modelData.hasUpdate ? Theme.bg : (btnActMouse.containsMouse ? Theme.primary : Theme.text)
-                                                            font.family: Theme.iconFontFamily
-                                                            font.pixelSize: 11
-                                                        }
-                                                        Text {
-                                                            id: btnActText
-                                                            text: modelData.hasUpdate ? "Actualizar" : "Reinstalar"
-                                                            color: modelData.hasUpdate ? Theme.bg : (btnActMouse.containsMouse ? Theme.primary : Theme.text)
-                                                            font.family: Theme.fontFamily
-                                                            font.pixelSize: 9
-                                                            font.bold: modelData.hasUpdate
-                                                        }
+                                                        text: "󰚰"
+                                                        color: modelData.hasUpdate ? Theme.bg : (btnActMouse.containsMouse ? Theme.primary : Theme.text)
+                                                        font.family: Theme.iconFontFamily
+                                                        font.pixelSize: 13
                                                     }
+
                                                     MouseArea {
                                                         id: btnActMouse
                                                         anchors.fill: parent
@@ -2476,33 +2596,23 @@ PanelWindow {
                                                     }
                                                 }
 
-                                                // Botón Desinstalar
+                                                // Botón Desinstalar (Solo icono)
                                                 Rectangle {
-                                                    implicitHeight: 28
-                                                    implicitWidth: btnDesText.implicitWidth + 16
+                                                    implicitHeight: 30
+                                                    implicitWidth: 30
                                                     radius: 6
-                                                    color: btnDesMouse.containsMouse ? Theme.danger : Qt.rgba(Theme.danger.r, Theme.danger.g, Theme.danger.b, 0.10)
+                                                    color: btnDesMouse.containsMouse ? Theme.danger : Qt.rgba(Theme.danger.r, Theme.danger.g, Theme.danger.b, 0.12)
                                                     border.color: Theme.danger
                                                     border.width: 1
 
-                                                    RowLayout {
+                                                    Text {
                                                         anchors.centerIn: parent
-                                                        spacing: 4
-                                                        Text {
-                                                            text: "󰆴"
-                                                            color: btnDesMouse.containsMouse ? Theme.text : Theme.danger
-                                                            font.family: Theme.iconFontFamily
-                                                            font.pixelSize: 11
-                                                        }
-                                                        Text {
-                                                            id: btnDesText
-                                                            text: "Desinstalar"
-                                                            color: btnDesMouse.containsMouse ? Theme.text : Theme.danger
-                                                            font.family: Theme.fontFamily
-                                                            font.pixelSize: 9
-                                                            font.bold: true
-                                                        }
+                                                        text: "󰆴"
+                                                        color: btnDesMouse.containsMouse ? Theme.text : Theme.danger
+                                                        font.family: Theme.iconFontFamily
+                                                        font.pixelSize: 13
                                                     }
+
                                                     MouseArea {
                                                         id: btnDesMouse
                                                         anchors.fill: parent

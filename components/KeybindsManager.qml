@@ -288,6 +288,13 @@ QtObject {
         }
     }
 
+    function open() {
+        keybindsOpen = true;
+        searchQuery = "";
+    }
+    function close() {
+        keybindsOpen = false;
+    }
     function toggle() {
         keybindsOpen = !keybindsOpen;
         if (keybindsOpen) {
