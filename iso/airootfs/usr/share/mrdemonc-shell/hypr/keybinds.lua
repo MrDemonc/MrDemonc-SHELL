@@ -83,45 +83,18 @@ hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(binDir .. "/shell-power"))
 -------------------------------------------------------------
 -- PORTAPAPELES COMPATIBLE CON WAYLAND (SUPER + C / X / V)
 -------------------------------------------------------------
-local function is_terminal_window(win)
-    if not win or not win.class then return false end
-    local c = win.class:lower()
-    return c:find("kitty") ~= nil or c:find("terminal") ~= nil or c:find("foot") ~= nil or c:find("alacritty") ~= nil or c:find("wezterm") ~= nil or c:find("console") ~= nil
-end
-
-local function clipboard_action(action)
-    local win = hl.get_active_window()
-    local is_term = is_terminal_window(win)
-
-    if action == "copy" then
-        if is_term then
-            hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL + SHIFT", key = "c" }))
-        else
-            hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL", key = "c" }))
-        end
-    elseif action == "cut" then
-        if is_term then
-            hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL + SHIFT", key = "c" }))
-        else
-            hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL", key = "x" }))
-        end
-    elseif action == "paste" then
-        if is_term then
-            hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL + SHIFT", key = "v" }))
-        else
-            hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL", key = "v" }))
-        end
-    end
-end
+-- Se utiliza { release = true } para asegurar que la tecla física esté
+-- completamente liberada antes de simular la combinación en Wayland,
+-- evitando bucles de autorepetición (vvvvv...) y estados trabados de teclas.
 
 -- 1. SUPER + C: COPIAR
-hl.bind(mainMod .. " + C", function() clipboard_action("copy") end)
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd(binDir .. "/clipboard-action copy"), { release = true })
 
 -- 2. SUPER + X: CORTAR
-hl.bind(mainMod .. " + X", function() clipboard_action("cut") end)
+hl.bind(mainMod .. " + X", hl.dsp.exec_cmd(binDir .. "/clipboard-action cut"), { release = true })
 
 -- 3. SUPER + V: PEGAR
-hl.bind(mainMod .. " + V", function() clipboard_action("paste") end)
+hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(binDir .. "/clipboard-action paste"), { release = true })
 
 -------------------------------------------------------------
 -- NAVEGACIÓN Y ESPACIOS DE TRABAJO (WORKSPACES)

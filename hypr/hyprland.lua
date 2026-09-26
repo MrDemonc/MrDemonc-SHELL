@@ -230,12 +230,18 @@ hl.config({
         kb_options = "",
         kb_rules   = "",
 
+        repeat_rate  = 35,
+        repeat_delay = 300,
+
         follow_mouse = 1,
 
         sensitivity = 0, -- -1.0 - 1.0, 0 means no modification.
 
         touchpad = {
-            natural_scroll = false,
+            natural_scroll       = false,
+            disable_while_typing = false, -- Evita que el ratón o touchpad ignoren clics o congelen la liberación mientras se presiona el teclado
+            tap_to_click         = true,
+            tap_and_drag         = false, -- Evita que el clic izquierdo se quede bloqueado en modo arrastre tras toques accidentales
         },
     },
 })

@@ -21,48 +21,48 @@ if command -v wtype >/dev/null 2>&1; then
     case "$ACTION" in
         copy)
             if [ "$IS_TERMINAL" = true ]; then
-                wtype -M ctrl -M shift c -m shift -m ctrl
+                wtype -s 10 -m logo -M ctrl -M shift -k c -m shift -m ctrl
             else
-                wtype -M ctrl c -m ctrl
+                wtype -s 10 -m logo -M ctrl -k c -m ctrl
             fi
             ;;
         cut)
             if [ "$IS_TERMINAL" = true ]; then
-                wtype -M ctrl -M shift c -m shift -m ctrl
+                wtype -s 10 -m logo -M ctrl -M shift -k c -m shift -m ctrl
             else
-                wtype -M ctrl x -m ctrl
+                wtype -s 10 -m logo -M ctrl -k x -m ctrl
             fi
             ;;
         paste)
             if [ "$IS_TERMINAL" = true ]; then
-                wtype -M ctrl -M shift v -m shift -m ctrl
+                wtype -s 10 -m logo -M ctrl -M shift -k v -m shift -m ctrl
             else
-                wtype -M ctrl v -m ctrl
+                wtype -s 10 -m logo -M ctrl -k v -m ctrl
             fi
             ;;
     esac
 else
-    # 2. Fallback nativo usando el dispatcher de Hyprland
+    # 2. Fallback usando el dispatcher estándar sendshortcut de Hyprland
     case "$ACTION" in
         copy)
             if [ "$IS_TERMINAL" = true ]; then
-                hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "CTRL + SHIFT", key = "c" })' >/dev/null 2>&1
+                hyprctl dispatch sendshortcut "CTRL SHIFT, c, activewindow" >/dev/null 2>&1
             else
-                hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "CTRL", key = "c" })' >/dev/null 2>&1
+                hyprctl dispatch sendshortcut "CTRL, c, activewindow" >/dev/null 2>&1
             fi
             ;;
         cut)
             if [ "$IS_TERMINAL" = true ]; then
-                hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "CTRL + SHIFT", key = "c" })' >/dev/null 2>&1
+                hyprctl dispatch sendshortcut "CTRL SHIFT, c, activewindow" >/dev/null 2>&1
             else
-                hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "CTRL", key = "x" })' >/dev/null 2>&1
+                hyprctl dispatch sendshortcut "CTRL, x, activewindow" >/dev/null 2>&1
             fi
             ;;
         paste)
             if [ "$IS_TERMINAL" = true ]; then
-                hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "CTRL + SHIFT", key = "v" })' >/dev/null 2>&1
+                hyprctl dispatch sendshortcut "CTRL SHIFT, v, activewindow" >/dev/null 2>&1
             else
-                hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "CTRL", key = "v" })' >/dev/null 2>&1
+                hyprctl dispatch sendshortcut "CTRL, v, activewindow" >/dev/null 2>&1
             fi
             ;;
     esac
