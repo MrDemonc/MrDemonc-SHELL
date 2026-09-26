@@ -81,6 +81,7 @@ QtObject {
         refreshDisplay();
         refreshBattery();
         refreshSystem();
+        refreshAbout();
         if (activeTab === "apps") {
             refreshPackages(false);
         }
@@ -493,12 +494,72 @@ QtObject {
     }
 
     // -------------------------------------------------------------------------
-    // 7. INFORMACIÓN DEL SISTEMA
+    // 7. INFORMACIÓN DEL SISTEMA Y ACERCA DE (ABOUT)
     // -------------------------------------------------------------------------
     property string sysUser: Quickshell.env("USER") || ""
     property string sysHost: ""
     property string sysKernel: ""
     property string sysUptime: ""
+
+    property var aboutData: ({
+        "os_name": "Arch Linux",
+        "kernel": "",
+        "user": Quickshell.env("USER") || "usuario",
+        "host": "",
+        "uptime": "--",
+        "model": "Equipo PC",
+        "cpu": "Cargando procesador...",
+        "gpu": "Gráficos Integrados",
+        "ram_total": "--",
+        "ram_used": "--",
+        "ram_percent": 0,
+        "disk_total": "--",
+        "disk_free": "--",
+        "disk_percent": 0,
+        "wm": "Hyprland",
+        "framework": "Quickshell",
+        "shell_name": "MrDemonc-SHELL",
+        "github_user": "MrDemonc",
+        "github_url": "https://github.com/MrDemonc",
+        "repo_url": "https://github.com/MrDemonc/MrDemonc-SHELL",
+        "packages": 0
+    })
+
+    property string rawAboutOutput: ""
+    property var aboutInfoProc: Process {
+        command: ["python3", Quickshell.shellDir + "/scripts/get_about_info.py"]
+        stdout: SplitParser {
+            onRead: data => { mgr.rawAboutOutput += data; }
+        }
+        onExited: {
+            try {
+                let parsed = JSON.parse(mgr.rawAboutOutput.trim());
+                if (parsed && typeof parsed === "object") {
+                    mgr.aboutData = parsed;
+                    if (parsed.user) mgr.sysUser = parsed.user;
+                    if (parsed.host) mgr.sysHost = parsed.host;
+                    if (parsed.kernel) mgr.sysKernel = parsed.kernel;
+                    if (parsed.uptime) mgr.sysUptime = parsed.uptime;
+                }
+            } catch (e) {}
+            mgr.rawAboutOutput = "";
+        }
+    }
+
+    function refreshAbout() {
+        if (!aboutInfoProc.running) {
+            mgr.rawAboutOutput = "";
+            aboutInfoProc.running = true;
+        }
+    }
+
+    property var openUrlProc: Process {}
+    function openExternalUrl(targetUrl) {
+        if (!targetUrl || targetUrl.length === 0) return;
+        openUrlProc.command = ["xdg-open", targetUrl];
+        openUrlProc.running = false;
+        openUrlProc.running = true;
+    }
 
     property var sysInfoProc: Process {
         command: ["sh", "-c", "echo \"USER:$(whoami)\"; echo \"HOST:$(uname -n)\"; echo \"KERNEL:$(uname -r)\"; echo \"UPTIME:$(uptime -p 2>/dev/null || uptime | sed 's/.*up \\([^,]*\\), .*/\\1/')\""]
@@ -518,6 +579,7 @@ QtObject {
 
     function refreshSystem() {
         if (!sysInfoProc.running) sysInfoProc.running = true;
+        refreshAbout();
     }
 
     // -------------------------------------------------------------------------
@@ -543,14 +605,19 @@ QtObject {
     onPackagesFilterChanged: filterPackages()
 
     onActiveTabChanged: {
-        if (activeTab === "apps" && (!installedPackages || installedPackages.length === 0)) {
+        if (activeTab === "about") {
+            refreshAbout();
+        } else if (activeTab === "apps" && (!installedPackages || installedPackages.length === 0)) {
             refreshPackages(false);
         }
     }
 
     onIsOpenChanged: {
-        if (isOpen && activeTab === "apps" && (!installedPackages || installedPackages.length === 0)) {
-            refreshPackages(false);
+        if (isOpen) {
+            refreshAbout();
+            if (activeTab === "apps" && (!installedPackages || installedPackages.length === 0)) {
+                refreshPackages(false);
+            }
         }
     }
 

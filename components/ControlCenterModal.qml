@@ -180,7 +180,8 @@ PanelWindow {
                             { id: "display", label: "Pantalla y Luz", icon: "󰃠" },
                             { id: "power", label: "Batería y Energía", icon: "󰂄" },
                             { id: "bar", label: "Barra de Sistema", icon: "󰒓" },
-                            { id: "apps", label: "Aplicaciones", icon: "󰏖" }
+                            { id: "apps", label: "Aplicaciones", icon: "󰏖" },
+                            { id: "about", label: "Acerca de", icon: "󰋽" }
                         ]
 
                         Repeater {
@@ -2787,6 +2788,537 @@ PanelWindow {
                                                     }
                                                 }
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 8. PESTAÑA: ACERCA DE (ABOUT MRDEMONC-SHELL Y SISTEMA)
+                    Item {
+                        id: tabAboutView
+                        anchors.fill: parent
+                        anchors.margins: 14
+                        visible: ControlCenterManager.activeTab === "about"
+
+                        Flickable {
+                            anchors.fill: parent
+                            contentWidth: width
+                            contentHeight: aboutCol.implicitHeight + 10
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            ColumnLayout {
+                                id: aboutCol
+                                width: parent.width
+                                spacing: 10
+
+                                // =========================================================
+                                // 1. BANNER CENTRAL: LOGO ARCH + QUICKSHELL & HYPRLAND
+                                // =========================================================
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 126
+                                    radius: Theme.radiusMedium
+                                    color: Theme.bgSurface
+                                    border.color: Theme.border
+                                    border.width: 1
+                                    clip: true
+
+                                    // Resplandor degradado sutil
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: Theme.radiusMedium
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.09) }
+                                            GradientStop { position: 1.0; color: "transparent" }
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 8
+
+                                        // Fila de Logos: Quickshell (izq), ARCH (centro grande), Hyprland (der)
+                                        RowLayout {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            spacing: 16
+
+                                            // Badge Quickshell (más pequeño a la izquierda)
+                                            Rectangle {
+                                                implicitHeight: 28
+                                                implicitWidth: qsRow.implicitWidth + 16
+                                                radius: 14
+                                                color: Theme.bgHover
+                                                border.color: Theme.border
+                                                border.width: 1
+
+                                                RowLayout {
+                                                    id: qsRow
+                                                    anchors.centerIn: parent
+                                                    spacing: 6
+
+                                                    Text {
+                                                        text: "󰣘"
+                                                        color: Theme.success
+                                                        font.family: Theme.iconFontFamily
+                                                        font.pixelSize: 13
+                                                    }
+
+                                                    Text {
+                                                        text: "Quickshell"
+                                                        color: Theme.text
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: 10
+                                                        font.bold: true
+                                                    }
+                                                }
+                                            }
+
+                                            // Logo Central: Arch Linux (Prominente)
+                                            Rectangle {
+                                                implicitWidth: 50
+                                                implicitHeight: 50
+                                                radius: 25
+                                                color: Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.16)
+                                                border.color: Theme.cyan
+                                                border.width: 1.5
+
+                                                Rectangle {
+                                                    anchors.centerIn: parent
+                                                    width: 40
+                                                    height: 40
+                                                    radius: 20
+                                                    color: "transparent"
+                                                    border.color: Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.35)
+                                                    border.width: 1
+                                                }
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "󰣇"
+                                                    color: Theme.cyan
+                                                    font.family: Theme.iconFontFamily
+                                                    font.pixelSize: 26
+                                                }
+                                            }
+
+                                            // Badge Hyprland (más pequeño a la derecha)
+                                            Rectangle {
+                                                implicitHeight: 28
+                                                implicitWidth: hyprRow.implicitWidth + 16
+                                                radius: 14
+                                                color: Theme.bgHover
+                                                border.color: Theme.border
+                                                border.width: 1
+
+                                                RowLayout {
+                                                    id: hyprRow
+                                                    anchors.centerIn: parent
+                                                    spacing: 6
+
+                                                    Text {
+                                                        text: ""
+                                                        color: Theme.cyan
+                                                        font.family: Theme.iconFontFamily
+                                                        font.pixelSize: 13
+                                                    }
+
+                                                    Text {
+                                                        text: "Hyprland"
+                                                        color: Theme.text
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: 10
+                                                        font.bold: true
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Textos del Entorno
+                                        ColumnLayout {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            spacing: 1
+
+                                            Text {
+                                                Layout.alignment: Qt.AlignHCenter
+                                                text: "MrDemonc-SHELL"
+                                                color: Theme.text
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 15
+                                                font.bold: true
+                                                font.letterSpacing: 0.8
+                                            }
+
+                                            Text {
+                                                Layout.alignment: Qt.AlignHCenter
+                                                text: "Entorno de escritorio elegante y fluido para Arch Linux"
+                                                color: Theme.subtext
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // =========================================================
+                                // 2. ENLACES DEL PROYECTO (GITHUB Y REPOSITORIO WEB)
+                                // =========================================================
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+
+                                    // Tarjeta 1: Perfil de GitHub
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 50
+                                        radius: Theme.radiusSmall
+                                        color: ghMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                        border.color: ghMouse.containsMouse ? Theme.primary : Theme.border
+                                        border.width: 1
+
+                                        Behavior on color { ColorAnimation { duration: 120 } }
+                                        Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            spacing: 10
+
+                                            Rectangle {
+                                                implicitWidth: 30
+                                                implicitHeight: 30
+                                                radius: 15
+                                                color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "󰊤"
+                                                    color: Theme.primary
+                                                    font.family: Theme.iconFontFamily
+                                                    font.pixelSize: 15
+                                                }
+                                            }
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 1
+
+                                                Text {
+                                                    text: "Creador en GitHub"
+                                                    color: Theme.overlay
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 9
+                                                    font.bold: true
+                                                }
+
+                                                Text {
+                                                    text: ControlCenterManager.aboutData.github_user ? `@${ControlCenterManager.aboutData.github_user}` : "@MrDemonc"
+                                                    color: Theme.text
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 11
+                                                    font.bold: true
+                                                }
+                                            }
+
+                                            Text {
+                                                text: "󰌹"
+                                                color: ghMouse.containsMouse ? Theme.primary : Theme.overlay
+                                                font.family: Theme.iconFontFamily
+                                                font.pixelSize: 13
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            id: ghMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                let url = ControlCenterManager.aboutData.github_url || "https://github.com/MrDemonc";
+                                                ControlCenterManager.openExternalUrl(url);
+                                            }
+                                        }
+                                    }
+
+                                    // Tarjeta 2: Repositorio Web
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 50
+                                        radius: Theme.radiusSmall
+                                        color: repoMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                        border.color: repoMouse.containsMouse ? Theme.cyan : Theme.border
+                                        border.width: 1
+
+                                        Behavior on color { ColorAnimation { duration: 120 } }
+                                        Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            spacing: 10
+
+                                            Rectangle {
+                                                implicitWidth: 30
+                                                implicitHeight: 30
+                                                radius: 15
+                                                color: Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.15)
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "󰞷"
+                                                    color: Theme.cyan
+                                                    font.family: Theme.iconFontFamily
+                                                    font.pixelSize: 15
+                                                }
+                                            }
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 1
+
+                                                Text {
+                                                    text: "Repositorio Web Oficial"
+                                                    color: Theme.overlay
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 9
+                                                    font.bold: true
+                                                }
+
+                                                Text {
+                                                    text: "MrDemonc/MrDemonc-SHELL"
+                                                    color: Theme.text
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 11
+                                                    font.bold: true
+                                                    elide: Text.ElideRight
+                                                }
+                                            }
+
+                                            Text {
+                                                text: "󰌹"
+                                                color: repoMouse.containsMouse ? Theme.cyan : Theme.overlay
+                                                font.family: Theme.iconFontFamily
+                                                font.pixelSize: 13
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            id: repoMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                let url = ControlCenterManager.aboutData.repo_url || "https://github.com/MrDemonc/MrDemonc-SHELL";
+                                                ControlCenterManager.openExternalUrl(url);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // =========================================================
+                                // 3. ESPECIFICACIONES DE LA PC Y DEL SISTEMA
+                                // =========================================================
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+
+                                    // Columna Izquierda: Sistema & Software
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 176
+                                        radius: Theme.radiusSmall
+                                        color: Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
+
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 12
+                                            spacing: 8
+
+                                            RowLayout {
+                                                spacing: 6
+                                                Text {
+                                                    text: "󰒓"
+                                                    color: Theme.primary
+                                                    font.family: Theme.iconFontFamily
+                                                    font.pixelSize: 12
+                                                }
+                                                Text {
+                                                    text: "SISTEMA OPERATIVO Y SHELL"
+                                                    color: Theme.overlay
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 10
+                                                    font.bold: true
+                                                    font.letterSpacing: 0.8
+                                                }
+                                            }
+
+                                            GridLayout {
+                                                columns: 2
+                                                rowSpacing: 5
+                                                columnSpacing: 10
+                                                Layout.fillWidth: true
+
+                                                Text { text: "Distribución:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: ControlCenterManager.aboutData.os_name || "Arch Linux"; color: Theme.text; font.pixelSize: 10; font.bold: true }
+
+                                                Text { text: "Linux Kernel:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: ControlCenterManager.aboutData.kernel || "--"; color: Theme.text; font.pixelSize: 10; font.bold: true }
+
+                                                Text { text: "Compositor:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: ControlCenterManager.aboutData.wm || "Hyprland"; color: Theme.text; font.pixelSize: 10; font.bold: true }
+
+                                                Text { text: "Framework Shell:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: "Quickshell (Wayland)"; color: Theme.text; font.pixelSize: 10; font.bold: true }
+
+                                                Text { text: "Paquetes:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: `${ControlCenterManager.aboutData.packages || ControlCenterManager.totalPackagesCount || 0} instalados`; color: Theme.text; font.pixelSize: 10; font.bold: true }
+
+                                                Text { text: "Tiempo encendido:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: ControlCenterManager.aboutData.uptime || "--"; color: Theme.text; font.pixelSize: 10; font.bold: true }
+                                            }
+                                        }
+                                    }
+
+                                    // Columna Derecha: Hardware & Componentes
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 176
+                                        radius: Theme.radiusSmall
+                                        color: Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
+
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 12
+                                            spacing: 8
+
+                                            RowLayout {
+                                                spacing: 6
+                                                Text {
+                                                    text: "󰌢"
+                                                    color: Theme.cyan
+                                                    font.family: Theme.iconFontFamily
+                                                    font.pixelSize: 12
+                                                }
+                                                Text {
+                                                    text: "HARDWARE Y RENDIMIENTO"
+                                                    color: Theme.overlay
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 10
+                                                    font.bold: true
+                                                    font.letterSpacing: 0.8
+                                                }
+                                            }
+
+                                            GridLayout {
+                                                columns: 2
+                                                rowSpacing: 5
+                                                columnSpacing: 10
+                                                Layout.fillWidth: true
+
+                                                Text { text: "Equipo:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: ControlCenterManager.aboutData.model || "PC"; color: Theme.text; font.pixelSize: 10; font.bold: true; elide: Text.ElideRight; Layout.maximumWidth: 170 }
+
+                                                Text { text: "Procesador (CPU):"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: ControlCenterManager.aboutData.cpu || "Intel/AMD"; color: Theme.text; font.pixelSize: 10; font.bold: true; elide: Text.ElideRight; Layout.maximumWidth: 170 }
+
+                                                Text { text: "Gráficos (GPU):"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: ControlCenterManager.aboutData.gpu || "GPU"; color: Theme.text; font.pixelSize: 10; font.bold: true; elide: Text.ElideRight; Layout.maximumWidth: 170 }
+
+                                                Text { text: "Memoria RAM:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: `${ControlCenterManager.aboutData.ram_used} / ${ControlCenterManager.aboutData.ram_total} (${ControlCenterManager.aboutData.ram_percent}%)`; color: Theme.text; font.pixelSize: 10; font.bold: true }
+
+                                                Text { text: "Almacenamiento (/):"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: `${ControlCenterManager.aboutData.disk_free} libres de ${ControlCenterManager.aboutData.disk_total}`; color: Theme.text; font.pixelSize: 10; font.bold: true }
+
+                                                Text { text: "Nombre de equipo:"; color: Theme.subtext; font.pixelSize: 10 }
+                                                Text { text: ControlCenterManager.aboutData.host || "arch"; color: Theme.text; font.pixelSize: 10; font.bold: true }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // =========================================================
+                                // 4. BARRA INFERIOR DE ACCIONES RÁPIDAS
+                                // =========================================================
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 32
+                                        radius: Theme.radiusSmall
+                                        color: refAboutMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
+
+                                        RowLayout {
+                                            anchors.centerIn: parent
+                                            spacing: 6
+                                            Text { text: "󰑐"; color: Theme.primary; font.family: Theme.iconFontFamily; font.pixelSize: 12 }
+                                            Text { text: "Actualizar Información"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                                        }
+
+                                        MouseArea {
+                                            id: refAboutMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: ControlCenterManager.refreshAbout()
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 32
+                                        radius: Theme.radiusSmall
+                                        color: wikiMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
+
+                                        RowLayout {
+                                            anchors.centerIn: parent
+                                            spacing: 6
+                                            Text { text: "󰣇"; color: Theme.cyan; font.family: Theme.iconFontFamily; font.pixelSize: 12 }
+                                            Text { text: "Documentación ArchWiki"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                                        }
+
+                                        MouseArea {
+                                            id: wikiMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: ControlCenterManager.openExternalUrl("https://wiki.archlinux.org/")
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 32
+                                        radius: Theme.radiusSmall
+                                        color: appsTabMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
+
+                                        RowLayout {
+                                            anchors.centerIn: parent
+                                            spacing: 6
+                                            Text { text: "󰏖"; color: Theme.primary; font.family: Theme.iconFontFamily; font.pixelSize: 12 }
+                                            Text { text: "Administrar Paquetes"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                                        }
+
+                                        MouseArea {
+                                            id: appsTabMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: ControlCenterManager.activeTab = "apps"
                                         }
                                     }
                                 }
