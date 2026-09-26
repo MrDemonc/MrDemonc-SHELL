@@ -534,6 +534,11 @@ QtObject {
     property var filteredPackages: []
     property string rawPackagesOutput: ""
 
+    property string activeUpdatingPkg: ""
+    property string activeCurrentPkg: ""
+    property int activeUpdatingProgress: -1
+    property string activeUpdatingStatus: ""
+
     onPackagesSearchQueryChanged: filterPackages()
     onPackagesFilterChanged: filterPackages()
 
@@ -683,8 +688,38 @@ QtObject {
                 stdinEnabled = false;
             }
         }
+        stdout: SplitParser {
+            onRead: data => {
+                let line = String(data).trim();
+                if (!line) return;
+                if (line.indexOf("STATUS:") === 0) {
+                    mgr.activeUpdatingStatus = line.substring(7).trim();
+                } else if (line.indexOf("PROGRESS:") === 0) {
+                    let p = parseInt(line.substring(9).trim());
+                    if (!isNaN(p)) {
+                        mgr.activeUpdatingProgress = Math.max(0, Math.min(100, p));
+                    }
+                } else if (line.indexOf("CURRENT_PKG:") === 0) {
+                    mgr.activeCurrentPkg = line.substring(12).trim();
+                } else if (line.indexOf("PKG:") === 0) {
+                    mgr.activeUpdatingPkg = line.substring(4).trim();
+                }
+            }
+        }
         onExited: function(exitCode, exitStatus) {
             passwordToPass = "";
+            finishUpdateTimer.restart();
+        }
+    }
+
+    property var finishUpdateTimer: Timer {
+        interval: 1200
+        repeat: false
+        onTriggered: {
+            mgr.activeUpdatingPkg = "";
+            mgr.activeCurrentPkg = "";
+            mgr.activeUpdatingProgress = -1;
+            mgr.activeUpdatingStatus = "";
             mgr.refreshPackages(true);
         }
     }
@@ -723,6 +758,10 @@ QtObject {
         pendingSudoAction = null;
         lastVerifiedPassword = "";
         sudoAuthProc.passwordToVerify = "";
+        mgr.activeUpdatingPkg = "";
+        mgr.activeCurrentPkg = "";
+        mgr.activeUpdatingProgress = -1;
+        mgr.activeUpdatingStatus = "";
         if (sudoAuthProc.running) {
             sudoAuthProc.running = false;
         }
@@ -733,10 +772,22 @@ QtObject {
         let args = ["python3", Quickshell.shellDir + "/scripts/package_manager.py"];
         if (act.type === "update") {
             args.push("update", act.target);
+            mgr.activeUpdatingPkg = act.target;
+            mgr.activeCurrentPkg = act.target;
+            mgr.activeUpdatingProgress = 5;
+            mgr.activeUpdatingStatus = "Iniciando descarga...";
         } else if (act.type === "update-all") {
             args.push("update-all");
+            mgr.activeUpdatingPkg = "all";
+            mgr.activeCurrentPkg = "";
+            mgr.activeUpdatingProgress = 5;
+            mgr.activeUpdatingStatus = "Iniciando actualización general...";
         } else if (act.type === "remove") {
             args.push("remove", act.target);
+            mgr.activeUpdatingPkg = act.target;
+            mgr.activeCurrentPkg = act.target;
+            mgr.activeUpdatingProgress = 5;
+            mgr.activeUpdatingStatus = "Desinstalando...";
         }
         packageActionProc.passwordToPass = pwd || "";
         packageActionProc.stdinEnabled = !!(pwd && pwd.length > 0);

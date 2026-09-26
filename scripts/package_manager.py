@@ -6,6 +6,7 @@ import glob
 import shutil
 import subprocess
 import time
+import re
 import configparser
 
 CACHE_FILE = os.path.expanduser(f"{os.environ.get('XDG_RUNTIME_DIR', '/tmp')}/quickshell_packages_cache.json")
@@ -225,6 +226,118 @@ def ensure_sudo_auth():
     return False
 
 
+def stream_process(cmd, action_desc="actualización", target=""):
+    """
+    Ejecuta un comando de actualización/desinstalación emitiendo líneas de STATUS, PROGRESS y CURRENT_PKG
+    en tiempo real para que la interfaz QML muestre la barra de progreso.
+    """
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+
+    if target:
+        print(f"PKG:{target}", flush=True)
+    print("STATUS:Iniciando proceso...", flush=True)
+    print("PROGRESS:5", flush=True)
+
+    stdbuf_path = shutil.which("stdbuf")
+    wrapped_cmd = list(cmd)
+    if stdbuf_path:
+        if wrapped_cmd[0] == "sudo":
+            wrapped_cmd = ["sudo", "stdbuf", "-oL", "-eL"] + wrapped_cmd[1:]
+        else:
+            wrapped_cmd = ["stdbuf", "-oL", "-eL"] + wrapped_cmd
+
+    last_pct = 5
+    collected_output = []
+
+    try:
+        proc = subprocess.Popen(
+            wrapped_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+
+        step_pattern = re.compile(
+            r'\((\d+)/(\d+)\)\s*(?:actualizando|upgrading|instalando|installing|reinstalando|reinstalling|desinstalando|removing)?\s*([a-zA-Z0-9@._+-]+)?',
+            re.IGNORECASE
+        )
+        pct_pattern = re.compile(r'(\d{1,3})%')
+
+        for raw_line in proc.stdout:
+            line = raw_line.strip()
+            if not line:
+                continue
+            collected_output.append(line)
+            l_low = line.lower()
+
+            # 1. Detectar paso de transacción e identificar paquete activo
+            step_m = step_pattern.search(line)
+            if step_m:
+                step = int(step_m.group(1))
+                total = int(step_m.group(2))
+                current_pkg = step_m.group(3) or ""
+                if current_pkg:
+                    print(f"CURRENT_PKG:{current_pkg}", flush=True)
+
+                if total > 0:
+                    pct = int(50 + (step / total) * 45)
+                    pct = max(last_pct, min(95, pct))
+                    last_pct = pct
+                    print(f"PROGRESS:{pct}", flush=True)
+
+                print(f"STATUS:Instalando ({step}/{total})...", flush=True)
+                continue
+
+            # 2. Detectar porcentajes explícitos en la línea (descargas)
+            pct_m = pct_pattern.search(line)
+            if pct_m:
+                val = int(pct_m.group(1))
+                if 0 <= val <= 100:
+                    if any(k in l_low for k in ("descarg", "download", "recuperando", "retriev")):
+                        mapped_pct = int(10 + (val * 0.4))
+                    else:
+                        mapped_pct = val
+                    if mapped_pct > last_pct:
+                        last_pct = min(98, mapped_pct)
+                        print(f"PROGRESS:{last_pct}", flush=True)
+
+            # 3. Detectar fases por palabras clave
+            if any(k in l_low for k in ("resolv", "sincron", "synchroniz", "dependen", "buscando", "looking")):
+                if last_pct < 15:
+                    last_pct = 15
+                    print("PROGRESS:15", flush=True)
+                print("STATUS:Resolviendo dependencias...", flush=True)
+            elif any(k in l_low for k in ("descarg", "download", "recuperando", "retrieving", "clon", "repo")):
+                if last_pct < 30:
+                    last_pct = 30
+                    print("PROGRESS:30", flush=True)
+                print("STATUS:Descargando paquetes...", flush=True)
+            elif any(k in l_low for k in ("clave", "keyring", "integridad", "integrity", "cargando", "conflict", "espacio", "disk space")):
+                if last_pct < 50:
+                    last_pct = 50
+                    print("PROGRESS:50", flush=True)
+                print("STATUS:Verificando integridad...", flush=True)
+            elif any(k in l_low for k in ("procesando", "processing", "compilando", "building")):
+                if last_pct < 60:
+                    last_pct = 60
+                    print("PROGRESS:60", flush=True)
+                print("STATUS:Compilando y preparando...", flush=True)
+            elif any(k in l_low for k in ("gancho", "hook", "posinstalación", "post-transaction")):
+                if last_pct < 95:
+                    last_pct = 95
+                    print("PROGRESS:95", flush=True)
+                print("STATUS:Ejecutando ganchos finales...", flush=True)
+
+        proc.wait()
+        return proc.returncode, "\n".join(collected_output)
+    except Exception as e:
+        return 1, str(e)
+
 def update_package(pkg_name):
     if not pkg_name:
         return
@@ -235,6 +348,7 @@ def update_package(pkg_name):
         is_aur = True
 
     if not ensure_sudo_auth():
+        print("STATUS:Autenticación cancelada", flush=True)
         notify("Operación cancelada", f"Se canceló la autenticación para actualizar {pkg_name}.", urgency="low")
         return
 
@@ -245,17 +359,21 @@ def update_package(pkg_name):
     else:
         cmd = ["sudo", "pacman", "-S", "--needed", "--noconfirm", pkg_name]
 
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    ret, output = stream_process(cmd, action_desc="actualización", target=pkg_name)
     clear_cache()
 
-    if res.returncode == 0:
+    if ret == 0:
+        print("STATUS:Actualización completada", flush=True)
+        print("PROGRESS:100", flush=True)
         notify("Actualización completada", f"{pkg_name} se actualizó exitosamente.", icon="software-update-available")
     else:
-        err_msg = res.stderr.strip() or res.stdout.strip()
+        print("STATUS:Error al actualizar", flush=True)
+        err_msg = output.strip()
         notify("Error al actualizar", f"No se pudo actualizar {pkg_name}.\n{err_msg[:120]}", urgency="critical", icon="dialog-error")
 
 def update_all():
     if not ensure_sudo_auth():
+        print("STATUS:Autenticación cancelada", flush=True)
         notify("Operación cancelada", "Se canceló la autenticación para actualizar el sistema.", urgency="low")
         return
 
@@ -266,12 +384,15 @@ def update_all():
     else:
         cmd = ["sudo", "pacman", "-Syu", "--noconfirm"]
 
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    ret, output = stream_process(cmd, action_desc="actualización del sistema", target="all")
     clear_cache()
 
-    if res.returncode == 0:
+    if ret == 0:
+        print("STATUS:Sistema al día", flush=True)
+        print("PROGRESS:100", flush=True)
         notify("Sistema al día", "Todas las aplicaciones y paquetes se actualizaron correctamente.", icon="software-update-available")
     else:
+        print("STATUS:Error en actualización", flush=True)
         notify("Error en actualización", "Ocurrió un error al actualizar los paquetes del sistema.", urgency="critical", icon="dialog-error")
 
 def remove_package(pkg_name):
@@ -279,6 +400,7 @@ def remove_package(pkg_name):
         return
 
     if not ensure_sudo_auth():
+        print("STATUS:Autenticación cancelada", flush=True)
         notify("Operación cancelada", f"Se canceló la autenticación para desinstalar {pkg_name}.", urgency="low")
         return
 
@@ -289,13 +411,16 @@ def remove_package(pkg_name):
     else:
         cmd = ["sudo", "pacman", "-Rns", "--noconfirm", pkg_name]
 
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    ret, output = stream_process(cmd, action_desc="desinstalación", target=pkg_name)
     clear_cache()
 
-    if res.returncode == 0:
+    if ret == 0:
+        print("STATUS:Desinstalación completada", flush=True)
+        print("PROGRESS:100", flush=True)
         notify("Desinstalación completada", f"{pkg_name} se desinstaló correctamente.", icon="software-update-available")
     else:
-        err_msg = res.stderr.strip() or res.stdout.strip()
+        print("STATUS:Error al desinstalar", flush=True)
+        err_msg = output.strip()
         notify("Error al desinstalar", f"No se pudo desinstalar {pkg_name}.\n{err_msg[:120]}", urgency="critical", icon="dialog-error")
 
 def main():

@@ -2150,8 +2150,9 @@ PanelWindow {
                                     MouseArea {
                                         id: btnCheckUpMouse
                                         anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
+                                        enabled: !ControlCenterManager.isPackagesLoading && !ControlCenterManager.activeUpdatingPkg
+                                        hoverEnabled: enabled
+                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                         onClicked: ControlCenterManager.refreshPackages(true)
                                     }
                                 }
@@ -2161,21 +2162,44 @@ PanelWindow {
                                     implicitHeight: 32
                                     implicitWidth: btnUpAllLayout.implicitWidth + 16
                                     radius: Theme.radiusSmall
-                                    color: btnUpAllMouse.containsMouse ? Qt.lighter(Theme.primary, 1.1) : Theme.primary
+                                    color: ControlCenterManager.activeUpdatingPkg === "all"
+                                        ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.25)
+                                        : (btnUpAllMouse.containsMouse ? Qt.lighter(Theme.primary, 1.1) : Theme.primary)
 
                                     RowLayout {
                                         id: btnUpAllLayout
                                         anchors.centerIn: parent
                                         spacing: 6
-                                        Text { text: "󰚰"; color: Theme.bg; font.family: Theme.iconFontFamily; font.pixelSize: 12; font.bold: true }
-                                        Text { text: "Actualizar todas"; color: Theme.bg; font.family: Theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                                        Text {
+                                            text: ControlCenterManager.activeUpdatingPkg === "all" ? "󰑐" : "󰚰"
+                                            color: ControlCenterManager.activeUpdatingPkg === "all" ? Theme.primary : Theme.bg
+                                            font.family: Theme.iconFontFamily
+                                            font.pixelSize: 12
+                                            font.bold: true
+
+                                            RotationAnimation on rotation {
+                                                running: ControlCenterManager.activeUpdatingPkg === "all"
+                                                loops: Animation.Infinite
+                                                from: 0
+                                                to: 360
+                                                duration: 1000
+                                            }
+                                        }
+                                        Text {
+                                            text: ControlCenterManager.activeUpdatingPkg === "all" ? "Actualizando sistema..." : "Actualizar todas"
+                                            color: ControlCenterManager.activeUpdatingPkg === "all" ? Theme.primary : Theme.bg
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 10
+                                            font.bold: true
+                                        }
                                     }
 
                                     MouseArea {
                                         id: btnUpAllMouse
                                         anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
+                                        enabled: !ControlCenterManager.activeUpdatingPkg
+                                        hoverEnabled: enabled
+                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                         onClicked: ControlCenterManager.updateAllPackages()
                                     }
                                 }
@@ -2264,11 +2288,29 @@ PanelWindow {
                                     delegate: Rectangle {
                                         id: pkgCard
                                         width: appsList.width - 12
-                                        implicitHeight: 62
+
+                                        readonly property bool isUpdating: {
+                                            let act = ControlCenterManager.activeUpdatingPkg;
+                                            if (!act) return false;
+                                            if (act === "all") return !!modelData.hasUpdate;
+                                            return act === modelData.name;
+                                        }
+
+                                        readonly property bool isCurrentActive: {
+                                            let cur = ControlCenterManager.activeCurrentPkg;
+                                            if (!cur) return true;
+                                            return cur === modelData.name || ControlCenterManager.activeUpdatingPkg === modelData.name;
+                                        }
+
+                                        implicitHeight: isUpdating ? 86 : 62
+                                        Behavior on implicitHeight {
+                                            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                                        }
+
                                         radius: Theme.radiusSmall
                                         color: pkgMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                                        border.color: modelData.hasUpdate ? Theme.warning : Theme.border
-                                        border.width: modelData.hasUpdate ? 1.5 : 1
+                                        border.color: isUpdating ? Theme.primary : (modelData.hasUpdate ? Theme.warning : Theme.border)
+                                        border.width: isUpdating ? 1.5 : (modelData.hasUpdate ? 1.5 : 1)
 
                                         MouseArea {
                                             id: pkgMouse
@@ -2345,9 +2387,9 @@ PanelWindow {
                                                         elide: Text.ElideRight
                                                     }
 
-                                                    // Badge de Actualización Disponible
+                                                    // Badge de Actualización Disponible (cuando no está actualizando)
                                                     Rectangle {
-                                                        visible: !!modelData.hasUpdate
+                                                        visible: !!modelData.hasUpdate && !isUpdating
                                                         implicitHeight: 16
                                                         implicitWidth: upBadgeText.implicitWidth + 8
                                                         radius: 4
@@ -2360,6 +2402,27 @@ PanelWindow {
                                                             anchors.centerIn: parent
                                                             text: "󰚰 Disp: " + modelData.newVersion
                                                             color: Theme.success
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 8
+                                                            font.bold: true
+                                                        }
+                                                    }
+
+                                                    // Badge de Estado Actualizando
+                                                    Rectangle {
+                                                        visible: isUpdating
+                                                        implicitHeight: 16
+                                                        implicitWidth: updatingBadgeText.implicitWidth + 8
+                                                        radius: 4
+                                                        color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.18)
+                                                        border.color: Theme.primary
+                                                        border.width: 1
+
+                                                        Text {
+                                                            id: updatingBadgeText
+                                                            anchors.centerIn: parent
+                                                            text: isCurrentActive ? "󰑐 Actualizando" : "󰑐 En cola"
+                                                            color: Theme.primary
                                                             font.family: Theme.fontFamily
                                                             font.pixelSize: 8
                                                             font.bold: true
@@ -2397,6 +2460,88 @@ PanelWindow {
                                                         font.pixelSize: 8
                                                     }
                                                 }
+
+                                                // Fila 4: BARRA DE PROGRESO DE ACTUALIZACIÓN
+                                                ColumnLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: 3
+                                                    visible: isUpdating
+
+                                                    RowLayout {
+                                                        Layout.fillWidth: true
+                                                        Text {
+                                                            text: {
+                                                                if (!isCurrentActive) return "En cola de actualización...";
+                                                                return ControlCenterManager.activeUpdatingStatus || "Actualizando paquete...";
+                                                            }
+                                                            color: Theme.primary
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 8
+                                                            font.bold: true
+                                                            elide: Text.ElideRight
+                                                            Layout.fillWidth: true
+                                                        }
+                                                        Text {
+                                                            visible: isCurrentActive && ControlCenterManager.activeUpdatingProgress >= 0
+                                                            text: Math.min(100, Math.max(0, ControlCenterManager.activeUpdatingProgress)) + "%"
+                                                            color: Theme.primary
+                                                            font.family: Theme.monoFontFamily
+                                                            font.pixelSize: 8
+                                                            font.bold: true
+                                                        }
+                                                    }
+
+                                                    // Track y Barra de progreso
+                                                    Item {
+                                                        Layout.fillWidth: true
+                                                        implicitHeight: 4
+                                                        clip: true
+
+                                                        // Pista de fondo
+                                                        Rectangle {
+                                                            anchors.fill: parent
+                                                            radius: 2
+                                                            color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                                                        }
+
+                                                        // Barra determinada (0 - 100%)
+                                                        Rectangle {
+                                                            id: determinateBar
+                                                            anchors.left: parent.left
+                                                            anchors.top: parent.top
+                                                            anchors.bottom: parent.bottom
+                                                            radius: 2
+                                                            color: Theme.primary
+                                                            visible: isCurrentActive && ControlCenterManager.activeUpdatingProgress >= 0
+                                                            width: Math.max(6, parent.width * (Math.min(100, Math.max(0, ControlCenterManager.activeUpdatingProgress)) / 100.0))
+
+                                                            Behavior on width {
+                                                                NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
+                                                            }
+                                                        }
+
+                                                        // Barra indeterminada animada
+                                                        Rectangle {
+                                                            id: indeterminateBar
+                                                            width: Math.max(24, parent.width * 0.35)
+                                                            height: parent.height
+                                                            radius: 2
+                                                            color: Theme.primary
+                                                            visible: !isCurrentActive || ControlCenterManager.activeUpdatingProgress < 0
+
+                                                            SequentialAnimation on x {
+                                                                running: isUpdating && (!isCurrentActive || ControlCenterManager.activeUpdatingProgress < 0)
+                                                                loops: Animation.Infinite
+                                                                NumberAnimation {
+                                                                    from: -parent.width * 0.35
+                                                                    to: parent.width
+                                                                    duration: 1100
+                                                                    easing.type: Easing.InOutQuad
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
 
                                             // Botones de Acción (Solo Iconos)
@@ -2409,23 +2554,32 @@ PanelWindow {
                                                     implicitHeight: 30
                                                     implicitWidth: 30
                                                     radius: 6
-                                                    color: modelData.hasUpdate ? Theme.primary : (btnActMouse.containsMouse ? Theme.bgHover : Theme.bgSurface)
-                                                    border.color: modelData.hasUpdate ? Theme.primary : Theme.border
+                                                    color: isUpdating ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.2) : (modelData.hasUpdate ? Theme.primary : (btnActMouse.containsMouse ? Theme.bgHover : Theme.bgSurface))
+                                                    border.color: isUpdating ? Theme.primary : (modelData.hasUpdate ? Theme.primary : Theme.border)
                                                     border.width: 1
 
                                                     Text {
                                                         anchors.centerIn: parent
-                                                        text: "󰚰"
-                                                        color: modelData.hasUpdate ? Theme.bg : (btnActMouse.containsMouse ? Theme.primary : Theme.text)
+                                                        text: isUpdating ? "󰑐" : "󰚰"
+                                                        color: isUpdating ? Theme.primary : (modelData.hasUpdate ? Theme.bg : (btnActMouse.containsMouse ? Theme.primary : Theme.text))
                                                         font.family: Theme.iconFontFamily
                                                         font.pixelSize: 13
+
+                                                        RotationAnimation on rotation {
+                                                            running: isUpdating
+                                                            loops: Animation.Infinite
+                                                            from: 0
+                                                            to: 360
+                                                            duration: 1000
+                                                        }
                                                     }
 
                                                     MouseArea {
                                                         id: btnActMouse
                                                         anchors.fill: parent
-                                                        hoverEnabled: true
-                                                        cursorShape: Qt.PointingHandCursor
+                                                        enabled: !isUpdating && !ControlCenterManager.activeUpdatingPkg
+                                                        hoverEnabled: enabled
+                                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                                         onClicked: ControlCenterManager.updatePackage(modelData.name)
                                                     }
                                                 }
@@ -2435,14 +2589,15 @@ PanelWindow {
                                                     implicitHeight: 30
                                                     implicitWidth: 30
                                                     radius: 6
-                                                    color: btnDesMouse.containsMouse ? Theme.danger : Qt.rgba(Theme.danger.r, Theme.danger.g, Theme.danger.b, 0.12)
+                                                    opacity: isUpdating ? 0.35 : 1.0
+                                                    color: btnDesMouse.containsMouse && !isUpdating ? Theme.danger : Qt.rgba(Theme.danger.r, Theme.danger.g, Theme.danger.b, 0.12)
                                                     border.color: Theme.danger
                                                     border.width: 1
 
                                                     Text {
                                                         anchors.centerIn: parent
                                                         text: "󰆴"
-                                                        color: btnDesMouse.containsMouse ? Theme.text : Theme.danger
+                                                        color: btnDesMouse.containsMouse && !isUpdating ? Theme.text : Theme.danger
                                                         font.family: Theme.iconFontFamily
                                                         font.pixelSize: 13
                                                     }
@@ -2450,8 +2605,9 @@ PanelWindow {
                                                     MouseArea {
                                                         id: btnDesMouse
                                                         anchors.fill: parent
-                                                        hoverEnabled: true
-                                                        cursorShape: Qt.PointingHandCursor
+                                                        enabled: !isUpdating && !ControlCenterManager.activeUpdatingPkg
+                                                        hoverEnabled: enabled
+                                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                                         onClicked: tabAppsView.pendingUninstallPkg = modelData
                                                     }
                                                 }
