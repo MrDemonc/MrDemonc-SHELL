@@ -31,7 +31,7 @@ QtObject {
         {
             category: "quickshell",
             categoryName: "Lanzadores y Shell",
-            keys: ["SUPER", "ALT"],
+            keys: ["SUPER", "ALT", "C"],
             title: "Calendario y Reloj del Sistema",
             description: "Abre la ventana flotante interactiva de calendario mensual con reloj digital en vivo, selector de fechas y navegación."
         },

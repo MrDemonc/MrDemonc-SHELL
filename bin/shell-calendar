@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launcher CLI para el Calendario de Quickshell (SUPER + ALT)
+# Launcher CLI para el Calendario de Quickshell (SUPER + ALT + C)
 
 REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"

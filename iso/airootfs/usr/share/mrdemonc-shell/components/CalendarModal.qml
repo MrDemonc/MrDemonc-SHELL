@@ -600,27 +600,6 @@ PanelWindow {
                             }
                         }
                     }
-
-                    // Pie de la tarjeta con pista de atajo
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        Text {
-                            text: "Atajo: SUPER + ALT para abrir/cerrar"
-                            color: Theme.overlay
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        Text {
-                            text: "Presiona ESC para cerrar"
-                            color: Theme.overlay
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                        }
-                    }
                 }
             }
         }
