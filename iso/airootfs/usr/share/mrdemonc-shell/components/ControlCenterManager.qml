@@ -7,7 +7,7 @@ QtObject {
     id: mgr
 
     property bool isOpen: false
-    property string activeTab: "network" // "network", "bluetooth", "audio", "display", "power", "bar", "system"
+    property string activeTab: "network" // "network", "bluetooth", "audio", "display", "power", "bar", "apps"
 
     // -------------------------------------------------------------------------
     // 1. MONITOREO DE ACTIVACIÓN (CLI & KEYBIND)
@@ -80,6 +80,9 @@ QtObject {
         refreshDisplay();
         refreshBattery();
         refreshSystem();
+        if (activeTab === "apps") {
+            refreshPackages(false);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -514,5 +517,104 @@ QtObject {
 
     function refreshSystem() {
         if (!sysInfoProc.running) sysInfoProc.running = true;
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. GESTIÓN DE APLICACIONES Y PAQUETES (PACMAN Y AUR)
+    // -------------------------------------------------------------------------
+    property var installedPackages: []
+    property int totalPackagesCount: 0
+    property int pacmanPackagesCount: 0
+    property int aurPackagesCount: 0
+    property int updatesPackagesCount: 0
+    property bool isPackagesLoading: false
+    property string packagesSearchQuery: ""
+    property string packagesFilter: "all" // "all", "pacman", "aur", "updates"
+    property var filteredPackages: []
+    property string rawPackagesOutput: ""
+
+    onPackagesSearchQueryChanged: filterPackages()
+    onPackagesFilterChanged: filterPackages()
+
+    onActiveTabChanged: {
+        if (activeTab === "apps" && (!installedPackages || installedPackages.length === 0)) {
+            refreshPackages(false);
+        }
+    }
+
+    onIsOpenChanged: {
+        if (isOpen && activeTab === "apps" && (!installedPackages || installedPackages.length === 0)) {
+            refreshPackages(false);
+        }
+    }
+
+    property var packagesProc: Process {
+        stdout: SplitParser {
+            onRead: data => { mgr.rawPackagesOutput += data; }
+        }
+        onExited: {
+            try {
+                let info = JSON.parse(mgr.rawPackagesOutput.trim());
+                if (info && info.packages) {
+                    mgr.totalPackagesCount = info.total || 0;
+                    mgr.pacmanPackagesCount = info.pacmanCount || 0;
+                    mgr.aurPackagesCount = info.aurCount || 0;
+                    mgr.updatesPackagesCount = info.updatesCount || 0;
+                    mgr.installedPackages = info.packages || [];
+                    mgr.filterPackages();
+                }
+            } catch (e) {
+                console.log("Error parsing packages JSON:", e);
+            }
+            mgr.rawPackagesOutput = "";
+            mgr.isPackagesLoading = false;
+        }
+    }
+
+    function refreshPackages(force) {
+        if (!packagesProc.running) {
+            mgr.isPackagesLoading = true;
+            mgr.rawPackagesOutput = "";
+            let args = ["python3", Quickshell.shellDir + "/scripts/package_manager.py", "list"];
+            if (force) args.push("--force");
+            packagesProc.command = args;
+            packagesProc.running = false;
+            packagesProc.running = true;
+        }
+    }
+
+    function filterPackages() {
+        let q = packagesSearchQuery.trim().toLowerCase();
+        let f = packagesFilter;
+        let list = installedPackages || [];
+        
+        mgr.filteredPackages = list.filter(function(p) {
+            if (!p) return false;
+            if (f === "pacman" && p.source !== "pacman") return false;
+            if (f === "aur" && p.source !== "aur") return false;
+            if (f === "updates" && !p.hasUpdate) return false;
+            
+            if (q.length > 0) {
+                let dName = (p.displayName || "").toLowerCase();
+                let name = (p.name || "").toLowerCase();
+                let desc = (p.description || "").toLowerCase();
+                return dName.indexOf(q) !== -1 || name.indexOf(q) !== -1 || desc.indexOf(q) !== -1;
+            }
+            return true;
+        });
+    }
+
+    function updatePackage(pkgName) {
+        if (!pkgName) return;
+        Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "update", pkgName]);
+    }
+
+    function updateAllPackages() {
+        Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "update-all"]);
+    }
+
+    function removePackage(pkgName) {
+        if (!pkgName) return;
+        Quickshell.execDetached(["python3", Quickshell.shellDir + "/scripts/package_manager.py", "remove", pkgName]);
     }
 }

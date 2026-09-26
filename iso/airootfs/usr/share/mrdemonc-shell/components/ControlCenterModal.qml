@@ -126,7 +126,7 @@ PanelWindow {
                             { id: "display", label: "Pantalla y Luz", icon: "󰃠" },
                             { id: "power", label: "Batería y Energía", icon: "󰂄" },
                             { id: "bar", label: "Barra de Sistema", icon: "󰒓" },
-                            { id: "system", label: "Personalización", icon: "󰔎" }
+                            { id: "apps", label: "Aplicaciones", icon: "󰏖" }
                         ]
 
                         Repeater {
@@ -1901,210 +1901,782 @@ PanelWindow {
                         }
                     }
 
-                    // 7. PESTAÑA: PERSONALIZACIÓN Y SISTEMA
+                    // 7. PESTAÑA: GESTIÓN DE APLICACIONES Y PAQUETES (PACMAN Y AUR)
                     Item {
-                        id: tabSystemView
+                        id: tabAppsView
                         anchors.fill: parent
-                        anchors.margins: 16
-                        visible: ControlCenterManager.activeTab === "system"
+                        anchors.margins: 14
+                        visible: ControlCenterManager.activeTab === "apps"
+
+                        property var pendingUninstallPkg: null
 
                         ColumnLayout {
                             anchors.fill: parent
-                            spacing: 14
+                            spacing: 10
 
-                            Text {
-                                text: "PERSONALIZACIÓN VISUAL Y HERRAMIENTAS"
-                                color: Theme.overlay
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                font.bold: true
-                            }
-
-                            // Cuadrícula de herramientas
-                            GridLayout {
+                            // ---------------------------------------------------------
+                            // ENCABEZADO Y RESUMEN DE PAQUETES
+                            // ---------------------------------------------------------
+                            RowLayout {
                                 Layout.fillWidth: true
-                                columns: 2
-                                rowSpacing: 8
-                                columnSpacing: 8
-
-                                // 1. Selector de Temas
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 46
-                                    radius: Theme.radiusSmall
-                                    color: themeBtnMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                                    border.color: Theme.border
-                                    border.width: 1
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 10
-                                        Text { text: "󰔎"; color: Theme.primary; font.family: Theme.iconFontFamily; font.pixelSize: 16 }
-                                        ColumnLayout {
-                                            spacing: 1
-                                            Text { text: "Selector de Temas"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 11; font.bold: true }
-                                            Text { text: "CoverFlow 3D • SUPER+SHIFT+T"; color: Theme.overlay; font.family: Theme.fontFamily; font.pixelSize: 9 }
-                                        }
-                                    }
-                                    MouseArea {
-                                        id: themeBtnMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            ControlCenterManager.close();
-                                            PopoutManager.themeModalOpen = true;
-                                        }
-                                    }
-                                }
-
-                                // 2. Fondos de Pantalla
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 46
-                                    radius: Theme.radiusSmall
-                                    color: wallBtnMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                                    border.color: Theme.border
-                                    border.width: 1
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 10
-                                        Text { text: "󰸉"; color: Theme.cyan; font.family: Theme.iconFontFamily; font.pixelSize: 16 }
-                                        ColumnLayout {
-                                            spacing: 1
-                                            Text { text: "Fondos de Pantalla"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 11; font.bold: true }
-                                            Text { text: "CoverFlow 3D • SUPER+SHIFT+W"; color: Theme.overlay; font.family: Theme.fontFamily; font.pixelSize: 9 }
-                                        }
-                                    }
-                                    MouseArea {
-                                        id: wallBtnMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            ControlCenterManager.close();
-                                            WallpaperManager.wallpaperModalOpen = true;
-                                        }
-                                    }
-                                }
-
-                                // 3. Cuentagotas de Color
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 46
-                                    radius: Theme.radiusSmall
-                                    color: pickBtnMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                                    border.color: Theme.border
-                                    border.width: 1
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 10
-                                        Text { text: "󰈊"; color: Theme.pink; font.family: Theme.iconFontFamily; font.pixelSize: 16 }
-                                        ColumnLayout {
-                                            spacing: 1
-                                            Text { text: "Cuentagotas (Eyedropper)"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 11; font.bold: true }
-                                            Text { text: "Captura colores HEX • SUPER+SHIFT+P"; color: Theme.overlay; font.family: Theme.fontFamily; font.pixelSize: 9 }
-                                        }
-                                    }
-                                    MouseArea {
-                                        id: pickBtnMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            ControlCenterManager.close();
-                                            ColorPickerManager.openPicker();
-                                        }
-                                    }
-                                }
-
-                                // 4. Grabador de Pantalla
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 46
-                                    radius: Theme.radiusSmall
-                                    color: recBtnMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
-                                    border.color: Theme.border
-                                    border.width: 1
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 10
-                                        Text { text: "󰕧"; color: Theme.danger; font.family: Theme.iconFontFamily; font.pixelSize: 16 }
-                                        ColumnLayout {
-                                            spacing: 1
-                                            Text { text: "Grabador de Pantalla"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 11; font.bold: true }
-                                            Text { text: "Video y audio • SUPER+SHIFT+R"; color: Theme.overlay; font.family: Theme.fontFamily; font.pixelSize: 9 }
-                                        }
-                                    }
-                                    MouseArea {
-                                        id: recBtnMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            ControlCenterManager.close();
-                                            ScreenRecordManager.openMenu();
-                                        }
-                                    }
-                                }
-                            }
-
-                            Text {
-                                text: "INFORMACIÓN DEL SISTEMA OPERATIVO"
-                                color: Theme.overlay
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                font.bold: true
-                            }
-
-                            // Ficha de Información del Sistema
-                            Rectangle {
-                                Layout.fillWidth: true
-                                implicitHeight: 90
-                                radius: Theme.radiusSmall
-                                color: Theme.bgSurface
-                                border.color: Theme.border
-                                border.width: 1
+                                spacing: 10
 
                                 ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 4
-
-                                    RowLayout {
-                                        Text { text: "󰣇 Sistema:"; color: Theme.primary; font.family: Theme.fontFamily; font.pixelSize: 11; font.bold: true }
-                                        Text { text: "Arch Linux (MrDemonc-SHELL)"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                                        Item { Layout.fillWidth: true }
-                                        Text { text: "󰌢 Host:"; color: Theme.primary; font.family: Theme.fontFamily; font.pixelSize: 11; font.bold: true }
-                                        Text { text: ControlCenterManager.sysHost || "arch"; color: Theme.text; font.family: Theme.monoFontFamily; font.pixelSize: 10 }
+                                    spacing: 3
+                                    Text {
+                                        text: "APLICACIONES Y PAQUETES INSTALADOS"
+                                        color: Theme.overlay
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 10
+                                        font.bold: true
                                     }
 
+                                    // Chips de conteo rápido
                                     RowLayout {
-                                        Text { text: "󰌌 Kernel:"; color: Theme.subtext; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                                        Text { text: ControlCenterManager.sysKernel || "Linux"; color: Theme.overlay; font.family: Theme.monoFontFamily; font.pixelSize: 10 }
-                                        Item { Layout.fillWidth: true }
-                                        Text { text: "󰔚 Uptime:"; color: Theme.subtext; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                                        Text { text: ControlCenterManager.sysUptime || "---"; color: Theme.overlay; font.family: Theme.monoFontFamily; font.pixelSize: 10 }
+                                        spacing: 6
+
+                                        // Total
+                                        Rectangle {
+                                            implicitHeight: 20
+                                            implicitWidth: totalTxt.implicitWidth + 12
+                                            radius: 10
+                                            color: Theme.bgSurface
+                                            border.color: Theme.border
+                                            border.width: 1
+                                            Text {
+                                                id: totalTxt
+                                                anchors.centerIn: parent
+                                                text: "Total: " + ControlCenterManager.totalPackagesCount
+                                                color: Theme.text
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                            }
+                                        }
+
+                                        // Pacman
+                                        Rectangle {
+                                            implicitHeight: 20
+                                            implicitWidth: pacCountTxt.implicitWidth + 12
+                                            radius: 10
+                                            color: Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.14)
+                                            border.color: Theme.cyan
+                                            border.width: 1
+                                            Text {
+                                                id: pacCountTxt
+                                                anchors.centerIn: parent
+                                                text: "󰮯 Pacman: " + ControlCenterManager.pacmanPackagesCount
+                                                color: Theme.cyan
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                                font.bold: true
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: ControlCenterManager.packagesFilter = "pacman"
+                                            }
+                                        }
+
+                                        // AUR
+                                        Rectangle {
+                                            implicitHeight: 20
+                                            implicitWidth: aurCountTxt.implicitWidth + 12
+                                            radius: 10
+                                            color: Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.14)
+                                            border.color: Theme.warning
+                                            border.width: 1
+                                            Text {
+                                                id: aurCountTxt
+                                                anchors.centerIn: parent
+                                                text: "󰣇 AUR (yay): " + ControlCenterManager.aurPackagesCount
+                                                color: Theme.warning
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                                font.bold: true
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: ControlCenterManager.packagesFilter = "aur"
+                                            }
+                                        }
+
+                                        // Actualizaciones
+                                        Rectangle {
+                                            visible: ControlCenterManager.updatesPackagesCount > 0
+                                            implicitHeight: 20
+                                            implicitWidth: upCountTxt.implicitWidth + 12
+                                            radius: 10
+                                            color: Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.18)
+                                            border.color: Theme.success
+                                            border.width: 1
+                                            Text {
+                                                id: upCountTxt
+                                                anchors.centerIn: parent
+                                                text: "󰚰 " + ControlCenterManager.updatesPackagesCount + " actualizables"
+                                                color: Theme.success
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                                font.bold: true
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: ControlCenterManager.packagesFilter = "updates"
+                                            }
+                                        }
                                     }
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                // Botón Actualizar Todo
+                                Rectangle {
+                                    implicitHeight: 30
+                                    implicitWidth: btnUpAllLayout.implicitWidth + 16
+                                    radius: Theme.radiusSmall
+                                    color: btnUpAllMouse.containsMouse ? Qt.lighter(Theme.primary, 1.1) : Theme.primary
 
                                     RowLayout {
-                                        Text { text: "󰖲 Compositor:"; color: Theme.subtext; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                                        Text { text: "Hyprland 0.56.2 (Wayland)"; color: Theme.overlay; font.family: Theme.monoFontFamily; font.pixelSize: 10 }
-                                        Item { Layout.fillWidth: true }
-                                        Text { text: "󰀻 Shell:"; color: Theme.subtext; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                                        Text { text: "Quickshell v0.0.8"; color: Theme.overlay; font.family: Theme.monoFontFamily; font.pixelSize: 10 }
+                                        id: btnUpAllLayout
+                                        anchors.centerIn: parent
+                                        spacing: 6
+                                        Text { text: "󰚰"; color: Theme.bg; font.family: Theme.iconFontFamily; font.pixelSize: 12; font.bold: true }
+                                        Text { text: "Actualizar Todo"; color: Theme.bg; font.family: Theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                                    }
+                                    MouseArea {
+                                        id: btnUpAllMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: ControlCenterManager.updateAllPackages()
+                                    }
+                                }
+
+                                // Botón Refrescar
+                                Rectangle {
+                                    implicitHeight: 30
+                                    implicitWidth: 32
+                                    radius: Theme.radiusSmall
+                                    color: btnRefMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                    border.color: Theme.border
+                                    border.width: 1
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "󰑐"
+                                        color: ControlCenterManager.isPackagesLoading ? Theme.primary : Theme.text
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 13
+                                    }
+                                    MouseArea {
+                                        id: btnRefMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: ControlCenterManager.refreshPackages(true)
                                     }
                                 }
                             }
 
-                            Item { Layout.fillHeight: true }
+                            // ---------------------------------------------------------
+                            // BARRA DE BÚSQUEDA Y FILTROS POR ORIGEN (PACMAN / AUR)
+                            // ---------------------------------------------------------
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                // Caja de Búsqueda
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 32
+                                    radius: Theme.radiusSmall
+                                    color: Theme.bgSurface
+                                    border.color: searchInput.activeFocus ? Theme.primary : Theme.border
+                                    border.width: 1
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 8
+                                        anchors.rightMargin: 8
+                                        spacing: 6
+
+                                        Text {
+                                            text: "󰍉"
+                                            color: Theme.overlay
+                                            font.family: Theme.iconFontFamily
+                                            font.pixelSize: 12
+                                        }
+
+                                        TextInput {
+                                            id: searchInput
+                                            Layout.fillWidth: true
+                                            color: Theme.text
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 10
+                                            clip: true
+                                            text: ControlCenterManager.packagesSearchQuery
+                                            onTextChanged: ControlCenterManager.packagesSearchQuery = text
+
+                                            Text {
+                                                text: "Buscar aplicación o paquete..."
+                                                color: Theme.overlay
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
+                                                visible: !searchInput.text && !searchInput.activeFocus
+                                            }
+                                        }
+
+                                        // Limpiar búsqueda
+                                        Text {
+                                            visible: searchInput.text.length > 0
+                                            text: "󰅖"
+                                            color: clearSearchMouse.containsMouse ? Theme.danger : Theme.overlay
+                                            font.family: Theme.iconFontFamily
+                                            font.pixelSize: 11
+
+                                            MouseArea {
+                                                id: clearSearchMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    searchInput.text = "";
+                                                    ControlCenterManager.packagesSearchQuery = "";
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Selector de Filtros (Pills)
+                                RowLayout {
+                                    spacing: 4
+
+                                    Repeater {
+                                        model: [
+                                            { id: "all", label: "Todas" },
+                                            { id: "pacman", label: "󰮯 Pacman" },
+                                            { id: "aur", label: "󰣇 AUR (yay)" },
+                                            { id: "updates", label: "󰚰 Actualizables" }
+                                        ]
+
+                                        delegate: Rectangle {
+                                            id: pillBtn
+                                            implicitHeight: 32
+                                            implicitWidth: pillText.implicitWidth + 14
+                                            radius: Theme.radiusSmall
+                                            color: {
+                                                if (ControlCenterManager.packagesFilter === modelData.id) {
+                                                    return Theme.primary;
+                                                }
+                                                return pillMouse.containsMouse ? Theme.bgHover : Theme.bgSurface;
+                                            }
+                                            border.color: ControlCenterManager.packagesFilter === modelData.id ? Theme.primary : Theme.border
+                                            border.width: 1
+
+                                            Text {
+                                                id: pillText
+                                                anchors.centerIn: parent
+                                                text: modelData.label
+                                                color: ControlCenterManager.packagesFilter === modelData.id ? Theme.bg : (pillMouse.containsMouse ? Theme.text : Theme.subtext)
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
+                                                font.bold: ControlCenterManager.packagesFilter === modelData.id
+                                            }
+
+                                            MouseArea {
+                                                id: pillMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: ControlCenterManager.packagesFilter = modelData.id
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ---------------------------------------------------------
+                            // LISTA DE APLICACIONES Y PAQUETES
+                            // ---------------------------------------------------------
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+
+                                // Indicador de Carga
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 8
+                                    visible: ControlCenterManager.isPackagesLoading && (!ControlCenterManager.installedPackages || ControlCenterManager.installedPackages.length === 0)
+
+                                    Text {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        text: "󰑐"
+                                        color: Theme.primary
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 26
+
+                                        RotationAnimation on rotation {
+                                            from: 0
+                                            to: 360
+                                            duration: 1100
+                                            loops: Animation.Infinite
+                                            running: ControlCenterManager.isPackagesLoading
+                                        }
+                                    }
+                                    Text {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        text: "Cargando paquetes y consultando repositorios oficiales y AUR..."
+                                        color: Theme.overlay
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 11
+                                    }
+                                }
+
+                                // Estado Vacío (Sin resultados)
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 6
+                                    visible: !ControlCenterManager.isPackagesLoading && (!ControlCenterManager.filteredPackages || ControlCenterManager.filteredPackages.length === 0)
+
+                                    Text {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        text: "󰏖"
+                                        color: Theme.overlay
+                                        font.family: Theme.iconFontFamily
+                                        font.pixelSize: 32
+                                    }
+                                    Text {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        text: "No se encontraron paquetes con los filtros aplicados"
+                                        color: Theme.subtext
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 11
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        text: "Intenta con otro término de búsqueda o cambia la categoría (Pacman / AUR)"
+                                        color: Theme.overlay
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 9
+                                    }
+                                }
+
+                                // Lista
+                                ListView {
+                                    id: appsList
+                                    anchors.fill: parent
+                                    anchors.rightMargin: 4
+                                    clip: true
+                                    spacing: 6
+                                    model: ControlCenterManager.filteredPackages
+
+                                    ScrollBar.vertical: ScrollBar {
+                                        policy: ScrollBar.AsNeeded
+                                    }
+
+                                    delegate: Rectangle {
+                                        id: pkgCard
+                                        width: appsList.width
+                                        implicitHeight: 62
+                                        radius: Theme.radiusSmall
+                                        color: pkgMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                        border.color: modelData.hasUpdate ? Theme.warning : Theme.border
+                                        border.width: modelData.hasUpdate ? 1.5 : 1
+
+                                        MouseArea {
+                                            id: pkgMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                        }
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 10
+                                            spacing: 10
+
+                                            // Ícono del paquete / aplicación
+                                            Item {
+                                                implicitWidth: 36
+                                                implicitHeight: 36
+                                                Layout.alignment: Qt.AlignVCenter
+
+                                                Image {
+                                                    anchors.fill: parent
+                                                    visible: !!modelData.icon && (modelData.icon.indexOf("/") === 0 || modelData.icon.indexOf("file:") === 0)
+                                                    source: (modelData.icon && modelData.icon.indexOf("/") === 0) ? ("file://" + modelData.icon) : (modelData.icon || "")
+                                                    sourceSize.width: 36
+                                                    sourceSize.height: 36
+                                                    fillMode: Image.PreserveAspectFit
+                                                    smooth: true
+                                                }
+
+                                                Rectangle {
+                                                    anchors.fill: parent
+                                                    visible: !modelData.icon || (modelData.icon.indexOf("/") !== 0 && modelData.icon.indexOf("file:") !== 0)
+                                                    radius: 6
+                                                    color: Theme.bg
+                                                    border.color: Theme.border
+                                                    border.width: 1
+
+                                                    Text {
+                                                        anchors.centerIn: parent
+                                                        text: modelData.source === "aur" ? "󰣇" : (modelData.isDesktopApp ? "󰀻" : "󰏖")
+                                                        color: modelData.source === "aur" ? Theme.warning : Theme.cyan
+                                                        font.family: Theme.iconFontFamily
+                                                        font.pixelSize: 18
+                                                    }
+                                                }
+                                            }
+
+                                            // Datos del paquete
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 2
+                                                Layout.alignment: Qt.AlignVCenter
+
+                                                // Fila 1: Nombre + Badges
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: 6
+
+                                                    Text {
+                                                        text: modelData.displayName || modelData.name
+                                                        color: Theme.text
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: 11
+                                                        font.bold: true
+                                                        elide: Text.ElideRight
+                                                    }
+
+                                                    Text {
+                                                        visible: (modelData.displayName && modelData.displayName !== modelData.name)
+                                                        text: "(" + modelData.name + ")"
+                                                        color: Theme.overlay
+                                                        font.family: Theme.monoFontFamily
+                                                        font.pixelSize: 9
+                                                        elide: Text.ElideRight
+                                                    }
+
+                                                    // Badge AUR o Pacman
+                                                    Rectangle {
+                                                        implicitHeight: 16
+                                                        implicitWidth: tagText.implicitWidth + 8
+                                                        radius: 4
+                                                        color: modelData.source === "aur" ? Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.16) : Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.15)
+                                                        border.color: modelData.source === "aur" ? Theme.warning : Theme.cyan
+                                                        border.width: 1
+
+                                                        Text {
+                                                            id: tagText
+                                                            anchors.centerIn: parent
+                                                            text: modelData.source === "aur" ? "󰣇 AUR (yay)" : "󰮯 Pacman"
+                                                            color: modelData.source === "aur" ? Theme.warning : Theme.cyan
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 8
+                                                            font.bold: true
+                                                        }
+                                                    }
+
+                                                    // Badge de Actualización Disponible
+                                                    Rectangle {
+                                                        visible: !!modelData.hasUpdate
+                                                        implicitHeight: 16
+                                                        implicitWidth: upBadgeText.implicitWidth + 8
+                                                        radius: 4
+                                                        color: Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.18)
+                                                        border.color: Theme.success
+                                                        border.width: 1
+
+                                                        Text {
+                                                            id: upBadgeText
+                                                            anchors.centerIn: parent
+                                                            text: "󰚰 Disp: " + modelData.newVersion
+                                                            color: Theme.success
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 8
+                                                            font.bold: true
+                                                        }
+                                                    }
+
+                                                    Item { Layout.fillWidth: true }
+                                                }
+
+                                                // Fila 2: Descripción
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: modelData.description || "Paquete instalado en Arch Linux"
+                                                    color: Theme.subtext
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 9
+                                                    elide: Text.ElideRight
+                                                    maximumLineCount: 1
+                                                }
+
+                                                // Fila 3: Versión y Tamaño
+                                                RowLayout {
+                                                    spacing: 6
+                                                    Text {
+                                                        text: "Versión: " + modelData.version
+                                                        color: Theme.overlay
+                                                        font.family: Theme.monoFontFamily
+                                                        font.pixelSize: 8
+                                                    }
+                                                    Text {
+                                                        visible: !!modelData.size
+                                                        text: "•  Tamaño: " + modelData.size
+                                                        color: Theme.overlay
+                                                        font.family: Theme.monoFontFamily
+                                                        font.pixelSize: 8
+                                                    }
+                                                }
+                                            }
+
+                                            // Botones de Acción
+                                            RowLayout {
+                                                spacing: 6
+                                                Layout.alignment: Qt.AlignVCenter
+
+                                                // Botón Actualizar
+                                                Rectangle {
+                                                    implicitHeight: 28
+                                                    implicitWidth: btnActText.implicitWidth + 16
+                                                    radius: 6
+                                                    color: modelData.hasUpdate ? Theme.primary : (btnActMouse.containsMouse ? Theme.bgHover : Theme.bgSurface)
+                                                    border.color: modelData.hasUpdate ? Theme.primary : Theme.border
+                                                    border.width: 1
+
+                                                    RowLayout {
+                                                        anchors.centerIn: parent
+                                                        spacing: 4
+                                                        Text {
+                                                            text: "󰚰"
+                                                            color: modelData.hasUpdate ? Theme.bg : (btnActMouse.containsMouse ? Theme.primary : Theme.text)
+                                                            font.family: Theme.iconFontFamily
+                                                            font.pixelSize: 11
+                                                        }
+                                                        Text {
+                                                            id: btnActText
+                                                            text: modelData.hasUpdate ? "Actualizar" : "Reinstalar"
+                                                            color: modelData.hasUpdate ? Theme.bg : (btnActMouse.containsMouse ? Theme.primary : Theme.text)
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 9
+                                                            font.bold: modelData.hasUpdate
+                                                        }
+                                                    }
+                                                    MouseArea {
+                                                        id: btnActMouse
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: ControlCenterManager.updatePackage(modelData.name)
+                                                    }
+                                                }
+
+                                                // Botón Desinstalar
+                                                Rectangle {
+                                                    implicitHeight: 28
+                                                    implicitWidth: btnDesText.implicitWidth + 16
+                                                    radius: 6
+                                                    color: btnDesMouse.containsMouse ? Theme.danger : Qt.rgba(Theme.danger.r, Theme.danger.g, Theme.danger.b, 0.10)
+                                                    border.color: Theme.danger
+                                                    border.width: 1
+
+                                                    RowLayout {
+                                                        anchors.centerIn: parent
+                                                        spacing: 4
+                                                        Text {
+                                                            text: "󰆴"
+                                                            color: btnDesMouse.containsMouse ? Theme.text : Theme.danger
+                                                            font.family: Theme.iconFontFamily
+                                                            font.pixelSize: 11
+                                                        }
+                                                        Text {
+                                                            id: btnDesText
+                                                            text: "Desinstalar"
+                                                            color: btnDesMouse.containsMouse ? Theme.text : Theme.danger
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 9
+                                                            font.bold: true
+                                                        }
+                                                    }
+                                                    MouseArea {
+                                                        id: btnDesMouse
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: tabAppsView.pendingUninstallPkg = modelData
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // -------------------------------------------------------------
+                        // DIÁLOGO MODAL DE CONFIRMACIÓN PARA DESINSTALACIÓN
+                        // -------------------------------------------------------------
+                        Rectangle {
+                            anchors.fill: parent
+                            visible: tabAppsView.pendingUninstallPkg !== null
+                            color: Qt.rgba(0, 0, 0, 0.65)
+                            z: 999
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: tabAppsView.pendingUninstallPkg = null
+                            }
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: Math.min(420, parent.width - 32)
+                                implicitHeight: confirmLayout.implicitHeight + 36
+                                radius: Theme.radiusMedium
+                                color: Theme.bg
+                                border.color: Theme.danger
+                                border.width: 1.5
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {} // Consumir clic
+                                }
+
+                                ColumnLayout {
+                                    id: confirmLayout
+                                    anchors.fill: parent
+                                    anchors.margins: 18
+                                    spacing: 12
+
+                                    RowLayout {
+                                        spacing: 10
+                                        Text {
+                                            text: "󰆴"
+                                            color: Theme.danger
+                                            font.family: Theme.iconFontFamily
+                                            font.pixelSize: 22
+                                        }
+                                        Text {
+                                            text: "¿Desinstalar paquete?"
+                                            color: Theme.text
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 13
+                                            font.bold: true
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        text: "¿Estás seguro de que deseas desinstalar \"" + (tabAppsView.pendingUninstallPkg ? tabAppsView.pendingUninstallPkg.displayName : "") + "\"?"
+                                        color: Theme.text
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 11
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: detailsLayout.implicitHeight + 14
+                                        radius: Theme.radiusSmall
+                                        color: Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
+
+                                        ColumnLayout {
+                                            id: detailsLayout
+                                            anchors.fill: parent
+                                            anchors.margins: 8
+                                            spacing: 4
+
+                                            Text {
+                                                text: "• Paquete: " + (tabAppsView.pendingUninstallPkg ? tabAppsView.pendingUninstallPkg.name : "")
+                                                color: Theme.subtext
+                                                font.family: Theme.monoFontFamily
+                                                font.pixelSize: 10
+                                            }
+                                            Text {
+                                                text: "• Origen: " + (tabAppsView.pendingUninstallPkg ? tabAppsView.pendingUninstallPkg.sourceLabel : "") + "  |  Tamaño: " + (tabAppsView.pendingUninstallPkg ? tabAppsView.pendingUninstallPkg.size : "")
+                                                color: Theme.overlay
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        text: "Se abrirá una terminal segura para verificar dependencias huérfanas y pedir confirmación antes de eliminar los archivos del sistema."
+                                        color: Theme.overlay
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 9
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+
+                                        Item { Layout.fillWidth: true }
+
+                                        // Cancelar
+                                        Rectangle {
+                                            implicitHeight: 32
+                                            implicitWidth: 90
+                                            radius: Theme.radiusSmall
+                                            color: cancelMouse.containsMouse ? Theme.bgHover : Theme.bgSurface
+                                            border.color: Theme.border
+                                            border.width: 1
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "Cancelar"
+                                                color: Theme.text
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
+                                            }
+                                            MouseArea {
+                                                id: cancelMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: tabAppsView.pendingUninstallPkg = null
+                                            }
+                                        }
+
+                                        // Confirmar Desinstalación
+                                        Rectangle {
+                                            implicitHeight: 32
+                                            implicitWidth: 150
+                                            radius: Theme.radiusSmall
+                                            color: confDelMouse.containsMouse ? Qt.darker(Theme.danger, 1.1) : Theme.danger
+
+                                            RowLayout {
+                                                anchors.centerIn: parent
+                                                spacing: 6
+                                                Text { text: "󰆴"; color: Theme.text; font.family: Theme.iconFontFamily; font.pixelSize: 12 }
+                                                Text { text: "Confirmar y Eliminar"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                                            }
+                                            MouseArea {
+                                                id: confDelMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    let pkg = tabAppsView.pendingUninstallPkg;
+                                                    tabAppsView.pendingUninstallPkg = null;
+                                                    if (pkg && pkg.name) {
+                                                        ControlCenterManager.removePackage(pkg.name);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
