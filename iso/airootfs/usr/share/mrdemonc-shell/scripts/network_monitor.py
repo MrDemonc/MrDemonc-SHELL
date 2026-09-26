@@ -202,10 +202,13 @@ def run_daemon():
             break
 
 def run_speedtest():
-    """Ejecuta un test de velocidad benchmark completo (Ping, Descarga y Subida)."""
-    print(json.dumps({"phase": "ping", "progress": 0.1, "message": "Midiendo latencia con Cloudflare/Google..."}), flush=True)
+    """Ejecuta un test de velocidad benchmark completo y continuo (Ping, Descarga y Subida con muestras continuas)."""
+    iface = get_default_interface()
+
+    # 1. PING
+    print(json.dumps({"phase": "ping", "progress": 0.05, "message": "Midiendo latencia de red..."}), flush=True)
     pings = []
-    for _ in range(3):
+    for _ in range(4):
         try:
             out = subprocess.check_output(["ping", "-c", "1", "-W", "1", "1.1.1.1"], text=True, stderr=subprocess.DEVNULL)
             m = re.search(r'(?:time|tiempo)=([\d.]+)', out)
@@ -213,48 +216,144 @@ def run_speedtest():
                 pings.append(float(m.group(1)))
         except Exception:
             pass
-        time.sleep(0.1)
+        time.sleep(0.08)
 
     avg_ping = round(sum(pings) / len(pings), 1) if pings else 18.0
-    print(json.dumps({"phase": "ping_done", "ping": avg_ping, "progress": 0.25}), flush=True)
+    print(json.dumps({"phase": "ping_done", "ping": avg_ping, "progress": 0.15, "message": f"Latencia: {avg_ping} ms"}), flush=True)
 
-    # Descarga (10MB chunk)
-    print(json.dumps({"phase": "download", "progress": 0.3, "message": "Descargando paquete de prueba..."}), flush=True)
-    download_mbps = 0.0
+    # 2. DESCARGA CONTINUA (5.0 segundos)
+    print(json.dumps({"phase": "download_start", "progress": 0.15, "message": "Iniciando prueba de descarga..."}), flush=True)
+    t_dl_start = time.time()
+    last_t = t_dl_start
+    last_rx, _ = get_io_bytes(iface)
+    dl_samples = []
+    total_dl_bytes = 0
+    dl_duration = 5.0
+
+    while time.time() - t_dl_start < dl_duration:
+        if dl_duration - (time.time() - t_dl_start) <= 0.2:
+            break
+        try:
+            p = subprocess.Popen(["curl", "-s", "-L", "-o", "/dev/null", "https://speed.cloudflare.com/__down?bytes=25000000"])
+            while p.poll() is None and time.time() - t_dl_start < dl_duration:
+                time.sleep(0.2)
+                now = time.time()
+                dt = now - last_t
+                rx, _ = get_io_bytes(iface)
+                delta_rx = max(rx - last_rx, 0)
+                total_dl_bytes += delta_rx
+                mbps = round(((delta_rx * 8) / (dt * 1000 * 1000)), 2)
+                dl_samples.append(mbps)
+                last_t = now
+                last_rx = rx
+                elapsed = now - t_dl_start
+                prog = min(0.15 + (elapsed / dl_duration) * 0.40, 0.54)
+                print(json.dumps({
+                    "phase": "download",
+                    "progress": round(prog, 3),
+                    "speed": mbps,
+                    "download_mbps": mbps,
+                    "download_str": format_speed(mbps * 1000 * 1000),
+                    "message": f"Descarga: {format_speed(mbps * 1000 * 1000)}"
+                }), flush=True)
+            if p.poll() is None:
+                p.terminate()
+                p.wait()
+        except Exception:
+            break
+
+    # Calcular promedio de descarga
+    valid_dl = [s for s in dl_samples if s > 1.0]
+    if valid_dl:
+        avg_dl = round(sum(valid_dl) / len(valid_dl), 2)
+    else:
+        avg_dl = round(sum(dl_samples) / len(dl_samples), 2) if dl_samples else 0.0
+
+    print(json.dumps({
+        "phase": "download_done",
+        "progress": 0.55,
+        "download_mbps": avg_dl,
+        "download_str": format_speed(avg_dl * 1000 * 1000),
+        "message": f"Descarga finalizada: {format_speed(avg_dl * 1000 * 1000)}"
+    }), flush=True)
+
+    # 3. SUBIDA CONTINUA (5.0 segundos)
+    print(json.dumps({"phase": "upload_start", "progress": 0.55, "message": "Iniciando prueba de subida..."}), flush=True)
+    chunk_file = "/tmp/quickshell_speedtest_up.bin"
     try:
-        out = subprocess.check_output(
-            ["curl", "-s", "-L", "-o", "/dev/null", "-w", "%{speed_download}", "https://speed.cloudflare.com/__down?bytes=10000000"],
-            text=True, stderr=subprocess.DEVNULL, timeout=12
-        )
-        speed_bps = float(out.strip()) * 8
-        download_mbps = round(speed_bps / (1000 * 1000), 2)
+        with open(chunk_file, "wb") as f:
+            f.write(b"0" * 10000000)
     except Exception:
-        download_mbps = 45.0
+        pass
 
-    print(json.dumps({"phase": "download_done", "download_mbps": download_mbps, "progress": 0.65}), flush=True)
+    t_ul_start = time.time()
+    last_t = t_ul_start
+    _, last_tx = get_io_bytes(iface)
+    ul_samples = []
+    ul_duration = 5.0
 
-    # Subida (5MB chunk)
-    print(json.dumps({"phase": "upload", "progress": 0.7, "message": "Subiendo paquete de prueba..."}), flush=True)
-    upload_mbps = 0.0
+    while time.time() - t_ul_start < ul_duration:
+        if ul_duration - (time.time() - t_ul_start) <= 0.2:
+            break
+        try:
+            p = subprocess.Popen(["curl", "-s", "-o", "/dev/null", "-X", "POST", "--data-binary", f"@{chunk_file}", "https://speed.cloudflare.com/__up"])
+            while p.poll() is None and time.time() - t_ul_start < ul_duration:
+                time.sleep(0.2)
+                now = time.time()
+                dt = now - last_t
+                _, tx = get_io_bytes(iface)
+                delta_tx = max(tx - last_tx, 0)
+                mbps = round(((delta_tx * 8) / (dt * 1000 * 1000)), 2)
+                ul_samples.append(mbps)
+                last_t = now
+                last_tx = tx
+                elapsed = now - t_ul_start
+                prog = min(0.55 + (elapsed / ul_duration) * 0.40, 0.94)
+                print(json.dumps({
+                    "phase": "upload",
+                    "progress": round(prog, 3),
+                    "speed": mbps,
+                    "upload_mbps": mbps,
+                    "upload_str": format_speed(mbps * 1000 * 1000),
+                    "message": f"Subida: {format_speed(mbps * 1000 * 1000)}"
+                }), flush=True)
+            if p.poll() is None:
+                p.terminate()
+                p.wait()
+        except Exception:
+            break
+
     try:
-        p = subprocess.Popen(
-            ["curl", "-s", "-o", "/dev/null", "-w", "%{speed_upload}", "-X", "POST", "--data-binary", "@-", "https://speed.cloudflare.com/__up"],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, stderr=subprocess.DEVNULL
-        )
-        stdout, _ = p.communicate(input="0" * 5000000, timeout=12)
-        speed_bps = float(stdout.strip()) * 8
-        upload_mbps = round(speed_bps / (1000 * 1000), 2)
+        if os.path.exists(chunk_file):
+            os.remove(chunk_file)
     except Exception:
-        upload_mbps = 20.0
+        pass
 
+    # Calcular promedio de subida
+    valid_ul = [s for s in ul_samples if s > 1.0]
+    if valid_ul:
+        avg_ul = round(sum(valid_ul) / len(valid_ul), 2)
+    else:
+        avg_ul = round(sum(ul_samples) / len(ul_samples), 2) if ul_samples else 0.0
+
+    print(json.dumps({
+        "phase": "upload_done",
+        "progress": 0.95,
+        "upload_mbps": avg_ul,
+        "upload_str": format_speed(avg_ul * 1000 * 1000),
+        "message": f"Subida finalizada: {format_speed(avg_ul * 1000 * 1000)}"
+    }), flush=True)
+
+    # 4. FINALIZADO
     print(json.dumps({
         "phase": "done",
         "progress": 1.0,
         "ping": avg_ping,
-        "download_mbps": download_mbps,
-        "upload_mbps": upload_mbps,
-        "download_str": format_speed(download_mbps * 1000 * 1000),
-        "upload_str": format_speed(upload_mbps * 1000 * 1000)
+        "download_mbps": avg_dl,
+        "upload_mbps": avg_ul,
+        "download_str": format_speed(avg_dl * 1000 * 1000),
+        "upload_str": format_speed(avg_ul * 1000 * 1000),
+        "message": "Prueba de velocidad completada"
     }), flush=True)
 
 if __name__ == "__main__":

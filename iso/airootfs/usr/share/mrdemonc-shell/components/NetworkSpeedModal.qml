@@ -88,100 +88,7 @@ PanelWindow {
             spacing: 14
 
             // =========================================================
-            // 1. ENCABEZADO
-            // =========================================================
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                Rectangle {
-                    implicitWidth: 32
-                    implicitHeight: 32
-                    radius: 16
-                    color: Theme.bgHover
-                    border.color: Theme.cyan
-                    border.width: 1.5
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "󰓅"
-                        color: Theme.cyan
-                        font.family: Theme.iconFontFamily
-                        font.pixelSize: 16
-                    }
-                }
-
-                ColumnLayout {
-                    spacing: 1
-
-                    Text {
-                        text: "MONITOR Y MEDIDOR DE VELOCIDAD"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 14
-                        font.bold: true
-                        font.letterSpacing: 0.8
-                    }
-
-                    RowLayout {
-                        spacing: 6
-
-                        Rectangle {
-                            implicitWidth: 7
-                            implicitHeight: 7
-                            radius: 3.5
-                            color: Theme.success
-
-                            SequentialAnimation on opacity {
-                                loops: Animation.Infinite
-                                NumberAnimation { from: 1.0; to: 0.3; duration: 800; easing.type: Easing.InOutQuad }
-                                NumberAnimation { from: 0.3; to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
-                            }
-                        }
-
-                        Text {
-                            text: `Tráfico en tiempo real • ${NetworkSpeedManager.netData.interface} (${NetworkSpeedManager.netData.ssid || 'Conectado'})`
-                            color: Theme.subtext
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 11
-                        }
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                // Botón Cerrar (✕)
-                Rectangle {
-                    implicitWidth: 32
-                    implicitHeight: 32
-                    radius: 8
-                    color: closeBtnMouse.containsMouse ? Theme.danger : Theme.bgSurface
-                    border.color: closeBtnMouse.containsMouse ? Theme.danger : Theme.border
-                    border.width: 1
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "✕"
-                        color: closeBtnMouse.containsMouse ? "#ffffff" : Theme.subtext
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
-
-                    MouseArea {
-                        id: closeBtnMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: NetworkSpeedManager.close()
-                    }
-                }
-            }
-
-            // =========================================================
-            // 2. FILA DE MÉTRICAS PRINCIPALES (3 Tarjetas)
+            // 1. FILA DE MÉTRICAS DEL TEST (3 Tarjetas)
             // =========================================================
             RowLayout {
                 Layout.fillWidth: true
@@ -210,7 +117,7 @@ PanelWindow {
                                 font.pixelSize: 13
                             }
                             Text {
-                                text: "DESCARGA ACTUAL"
+                                text: "VELOCIDAD DE DESCARGA"
                                 color: Theme.overlay
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -220,7 +127,9 @@ PanelWindow {
                         }
 
                         Text {
-                            text: NetworkSpeedManager.netData.rx_str
+                            text: (NetworkSpeedManager.speedTestRunning && NetworkSpeedManager.speedTestPhase === "download") ?
+                                  NetworkSpeedManager.testDownloadStr :
+                                  (NetworkSpeedManager.testDownload > 0 ? NetworkSpeedManager.testDownloadStr : "--")
                             color: Theme.cyan
                             font.family: Theme.fontFamily
                             font.pixelSize: 22
@@ -228,7 +137,9 @@ PanelWindow {
                         }
 
                         Text {
-                            text: `Pico máx: ${NetworkSpeedManager.peakDownload.toFixed(1)} Mbps • Total: ${NetworkSpeedManager.netData.total_rx_mb} MB`
+                            text: (NetworkSpeedManager.speedTestRunning && NetworkSpeedManager.speedTestPhase === "download") ?
+                                  "Midiendo en tiempo real..." :
+                                  (NetworkSpeedManager.testDownload > 0 ? `Pico: ${NetworkSpeedManager.testPeakDownload.toFixed(1)} Mbps` : "En espera de prueba")
                             color: Theme.subtext
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
@@ -259,7 +170,7 @@ PanelWindow {
                                 font.pixelSize: 13
                             }
                             Text {
-                                text: "SUBIDA ACTUAL"
+                                text: "VELOCIDAD DE SUBIDA"
                                 color: Theme.overlay
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -269,7 +180,9 @@ PanelWindow {
                         }
 
                         Text {
-                            text: NetworkSpeedManager.netData.tx_str
+                            text: (NetworkSpeedManager.speedTestRunning && NetworkSpeedManager.speedTestPhase === "upload") ?
+                                  NetworkSpeedManager.testUploadStr :
+                                  (NetworkSpeedManager.testUpload > 0 ? NetworkSpeedManager.testUploadStr : "--")
                             color: Theme.pink
                             font.family: Theme.fontFamily
                             font.pixelSize: 22
@@ -277,7 +190,9 @@ PanelWindow {
                         }
 
                         Text {
-                            text: `Pico máx: ${NetworkSpeedManager.peakUpload.toFixed(1)} Mbps • Total: ${NetworkSpeedManager.netData.total_tx_mb} MB`
+                            text: (NetworkSpeedManager.speedTestRunning && NetworkSpeedManager.speedTestPhase === "upload") ?
+                                  "Midiendo en tiempo real..." :
+                                  (NetworkSpeedManager.testUpload > 0 ? `Pico: ${NetworkSpeedManager.testPeakUpload.toFixed(1)} Mbps` : "En espera de prueba")
                             color: Theme.subtext
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
@@ -318,7 +233,8 @@ PanelWindow {
                         }
 
                         Text {
-                            text: NetworkSpeedManager.netData.ping > 0 ? `${NetworkSpeedManager.netData.ping} ms` : "-- ms"
+                            text: NetworkSpeedManager.testPing > 0 ? `${NetworkSpeedManager.testPing} ms` :
+                                  (NetworkSpeedManager.netData.ping > 0 ? `${NetworkSpeedManager.netData.ping} ms` : "-- ms")
                             color: Theme.text
                             font.family: Theme.fontFamily
                             font.pixelSize: 22
@@ -338,7 +254,7 @@ PanelWindow {
             }
 
             // =========================================================
-            // 3. GRÁFICO DE VELOCIDAD EN TIEMPO REAL (CANVAS 2D)
+            // 2. GRÁFICO DE PRUEBA DE VELOCIDAD (CANVAS 2D)
             // =========================================================
             Rectangle {
                 Layout.fillWidth: true
@@ -360,7 +276,7 @@ PanelWindow {
                         spacing: 12
 
                         Text {
-                            text: "Historial de Ancho de Banda (Últimos 30s)"
+                            text: "Curva del Test de Velocidad (Mbps)"
                             color: Theme.text
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -379,7 +295,7 @@ PanelWindow {
                                 color: Theme.cyan
                             }
                             Text {
-                                text: `Descarga: ${NetworkSpeedManager.netData.rx_str}`
+                                text: `Descarga: ${NetworkSpeedManager.testDownloadStr}`
                                 color: Theme.subtext
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -397,7 +313,7 @@ PanelWindow {
                                 color: Theme.pink
                             }
                             Text {
-                                text: `Subida: ${NetworkSpeedManager.netData.tx_str}`
+                                text: `Subida: ${NetworkSpeedManager.testUploadStr}`
                                 color: Theme.subtext
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -418,8 +334,9 @@ PanelWindow {
 
                             Connections {
                                 target: NetworkSpeedManager
-                                function onDownloadHistoryChanged() { chartCanvas.requestPaint(); }
-                                function onUploadHistoryChanged() { chartCanvas.requestPaint(); }
+                                function onTestDownloadHistoryChanged() { chartCanvas.requestPaint(); }
+                                function onTestUploadHistoryChanged() { chartCanvas.requestPaint(); }
+                                function onSpeedTestPhaseChanged() { chartCanvas.requestPaint(); }
                             }
 
                             onPaint: {
@@ -430,12 +347,9 @@ PanelWindow {
 
                                 ctx.clearRect(0, 0, w, h);
 
-                                let dl = NetworkSpeedManager.downloadHistory;
-                                let ul = NetworkSpeedManager.uploadHistory;
-                                let count = dl.length;
-                                if (count < 2) return;
-
-                                let maxSpeed = Math.max(NetworkSpeedManager.maxObservedSpeed, 2.0);
+                                let dl = NetworkSpeedManager.testDownloadHistory;
+                                let ul = NetworkSpeedManager.testUploadHistory;
+                                let maxSpeed = Math.max(NetworkSpeedManager.testMaxObservedSpeed, 20.0);
 
                                 // Líneas guía horizontales
                                 ctx.strokeStyle = Theme.border;
@@ -452,58 +366,97 @@ PanelWindow {
                                     // Etiqueta de velocidad
                                     ctx.fillStyle = Theme.overlay;
                                     ctx.font = "9px sans-serif";
-                                    let speedMark = ((4 - i) / 4 * maxSpeed).toFixed(1) + "M";
+                                    let speedMark = ((4 - i) / 4 * maxSpeed).toFixed(0) + "M";
                                     ctx.fillText(speedMark, 4, y + 3);
                                 }
                                 ctx.setLineDash([]);
 
-                                let stepX = (w - 45) / (count - 1);
-                                let startX = 35;
+                                let startX = 38;
                                 let bottomY = h - 8;
+                                let usableWidth = w - 48;
+                                let expectedPoints = 25;
+                                let maxPoints = Math.max(expectedPoints, dl.length, ul.length);
+                                let stepX = usableWidth / Math.max(maxPoints - 1, 1);
+
+                                if (dl.length === 0 && ul.length === 0) {
+                                    // Mensaje en espera de test
+                                    ctx.fillStyle = Theme.overlay;
+                                    ctx.font = "12px sans-serif";
+                                    ctx.textAlign = "center";
+                                    ctx.fillText("Presiona 'Iniciar Test de Velocidad' para registrar las curvas de red", w / 2, h / 2);
+                                    ctx.textAlign = "start";
+                                    return;
+                                }
 
                                 // 1. Área y Curva de Descarga (Cyan)
-                                ctx.beginPath();
-                                for (let i = 0; i < count; i++) {
-                                    let x = startX + i * stepX;
-                                    let val = Math.min(dl[i], maxSpeed);
-                                    let y = bottomY - (val / maxSpeed) * (bottomY - 12);
-                                    if (i === 0) ctx.moveTo(x, y);
-                                    else ctx.lineTo(x, y);
-                                }
-                                ctx.strokeStyle = Theme.cyan;
-                                ctx.lineWidth = 2.2;
-                                ctx.stroke();
+                                if (dl.length > 0) {
+                                    ctx.beginPath();
+                                    for (let i = 0; i < dl.length; i++) {
+                                        let x = startX + i * stepX;
+                                        let val = Math.min(dl[i], maxSpeed);
+                                        let y = bottomY - (val / maxSpeed) * (bottomY - 14);
+                                        if (i === 0) ctx.moveTo(x, y);
+                                        else ctx.lineTo(x, y);
+                                    }
+                                    ctx.strokeStyle = Theme.cyan;
+                                    ctx.lineWidth = 2.4;
+                                    ctx.stroke();
 
-                                ctx.lineTo(startX + (count - 1) * stepX, bottomY);
-                                ctx.lineTo(startX, bottomY);
-                                ctx.closePath();
-                                let dlGrad = ctx.createLinearGradient(0, 0, 0, bottomY);
-                                dlGrad.addColorStop(0, Theme.cyan + "40");
-                                dlGrad.addColorStop(1, Theme.cyan + "04");
-                                ctx.fillStyle = dlGrad;
-                                ctx.fill();
+                                    ctx.lineTo(startX + (dl.length - 1) * stepX, bottomY);
+                                    ctx.lineTo(startX, bottomY);
+                                    ctx.closePath();
+                                    let dlGrad = ctx.createLinearGradient(0, 0, 0, bottomY);
+                                    dlGrad.addColorStop(0, Theme.cyan + "40");
+                                    dlGrad.addColorStop(1, Theme.cyan + "04");
+                                    ctx.fillStyle = dlGrad;
+                                    ctx.fill();
+
+                                    if (NetworkSpeedManager.speedTestRunning && NetworkSpeedManager.speedTestPhase === "download") {
+                                        let lastIdx = dl.length - 1;
+                                        let lx = startX + lastIdx * stepX;
+                                        let lval = Math.min(dl[lastIdx], maxSpeed);
+                                        let ly = bottomY - (lval / maxSpeed) * (bottomY - 14);
+                                        ctx.beginPath();
+                                        ctx.arc(lx, ly, 4, 0, 2 * Math.PI);
+                                        ctx.fillStyle = Theme.cyan;
+                                        ctx.fill();
+                                    }
+                                }
 
                                 // 2. Área y Curva de Subida (Pink)
-                                ctx.beginPath();
-                                for (let i = 0; i < count; i++) {
-                                    let x = startX + i * stepX;
-                                    let val = Math.min(ul[i], maxSpeed);
-                                    let y = bottomY - (val / maxSpeed) * (bottomY - 12);
-                                    if (i === 0) ctx.moveTo(x, y);
-                                    else ctx.lineTo(x, y);
-                                }
-                                ctx.strokeStyle = Theme.pink;
-                                ctx.lineWidth = 1.8;
-                                ctx.stroke();
+                                if (ul.length > 0) {
+                                    ctx.beginPath();
+                                    for (let i = 0; i < ul.length; i++) {
+                                        let x = startX + i * stepX;
+                                        let val = Math.min(ul[i], maxSpeed);
+                                        let y = bottomY - (val / maxSpeed) * (bottomY - 14);
+                                        if (i === 0) ctx.moveTo(x, y);
+                                        else ctx.lineTo(x, y);
+                                    }
+                                    ctx.strokeStyle = Theme.pink;
+                                    ctx.lineWidth = 2.0;
+                                    ctx.stroke();
 
-                                ctx.lineTo(startX + (count - 1) * stepX, bottomY);
-                                ctx.lineTo(startX, bottomY);
-                                ctx.closePath();
-                                let ulGrad = ctx.createLinearGradient(0, 0, 0, bottomY);
-                                ulGrad.addColorStop(0, Theme.pink + "30");
-                                ulGrad.addColorStop(1, Theme.pink + "04");
-                                ctx.fillStyle = ulGrad;
-                                ctx.fill();
+                                    ctx.lineTo(startX + (ul.length - 1) * stepX, bottomY);
+                                    ctx.lineTo(startX, bottomY);
+                                    ctx.closePath();
+                                    let ulGrad = ctx.createLinearGradient(0, 0, 0, bottomY);
+                                    ulGrad.addColorStop(0, Theme.pink + "30");
+                                    ulGrad.addColorStop(1, Theme.pink + "04");
+                                    ctx.fillStyle = ulGrad;
+                                    ctx.fill();
+
+                                    if (NetworkSpeedManager.speedTestRunning && NetworkSpeedManager.speedTestPhase === "upload") {
+                                        let lastIdx = ul.length - 1;
+                                        let lx = startX + lastIdx * stepX;
+                                        let lval = Math.min(ul[lastIdx], maxSpeed);
+                                        let ly = bottomY - (lval / maxSpeed) * (bottomY - 14);
+                                        ctx.beginPath();
+                                        ctx.arc(lx, ly, 4, 0, 2 * Math.PI);
+                                        ctx.fillStyle = Theme.pink;
+                                        ctx.fill();
+                                    }
+                                }
                             }
                         }
                     }
