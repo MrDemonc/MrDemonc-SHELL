@@ -1800,6 +1800,12 @@ CHROOT_SCRIPT
         cp -a "$SYSTEM_SHELL"/themes/. "$USER_HOME/.config/quickshell/themes/" 2>/dev/null || true
     fi
 
+    # Copiar colección completa de wallpapers a ~/Pictures/Wallpapers
+    mkdir -p "$USER_HOME/Pictures/Wallpapers"
+    if [ -d "$SYSTEM_SHELL/wallpapers" ]; then
+        cp -a "$SYSTEM_SHELL"/wallpapers/. "$USER_HOME/Pictures/Wallpapers/" 2>/dev/null || true
+    fi
+
     # Asegurar copia del wallpaper predeterminado (default.jpg)
     WALL_SRC=""
     for cand in "$SYSTEM_SHELL/themes/default/wallpaper.jpg" "$SYSTEM_SHELL/wallpapers/default.jpg" "/usr/share/mrdemonc-shell/themes/default/wallpaper.jpg" "/usr/share/mrdemonc-shell/wallpapers/default.jpg" "$SCRIPT_DIR/wallpapers/default.jpg"; do
