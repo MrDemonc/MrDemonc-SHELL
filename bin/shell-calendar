@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Launcher CLI para el Calendario de Quickshell (SUPER + ALT)
+
+REAL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" && pwd)"
+
+SEARCH_DIRS=(
+    "$QUICKSHELL_DIR"
+    "$SCRIPT_DIR/.."
+    "$HOME/Documentos/MrDemonc-SHELL"
+    "$HOME/Documentos/github/MrDemonc-SHELL"
+    "/usr/share/mrdemonc-shell"
+)
+
+TARGET_SCRIPT=""
+for d in "${SEARCH_DIRS[@]}"; do
+    if [ -n "$d" ] && [ -f "$d/scripts/toggle_calendar.sh" ]; then
+        TARGET_SCRIPT="$d/scripts/toggle_calendar.sh"
+        break
+    fi
+done
+
+if [ -z "$TARGET_SCRIPT" ]; then
+    STATE="${XDG_RUNTIME_DIR:-/tmp}/quickshell_calendar.toggle"
+    touch "$STATE" 2>/dev/null || true
+    exit 0
+fi
+
+exec bash "$TARGET_SCRIPT" "$@"

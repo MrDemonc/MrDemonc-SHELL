@@ -103,6 +103,7 @@
 6. ATAJOS GENERALES DE HYPRLAND CONFIGURADOS
 -----------------------------------------------------
 • SUPER + K                 : Guía de atajos de teclado y comandos del sistema
+• SUPER + ALT               : Abrir Calendario y Reloj del Sistema (Quickshell)
 • SUPER + ENTER             : Abrir terminal (Kitty con Zsh y Starship)
 • SUPER + B                 : Abrir navegador web predeterminado (Zen Browser)
 • SUPER + C                 : Copiar (Portapapeles nativo Wayland)

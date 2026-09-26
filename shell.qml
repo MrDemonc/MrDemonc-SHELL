@@ -16,6 +16,7 @@ ShellRoot {
     property var _monitorMgr: MonitorManager
     property var _keybindsMgr: KeybindsManager
     property var _controlCenterMgr: ControlCenterManager
+    property var _calendarMgr: CalendarManager
 
     // Pantalla activa / enfocada actualmente por Hyprland (con fallback seguro a la primera pantalla disponible)
     readonly property var focusedScreen: {
@@ -179,6 +180,11 @@ ShellRoot {
 
     // 19. Centro de Control Flotante del Sistema (SUPER + I en pantalla activa)
     ControlCenterModal {
+        screen: rootShell.focusedScreen
+    }
+
+    // 20. Modal flotante de Calendario y Reloj (SUPER + ALT en pantalla activa)
+    CalendarModal {
         screen: rootShell.focusedScreen
     }
 }

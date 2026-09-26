@@ -685,6 +685,7 @@ PanelWindow {
                 id: clockMouse
                 anchors.fill: parent
                 hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: isDraggingThis ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
                 property real pressCoord: 0
@@ -692,6 +693,7 @@ PanelWindow {
                 property bool isDraggingThis: false
 
                 onPressed: mouse => {
+                    if (mouse.button !== Qt.LeftButton) return;
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
                     pressCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
                     let m = modClock;
@@ -704,7 +706,7 @@ PanelWindow {
                 }
 
                 onPositionChanged: mouse => {
-                    if (!pressed) return;
+                    if (!pressed || mouse.buttons !== Qt.LeftButton) return;
                     let globalPt = mapToItem(barContent, mouse.x, mouse.y);
                     let curCoord = PopoutManager.isVertical ? globalPt.y : globalPt.x;
                     let delta = curCoord - pressCoord;
@@ -719,14 +721,18 @@ PanelWindow {
                     }
                 }
 
-                onReleased: {
+                onReleased: mouse => {
                     if (isDraggingThis) {
                         isDraggingThis = false;
                         barWindow.finishModuleDrag();
                     } else {
                         if (!PopoutManager.isDraggingAny) {
-                            let centerCoord = PopoutManager.isVertical ? (modClock.y + modClock.height / 2) : (modClock.x + modClock.width / 2);
-                            PopoutManager.toggle("clock", centerCoord, barWindow.screen ? barWindow.screen.name : "");
+                            if (mouse.button === Qt.RightButton) {
+                                CalendarManager.toggle();
+                            } else {
+                                let centerCoord = PopoutManager.isVertical ? (modClock.y + modClock.height / 2) : (modClock.x + modClock.width / 2);
+                                PopoutManager.toggle("clock", centerCoord, barWindow.screen ? barWindow.screen.name : "");
+                            }
                         }
                     }
                 }
