@@ -196,38 +196,14 @@ def check_sudo():
 def auth_sudo(password: str) -> bool:
     if not password:
         return False
-
-    # 1. Validar primero con unix_chkpwd para respuesta ultrarrápida si es incorrecta
-    user = os.environ.get("USER")
-    if not user:
-        import getpass
-        user = getpass.getuser()
-
-    chkpwd_paths = ["/usr/bin/unix_chkpwd", "/sbin/unix_chkpwd", "/usr/sbin/unix_chkpwd"]
-    chkpwd = next((p for p in chkpwd_paths if os.path.exists(p) and os.access(p, os.X_OK)), None)
-    if chkpwd:
-        try:
-            p_chk = subprocess.Popen(
-                [chkpwd, user, "nullok"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            p_chk.communicate(input=password.encode("utf-8") + b"\x00", timeout=4)
-            if p_chk.returncode != 0:
-                return False
-        except Exception:
-            pass
-
-    # 2. Actualizar el ticket de sesión sudo en el kernel
     try:
         p = subprocess.Popen(
-            ["sudo", "-S", "-v", "-p", ""],
+            ["sudo", "-S", "-v"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
-        p.communicate(input=password.encode("utf-8") + b"\n", timeout=8)
+        p.communicate(input=password.encode("utf-8") + b"\n", timeout=12)
         return p.returncode == 0
     except Exception:
         return False

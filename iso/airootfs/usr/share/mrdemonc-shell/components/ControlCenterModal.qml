@@ -1901,8 +1901,6 @@ PanelWindow {
                                     }
                                 }
                             }
-
-                            Item { Layout.fillHeight: true }
                         }
                     }
 

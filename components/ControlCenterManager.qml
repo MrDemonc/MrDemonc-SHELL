@@ -641,7 +641,6 @@ QtObject {
         onExited: function(exitCode, exitStatus) {
             authTimeoutTimer.stop();
             mgr.isAuthChecking = false;
-            passwordToVerify = "";
             if (exitCode === 0) {
                 mgr.isAuthModalOpen = false;
                 mgr.authErrorMessage = "";
@@ -684,12 +683,13 @@ QtObject {
             authErrorMessage = "Por favor ingresa tu contraseña.";
             return;
         }
+        if (isAuthChecking) return;
+
         isAuthChecking = true;
         authErrorMessage = "";
         authTimeoutTimer.restart();
         sudoAuthProc.passwordToVerify = password;
         sudoAuthProc.stdinEnabled = true;
-        sudoAuthProc.running = false;
         sudoAuthProc.running = true;
     }
 
@@ -699,6 +699,7 @@ QtObject {
         isAuthChecking = false;
         authErrorMessage = "";
         pendingSudoAction = null;
+        sudoAuthProc.passwordToVerify = "";
         if (sudoAuthProc.running) {
             sudoAuthProc.running = false;
         }
