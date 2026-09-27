@@ -135,6 +135,8 @@ GridLayout {
             if (lower === "inkscape") return "Inkscape";
             if (lower === "blender") return "Blender";
             if (lower === "obs") return "OBS Studio";
+            if (lower === "gnome-disks" || lower === "org.gnome.diskutility" || lower === "diskutility") return "Disks";
+            if (lower === "font-manager" || lower === "org.gnome.fontmanager" || lower === "fontmanager") return "Font Manager";
 
             return cls.charAt(0).toUpperCase() + cls.slice(1);
         }
@@ -182,6 +184,8 @@ GridLayout {
         if (app.includes("vlc") || app.includes("mpv")) return "󰕼";
         if (app.includes("gimp") || app.includes("inkscape") || app.includes("blender")) return "󰥟";
         if (app.includes("obs")) return "󰑋";
+        if (app.includes("disks") || app.includes("diskutility")) return "󰋊";
+        if (app.includes("font") || app.includes("fontmanager")) return "󰬈";
         return "󱂬";
     }
 

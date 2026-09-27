@@ -62,6 +62,8 @@ PACKAGES=(
     wtype
     kitty
     nautilus
+    gnome-disk-utility
+    font-manager
     gvfs
     gvfs-mtp
     gvfs-gphoto2

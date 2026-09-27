@@ -42,6 +42,9 @@ hl.bind(mainMod .. " + I", hl.dsp.exec_cmd(binDir .. "/shell-control-center"))
 -- Quickshell: Calendario del Sistema (SUPER + ALT + C)
 hl.bind(mainMod .. " + ALT + C", hl.dsp.exec_cmd(binDir .. "/shell-calendar"))
 
+-- Quickshell: Recordatorios y Temporizador (SUPER + ALT + R)
+hl.bind(mainMod .. " + ALT + R", hl.dsp.exec_cmd(binDir .. "/shell-reminder"))
+
 -- Quickshell: Configuración de Pantallas y Monitores (SUPER + SHIFT + S)
 hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(binDir .. "/shell-monitors"))
 

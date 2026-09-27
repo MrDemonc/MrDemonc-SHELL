@@ -38,6 +38,13 @@ QtObject {
         {
             category: "quickshell",
             categoryName: "Lanzadores y Shell",
+            keys: ["SUPER", "ALT", "R"],
+            title: "Recordatorios y Temporizador",
+            description: "Abre la ventana flotante para crear recordatorios personalizados con temporizador de cuenta regresiva y alarma sonora."
+        },
+        {
+            category: "quickshell",
+            categoryName: "Lanzadores y Shell",
             keys: ["SUPER", "K"],
             title: "Guía de Atajos y Comandos",
             description: "Abre este centro visual para consultar todos los atajos de teclado y comandos del sistema."

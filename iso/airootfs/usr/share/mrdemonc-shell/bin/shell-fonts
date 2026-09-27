@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Launcher CLI para el Administrador e Instalador de Fuentes de MrDemonc-SHELL
+
+if command -v font-manager >/dev/null 2>&1; then
+    exec font-manager "$@"
+fi
+
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -u normal -a "MrDemonc-SHELL" -i "font-x-generic" "Administrador de Fuentes" "Instala 'font-manager' ejecutando:\nsudo pacman -S font-manager"
+fi
+echo "Error: 'font-manager' no está instalado. Ejecuta: sudo pacman -S font-manager" >&2
+exit 1

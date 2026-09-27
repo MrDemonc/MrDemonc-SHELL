@@ -51,6 +51,8 @@ wtype
 # --- Aplicaciones Predeterminadas ---
 kitty
 nautilus
+gnome-disk-utility
+font-manager
 
 # --- Gestión de Dispositivos, Almacenamiento & Soporte Android MTP ---
 gvfs

@@ -75,9 +75,11 @@ paru -S --needed quickshell
 * **`wl-clipboard`**: Herramientas `wl-copy` y `wl-paste` para interactuar con el portapapeles en Wayland.
 * **`wtype`**: Inyector de pulsaciones de teclado virtual para Wayland, utilizado para los atajos globales de copiar, cortar y pegar (`SUPER + C / X / V`).
 
-### 6. Terminal y Gestor de Archivos
-* **`kitty`**: Emulador de terminal GPU rápido, estilizado y configurado con la paleta de colores Catppuccin Mocha de la shell.
-* **`dolphin`**: Explorador de archivos gráfico (o tu gestor de archivos preferido como Nautilus o Thunar).
+### 6. Terminal, Gestor de Archivos, Discos y Fuentes
+* **`kitty`**: Emulador de terminal GPU rápido, estilizado y configurado con la paleta de colores de la shell.
+* **`nautilus`**: Explorador de archivos oficial con integración GTK4 y marcadores de usuario.
+* **`gnome-disk-utility`**: Utilidad de gestión de unidades de almacenamiento, particionado, formateo y estado SMART (`gnome-disks` / `shell-disks`).
+* **`font-manager`**: Administrador e instalador gráfico de tipografías para previsualizar, organizar e instalar fuentes TTF/OTF (`font-manager` / `shell-fonts`).
 
 ### 7. Shell Interactiva y Prompt
 * **`zsh`**: Intérprete de comandos interactivo moderno.

@@ -178,3 +178,5 @@ udisks2
 udiskie
 power-profiles-daemon
 hyprsunset
+gnome-disk-utility
+font-manager

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Launcher CLI para el Gestor de Discos de MrDemonc-SHELL
+
+if command -v gnome-disks >/dev/null 2>&1; then
+    exec gnome-disks "$@"
+fi
+
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -u normal -a "MrDemonc-SHELL" -i "drive-harddisk-symbolic" "Gestor de Discos" "Instala 'gnome-disk-utility' ejecutando:\nsudo pacman -S gnome-disk-utility"
+fi
+echo "Error: 'gnome-disks' no está instalado. Ejecuta: sudo pacman -S gnome-disk-utility" >&2
+exit 1
