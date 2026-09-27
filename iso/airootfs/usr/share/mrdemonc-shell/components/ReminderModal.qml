@@ -57,7 +57,7 @@ PanelWindow {
         id: modalCard
         anchors.centerIn: parent
         width: 580
-        height: 620
+        height: 520
         radius: Theme.radiusLarge
         color: Theme.bg
         border.color: Theme.border
@@ -101,76 +101,7 @@ PanelWindow {
             anchors.margins: 20
             spacing: 14
 
-            // 1. ENCABEZADO
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                Rectangle {
-                    implicitWidth: 42
-                    implicitHeight: 42
-                    radius: 12
-                    color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.16)
-                    border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.40)
-                    border.width: 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "󰔛"
-                        color: Theme.primary
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 22
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-
-                    Text {
-                        text: "Recordatorios y Temporizador"
-                        color: Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 16
-                        font.bold: true
-                    }
-
-                    Text {
-                        text: "Configura alertas con cuenta regresiva para tus actividades"
-                        color: Theme.overlay
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                    }
-                }
-
-                // Botón Cerrar
-                Rectangle {
-                    implicitWidth: 32
-                    implicitHeight: 32
-                    radius: 8
-                    color: closeArea.containsMouse ? Theme.bgHover : Theme.bgSurface
-                    border.color: Theme.border
-                    border.width: 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "󰅖"
-                        color: closeArea.containsMouse ? Theme.red : Theme.text
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 15
-                    }
-
-                    MouseArea {
-                        id: closeArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: ReminderManager.reminderOpen = false
-                    }
-                }
-            }
-
-            // 2. FORMULARIO DE NUEVO RECORDATORIO
+            // 1. FORMULARIO DE NUEVO RECORDATORIO
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: formCol.implicitHeight + 24
@@ -651,7 +582,7 @@ PanelWindow {
                         implicitHeight: 64
                         radius: 8
                         color: Theme.bg
-                        border.color: modelData.remainingSeconds <= 0 ? Theme.red : (modelData.running ? Theme.primary : Theme.border)
+                        border.color: modelData.remainingSeconds <= 0 ? Theme.danger : (modelData.running ? Theme.primary : Theme.border)
                         border.width: 1
 
                         ColumnLayout {
@@ -666,7 +597,7 @@ PanelWindow {
                                 // Estado icono
                                 Text {
                                     text: modelData.remainingSeconds <= 0 ? "⏰" : (modelData.running ? "󱎫" : "󰏤")
-                                    color: modelData.remainingSeconds <= 0 ? Theme.red : (modelData.running ? Theme.primary : Theme.overlay)
+                                    color: modelData.remainingSeconds <= 0 ? Theme.danger : (modelData.running ? Theme.primary : Theme.overlay)
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 14
                                 }
@@ -684,8 +615,8 @@ PanelWindow {
                                 // Tiempo restante grande
                                 Text {
                                     text: modelData.formatted
-                                    color: modelData.remainingSeconds <= 0 ? Theme.red : (modelData.running ? Theme.cyan : Theme.overlay)
-                                    font.family: Theme.fontFamilyMono || "monospace"
+                                    color: modelData.remainingSeconds <= 0 ? Theme.danger : (modelData.running ? Theme.cyan : Theme.overlay)
+                                    font.family: Theme.fontFamily
                                     font.pixelSize: 14
                                     font.bold: true
                                 }
@@ -703,7 +634,7 @@ PanelWindow {
                                     Text {
                                         anchors.centerIn: parent
                                         text: modelData.running ? "󰏤" : "󰐊"
-                                        color: modelData.running ? Theme.text : Theme.green
+                                        color: modelData.running ? Theme.text : Theme.success
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 12
                                     }
@@ -756,7 +687,7 @@ PanelWindow {
                                     Text {
                                         anchors.centerIn: parent
                                         text: "󰅖"
-                                        color: delMouse.containsMouse ? Theme.red : Theme.overlay
+                                        color: delMouse.containsMouse ? Theme.danger : Theme.overlay
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 12
                                     }
@@ -785,7 +716,7 @@ PanelWindow {
                                     anchors.bottom: parent.bottom
                                     width: parent.width * (modelData.progress || 0.0)
                                     radius: 2
-                                    color: modelData.remainingSeconds <= 0 ? Theme.red : (modelData.running ? Theme.primary : Theme.overlay)
+                                    color: modelData.remainingSeconds <= 0 ? Theme.danger : (modelData.running ? Theme.primary : Theme.overlay)
 
                                     Behavior on width {
                                         NumberAnimation { duration: 300 }

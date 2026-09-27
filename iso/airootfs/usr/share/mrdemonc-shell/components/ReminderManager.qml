@@ -125,7 +125,7 @@ Item {
     }
 
     function triggerAlarm(timer) {
-        let title = timer.title || "Recordatorio";
+        let title = String(timer.title || "Recordatorio").replace(/"/g, '\\"').replace(/\$/g, '\\$').replace(/`/g, '\\`');
         let soundCmd = "paplay /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga 2>/dev/null || paplay /usr/share/sounds/freedesktop/stereo/complete.oga 2>/dev/null || true";
         let notifCmd = `notify-send -u critical -a "Temporizador" -i "alarm-symbolic" "⏰ ¡Tiempo Finalizado!" "${title}" &`;
         let fullCmd = `${soundCmd} & ${notifCmd}`;
@@ -154,6 +154,7 @@ Item {
                         t.remainingSeconds = 0;
                         t.running = false;
                         finishedTimers.push(t);
+                        continue; // Quitar automáticamente de la lista activa al terminar
                     }
                 }
                 let total = Math.max(1, t.totalSeconds);
