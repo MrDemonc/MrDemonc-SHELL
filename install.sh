@@ -538,6 +538,10 @@ if [ -d "$USER_HOME/.oh-my-zsh" ]; then
         echo -e "  Descargando plugin zsh-syntax-highlighting..."
         git clone --depth 1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" 2>/dev/null || true
     fi
+    if [ ! -d "$ZSH_CUSTOM/plugins/zsh-history-substring-search" ]; then
+        echo -e "  Descargando plugin zsh-history-substring-search..."
+        git clone --depth 1 https://github.com/zsh-users/zsh-history-substring-search.git "$ZSH_CUSTOM/plugins/zsh-history-substring-search" 2>/dev/null || true
+    fi
 fi
 
 # 4. Configurar ~/.zshrc con Starship, PATH y plugins
@@ -552,7 +556,19 @@ if [ -f "$ZSHRC" ]; then
 
     # Habilitar plugins si existen
     if grep -q '^plugins=' "$ZSHRC"; then
-        sed -i 's/^plugins=(.*)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' "$ZSHRC"
+        sed -i 's/^plugins=(.*)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-history-substring-search)/' "$ZSHRC"
+    fi
+
+    # Atajos de búsqueda para zsh-history-substring-search
+    if ! grep -q 'history-substring-search-up' "$ZSHRC"; then
+        cat << 'EOF' >> "$ZSHRC"
+
+# Atajos para zsh-history-substring-search (flechas arriba y abajo)
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+bindkey "$terminfo[kcuu1]" history-substring-search-up 2>/dev/null || true
+bindkey "$terminfo[kcud1]" history-substring-search-down 2>/dev/null || true
+EOF
     fi
 
     # Asegurar ~/.local/bin y ~/.opencode/bin en PATH

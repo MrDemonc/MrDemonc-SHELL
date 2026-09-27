@@ -68,12 +68,17 @@ ntfs-3g
 # --- Cursor & Autenticación Polkit ---
 capitaine-cursors
 polkit-gnome
+zenity
 
 # --- Tipografías con Iconos Nerd Fonts ---
 ttf-jetbrains-mono-nerd
 
 # --- Shell Avanzada, Prompt & System Info ---
 zsh
+zsh-completions
+zsh-autosuggestions
+zsh-syntax-highlighting
+zsh-history-substring-search
 starship
 fastfetch
 chafa

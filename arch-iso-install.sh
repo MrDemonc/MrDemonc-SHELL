@@ -1175,6 +1175,7 @@ perform_installation_worker() {
         zsh-completions
         zsh-autosuggestions
         zsh-syntax-highlighting
+        zsh-history-substring-search
         bash-completion
         starship
         fastfetch
@@ -2177,9 +2178,47 @@ zstyle ':completion:*:warnings' format '%F{red}-- No se encontraron coincidencia
 compdef yay=pacman 2>/dev/null || true
 compdef paru=pacman 2>/dev/null || true
 
-# Plugins instalados por pacman
-[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# ------------------------------------------------------------------------------
+# Plugins de ZSH (Oh My Zsh / Pacman)
+# ------------------------------------------------------------------------------
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-history-substring-search)
+
+if [ -d "$HOME/.oh-my-zsh" ]; then
+    export ZSH="$HOME/.oh-my-zsh"
+    ZSH_THEME=""
+    source "$ZSH/oh-my-zsh.sh"
+else
+    # Cargador compatible con plugins=(...) cuando Oh My Zsh no está presente
+    for plugin in $plugins; do
+        if [ -f "/usr/share/zsh/plugins/$plugin/$plugin.zsh" ]; then
+            source "/usr/share/zsh/plugins/$plugin/$plugin.zsh"
+        elif [ -f "/usr/share/zsh/plugins/$plugin/$plugin.plugin.zsh" ]; then
+            source "/usr/share/zsh/plugins/$plugin/$plugin.plugin.zsh"
+        elif [ -f "$HOME/.oh-my-zsh/custom/plugins/$plugin/$plugin.plugin.zsh" ]; then
+            source "$HOME/.oh-my-zsh/custom/plugins/$plugin/$plugin.plugin.zsh"
+        elif [ -f "$HOME/.oh-my-zsh/custom/plugins/$plugin/$plugin.zsh" ]; then
+            source "$HOME/.oh-my-zsh/custom/plugins/$plugin/$plugin.zsh"
+        elif [ "$plugin" = "git" ]; then
+            alias g='git'
+            alias ga='git add'
+            alias gc='git commit'
+            alias gco='git checkout'
+            alias gd='git diff'
+            alias gp='git push'
+            alias gl='git pull'
+            alias gst='git status'
+            alias gb='git branch'
+        fi
+    done
+fi
+
+# Atajos para zsh-history-substring-search (flechas arriba y abajo)
+if (( $+functions[history-substring-search-up] )) || [ -f /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh ] || [ -f "$HOME/.oh-my-zsh/custom/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh" ]; then
+    bindkey '^[[A' history-substring-search-up
+    bindkey '^[[B' history-substring-search-down
+    bindkey "$terminfo[kcuu1]" history-substring-search-up 2>/dev/null || true
+    bindkey "$terminfo[kcud1]" history-substring-search-down 2>/dev/null || true
+fi
 
 # Alias
 alias ls='ls --color=auto'

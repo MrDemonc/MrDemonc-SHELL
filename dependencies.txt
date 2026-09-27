@@ -75,6 +75,10 @@ ttf-jetbrains-mono-nerd
 
 # --- Shell Avanzada, Prompt & System Info ---
 zsh
+zsh-completions
+zsh-autosuggestions
+zsh-syntax-highlighting
+zsh-history-substring-search
 starship
 fastfetch
 chafa
