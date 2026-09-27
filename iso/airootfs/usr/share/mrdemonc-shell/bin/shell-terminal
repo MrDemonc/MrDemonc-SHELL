@@ -28,11 +28,15 @@ get_active_terminal_cwd() {
             queue=("${queue[@]:1}")
             for c in $(pgrep -P "$current" 2>/dev/null); do
                 local cmdline
-                cmdline="$(tr '\0' ' ' < "/proc/$c/cmdline" 2>/dev/null)"
-                if [[ "$cmdline" != *"__atexit__"* && "$cmdline" != *"__watch_conf__"* ]]; then
-                    child_pids+=("$c")
-                    queue+=("$c")
+                if [ -d "/proc/$c" ]; then
+                    local cmdline
+                    cmdline="$(cat "/proc/$c/cmdline" 2>/dev/null | tr '\0' ' ')"
+                    if [[ "$cmdline" != *"__atexit__"* && "$cmdline" != *"__watch_conf__"* ]]; then
+                        child_pids+=("$c")
+                        queue+=("$c")
+                    fi
                 fi
+
             done
         done
 

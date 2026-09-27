@@ -14,8 +14,9 @@ local mainMod     = "SUPER"
 -- ATAJOS PRINCIPALES
 -------------------------------------------------------------
 
--- Terminal (SUPER + Enter)
-hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal))
+-- Terminal (SUPER + Enter / Return / KP_Enter)
+hl.bind(mainMod .. " + Return",   hl.dsp.exec_cmd(terminal))
+hl.bind(mainMod .. " + KP_Enter", hl.dsp.exec_cmd(terminal))
 
 -- Navegador Web Zen Browser (SUPER + B)
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(browser))
@@ -87,24 +88,26 @@ hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(binDir .. "/shell-power"))
 -- PORTAPAPELES COMPATIBLE CON WAYLAND (SUPER + C / X / V)
 -------------------------------------------------------------
 local function handleClipboard(action)
-    local w = hl.get_active_window()
-    local class = (w and w.class and string.lower(w.class)) or ""
-    local isTerminal = string.find(class, "kitty")
-        or string.find(class, "alacritty")
-        or string.find(class, "foot")
-        or string.find(class, "terminal")
-        or string.find(class, "wezterm")
-        or string.find(class, "console")
+    pcall(function()
+        local w = hl.get_active_window()
+        local class = (w and w.class and string.lower(tostring(w.class))) or ""
+        local isTerminal = string.find(class, "kitty")
+            or string.find(class, "alacritty")
+            or string.find(class, "foot")
+            or string.find(class, "terminal")
+            or string.find(class, "wezterm")
+            or string.find(class, "console")
 
-    local mods = isTerminal and "CTRL + SHIFT" or "CTRL"
-    local key = "c"
-    if action == "cut" then
-        key = isTerminal and "c" or "x"
-    elseif action == "paste" then
-        key = "v"
-    end
+        local mods = isTerminal and "CTRL + SHIFT" or "CTRL"
+        local key = "c"
+        if action == "cut" then
+            key = isTerminal and "c" or "x"
+        elseif action == "paste" then
+            key = "v"
+        end
 
-    hl.dispatch(hl.dsp.send_shortcut({ mods = mods, key = key }))
+        hl.dispatch(hl.dsp.send_shortcut({ mods = mods, key = key }))
+    end)
 end
 
 -- 1. SUPER + C: COPIAR
