@@ -124,7 +124,7 @@ QtObject {
             categoryName: "Lanzadores y Shell",
             keys: ["SUPER", "E"],
             title: "Explorador de Archivos",
-            description: "Abre el gestor de archivos del sistema (Nautilus o Dolphin)."
+            description: "Abre el gestor de archivos del sistema (Nautilus)."
         },
 
         // --- GESTIÓN DE VENTANAS ---

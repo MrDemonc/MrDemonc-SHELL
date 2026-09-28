@@ -296,10 +296,9 @@ def set_wallpaper(path):
 def open_folder():
     ensure_dirs()
     import shutil
-    for fm in ["nautilus", "dolphin", "thunar", "nemo", "pcmanfm"]:
-        if shutil.which(fm):
-            subprocess.Popen([fm, WALLPAPER_DIR])
-            return {"status": "opened", "manager": fm}
+    if shutil.which("nautilus"):
+        subprocess.Popen(["nautilus", WALLPAPER_DIR])
+        return {"status": "opened", "manager": "nautilus"}
     subprocess.Popen(["xdg-open", WALLPAPER_DIR])
     return {"status": "opened"}
 

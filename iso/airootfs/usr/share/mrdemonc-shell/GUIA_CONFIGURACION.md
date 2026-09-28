@@ -65,13 +65,46 @@ cd ~/Documentos/MrDemonc-SHELL
 ./install.sh
 ```
 
+### Explorador de archivos: Explor
+
+El script instala **Explor** como explorador de archivos predeterminado. Consulta la API de
+GitHub, descarga el último `.pkg.tar.zst` publicado en
+[MrDemonc/Explor](https://github.com/MrDemonc/Explor/releases) y lo instala con `pacman -U`.
+Después asocia `inode/directory` a `explor.desktop`, de modo que cualquier aplicación que
+abra una carpeta (inkscape, firefox, zen, etc.) lo use.
+
+Si la descarga falla, si el asset no existe para tu arquitectura (solo se publica `x86_64`)
+o si ya tienes Explor en una versión igual o superior, el script **no se detiene**: cae
+automáticamente a Nautilus y lo deja instalado como respaldo.
+
+Variables de entorno disponibles:
+
+```bash
+# No descargar Explor (usar el ya instalado, o Nautilus si no está)
+INSTALL_EXPLOR=0 ./install.sh
+
+# Forzar un gestor concreto e ignorar la autodetección
+FILE_MANAGER_DESKTOP=explor.desktop ./install.sh
+FILE_MANAGER_DESKTOP=org.gnome.Nautilus.desktop ./install.sh
+```
+
+Comprobar el valor activo en cualquier momento:
+
+```bash
+xdg-mime query default inode/directory
+```
+
+> **Nota:** los diálogos de abrir archivos de las aplicaciones GTK (por ejemplo el de Inkscape)
+> son widgets internos y no consultan esta asociación, por lo que se ven con el tema Adwaita
+> aunque tu explorador sea otro.
+
 El script se encarga de:
 1. Instalar paquetes esenciales de pacman y quickshell.
 2. Crear directorios de configuración (`~/.config/hypr`, `~/.config/kitty`, `~/.local/bin`, etc.).
 3. Desplegar ejecutables (`shell-apps`, `shell-theme`, `shell-wallpaper`, `shell-popout`).
 4. Desplegar los módulos de Hyprland (`hyprland.lua`, `windows.lua`, `keybinds.lua`, `theme_colors.lua`).
 5. Configurar Kitty con transparencia y fuente JetBrainsMono.
-6. Habilitar servicios de Systemd (NetworkManager, Bluetooth) y asociación MIME para Dolphin.
+6. Habilitar servicios de Systemd (NetworkManager, Bluetooth) y asociación MIME para Explor.
 7. Inicializar el tema de color en tiempo real.
 
 Si falta alguna función (como Bluetooth o utilidades de red), instala los paquetes correspondientes:

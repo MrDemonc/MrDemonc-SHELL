@@ -101,12 +101,8 @@ GridLayout {
             }
 
             let lower = cls.toLowerCase();
-            // Administradores de archivos
+            // Explorador de archivos
             if (lower === "nautilus" || lower === "org.gnome.nautilus" || lower === "io.elementary.files") return "Files";
-            if (lower === "thunar") return "Thunar";
-            if (lower === "dolphin" || lower === "org.kde.dolphin") return "Dolphin";
-            if (lower === "nemo") return "Nemo";
-            if (lower === "pcmanfm" || lower === "pcmanfm-qt") return "PCManFM";
 
             // Navegadores
             if (lower === "zen-browser" || lower === "zen" || lower === "zen-beta" || lower === "zen-alpha") return "Zen Browser";
@@ -158,8 +154,6 @@ GridLayout {
             if (lowerTitle === "kitty" || lowerTitle.includes("kitty") || lowerTitle.startsWith("~") || lowerTitle.includes("@") || lowerTitle.includes("bash") || lowerTitle.includes("zsh")) {
                 return "Kitty";
             }
-            if (lowerTitle.includes("dolphin")) return "Dolphin";
-            if (lowerTitle.includes("thunar")) return "Thunar";
             if (lowerTitle.includes("nautilus")) return "Files";
             return title.length > 20 ? (title.slice(0, 18) + "…") : title;
         }
@@ -178,7 +172,7 @@ GridLayout {
         if (app.includes("discord") || app.includes("vesktop") || app.includes("webcord")) return "󰙯";
         if (app.includes("telegram")) return "";
         if (app.includes("spotify")) return "󰓇";
-        if (app.includes("files") || app.includes("dolphin") || app.includes("thunar") || app.includes("nemo") || app.includes("nautilus")) return "󰉋";
+        if (app.includes("files") || app.includes("nautilus")) return "󰉋";
         if (app.includes("obsidian")) return "󱓧";
         if (app.includes("steam")) return "󰓓";
         if (app.includes("vlc") || app.includes("mpv")) return "󰕼";

@@ -21,7 +21,7 @@ sudo pacman -S --needed \
     networkmanager bluez bluez-utils \
     upower power-profiles-daemon brightnessctl xdg-utils libnotify \
     grim slurp wl-clipboard wtype \
-    kitty dolphin ttf-jetbrains-mono-nerd \
+    kitty nautilus gtk4 libadwaita ttf-jetbrains-mono-nerd \
     zsh starship fastfetch chafa python curl git
 ```
 
@@ -77,7 +77,8 @@ paru -S --needed quickshell
 
 ### 6. Terminal, Gestor de Archivos, Discos y Fuentes
 * **`kitty`**: Emulador de terminal GPU rápido, estilizado y configurado con la paleta de colores de la shell.
-* **`nautilus`**: Explorador de archivos oficial con integración GTK4 y marcadores de usuario.
+* **`nautilus`**: Explorador de archivos de respaldo, se instala como alternativa si Explor no está disponible.
+* **`gtk4` / `libadwaita`**: Dependencias de **Explor**, el explorador de archivos predeterminado.
 * **`gnome-disk-utility`**: Utilidad de gestión de unidades de almacenamiento, particionado, formateo y estado SMART (`gnome-disks` / `shell-disks`).
 * **`font-manager`**: Administrador e instalador gráfico de tipografías para previsualizar, organizar e instalar fuentes TTF/OTF (`font-manager` / `shell-fonts`).
 

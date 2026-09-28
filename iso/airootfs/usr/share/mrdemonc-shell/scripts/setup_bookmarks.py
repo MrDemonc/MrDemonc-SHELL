@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 scripts/setup_bookmarks.py
-MrDemonc-SHELL - Inicializador y gestor de marcadores para Nautilus y GTK (~/.config/gtk-3.0/bookmarks).
+MrDemonc-SHELL - Inicializador y gestor de marcadores para GTK (~/.config/gtk-3.0/bookmarks).
 Asegura que las carpetas estándar de usuario (Descargas, Documentos, Imágenes, Vídeos, Música)
-estén ancladas en la barra lateral de Files / Nautilus por defecto.
+estén ancladas en la barra lateral del explorador de archivos por defecto.
 """
 
 import os
@@ -193,7 +193,7 @@ def sync_bookmarks(home_dir, quiet=False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Configura los marcadores estándar de usuario en Nautilus / GTK (~/.config/gtk-3.0/bookmarks)"
+        description="Configura los marcadores estándar de usuario en GTK (~/.config/gtk-3.0/bookmarks)"
     )
     parser.add_argument(
         "--home",

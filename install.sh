@@ -23,6 +23,20 @@ HYPR_CONFIG_DIR="$USER_HOME/.config/hypr"
 KITTY_CONFIG_DIR="$USER_HOME/.config/kitty"
 WALLPAPER_DIR="$USER_HOME/Pictures/Wallpapers"
 
+# Explorador de archivos.
+#   INSTALL_EXPLOR=0                 -> no descargar Explor (usar solo el ya instalado)
+#   FILE_MANAGER_DESKTOP=<x>.desktop -> forzar un gestor concreto
+# Sin forzar, gana Explor si esta disponible; si no, Nautilus.
+INSTALL_EXPLOR="${INSTALL_EXPLOR:-1}"
+EXPLOR_REPO="MrDemonc/Explor"
+# Detectar si el usuario pasó el valor explícitamente (${VAR+x}), no si es el default.
+if [ -n "${FILE_MANAGER_DESKTOP+x}" ]; then
+    FILE_MANAGER_FORCED=1
+else
+    FILE_MANAGER_FORCED=0
+fi
+FILE_MANAGER_DESKTOP="${FILE_MANAGER_DESKTOP:-org.gnome.Nautilus.desktop}"
+
 echo -e "${CYAN}${BOLD}"
 echo "=================================================================="
 echo "        INSTALADOR DE QUICKSHELL + HYPRLAND (MrDemonc-SHELL)      "
@@ -35,7 +49,7 @@ echo ""
 # ------------------------------------------------------------------------------
 # 1. Verificación del Sistema Operativo y Gestor de Paquetes
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[1/11] Verificando dependencias del sistema...${NC}"
+echo -e "${YELLOW}[1/12] Verificando dependencias del sistema...${NC}"
 
 PACKAGES=(
     hyprland
@@ -62,6 +76,8 @@ PACKAGES=(
     wtype
     kitty
     nautilus
+    gtk4
+    libadwaita
     gnome-disk-utility
     font-manager
     gvfs
@@ -149,7 +165,7 @@ fi
 # ------------------------------------------------------------------------------
 # 2. Creación de Directorios Necesarios
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[2/11] Creando estructura de directorios del usuario...${NC}"
+echo -e "${YELLOW}[2/12] Creando estructura de directorios del usuario...${NC}"
 mkdir -p "$BIN_DIR"
 mkdir -p "$HYPR_CONFIG_DIR"
 mkdir -p "$KITTY_CONFIG_DIR"
@@ -166,14 +182,14 @@ echo -e "${GREEN}[OK] Directorios listos.${NC}"
 # ------------------------------------------------------------------------------
 # 3. Permisos de Ejecución en Scripts
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[3/11] Configurando permisos de ejecución en scripts...${NC}"
+echo -e "${YELLOW}[3/12] Configurando permisos de ejecución en scripts...${NC}"
 chmod +x "$REPO_DIR/scripts/"*.sh 2>/dev/null || true
 chmod +x "$REPO_DIR/bin/"* 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
 # 4. Instalación de Utilidades CLI en ~/.local/bin
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[4/11] Instalando utilidades CLI en $BIN_DIR...${NC}"
+echo -e "${YELLOW}[4/12] Instalando utilidades CLI en $BIN_DIR...${NC}"
 
 # Helper para crear wrappers portables
 create_cli_wrapper() {
@@ -311,7 +327,7 @@ done
 # ------------------------------------------------------------------------------
 # 5. Configuración de Hyprland Modular e Hypridle
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[5/11] Desplegando configuración modular de Hyprland e Hypridle...${NC}"
+echo -e "${YELLOW}[5/12] Desplegando configuración modular de Hyprland e Hypridle...${NC}"
 
 # Respaldar configuración previa si no se ha respaldado
 if [ -f "$HYPR_CONFIG_DIR/hyprland.lua" ] && [ ! -f "$HYPR_CONFIG_DIR/hyprland.lua.bak" ]; then
@@ -340,9 +356,103 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 6. Configuración de Kitty y Sistema
+# 6. Explorador de Archivos (Explor)
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[6/11] Configurando Kitty, MIME de archivos y Servicios...${NC}"
+echo -e "${YELLOW}[6/12] Configurando el explorador de archivos (Explor)...${NC}"
+
+install_explor() {
+    local machine_arch release_json tag asset_url tmpdir installed_ver
+
+    if ! command -v curl >/dev/null 2>&1; then
+        echo -e "${YELLOW}[AVISO]${NC} curl no disponible; se omite la instalación de Explor."
+        return 1
+    fi
+
+    machine_arch="$(uname -m)"
+    case "$machine_arch" in
+        x86_64|amd64) machine_arch="x86_64" ;;
+        *)
+            echo -e "${YELLOW}[AVISO]${NC} Explor solo se publica para x86_64 (esta máquina: ${machine_arch})."
+            return 1
+            ;;
+    esac
+
+    echo -e "  Consultando la última release de ${BOLD}${EXPLOR_REPO}${NC}..."
+    release_json="$(curl -fsSL --max-time 30 "https://api.github.com/repos/${EXPLOR_REPO}/releases/latest" 2>/dev/null || true)"
+    if [ -z "$release_json" ]; then
+        echo -e "${YELLOW}[AVISO]${NC} No se pudo contactar con la API de GitHub; se omite Explor."
+        return 1
+    fi
+
+    tag="$(printf '%s' "$release_json" | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4)"
+    asset_url="$(printf '%s' "$release_json" | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | grep -E "${machine_arch}\.pkg\.tar\.(zst|xz|gz)$" | head -1)"
+
+    if [ -z "$tag" ] || [ -z "$asset_url" ]; then
+        echo -e "${YELLOW}[AVISO]${NC} No se encontró un paquete de Explor para ${machine_arch} en la última release."
+        return 1
+    fi
+
+    installed_ver="$(pacman -Q explor 2>/dev/null | awk '{print $2}' | cut -d- -f1 || true)"
+    if [ "$installed_ver" = "$tag" ] && [ -x /usr/local/bin/explor ]; then
+        echo -e "${GREEN}[OK]${NC} Explor ${tag} ya instalado."
+        return 0
+    fi
+
+    tmpdir="$(mktemp -d)"
+    echo -e "  Descargando Explor ${tag}..."
+    if ! curl -fL --progress-bar -o "${tmpdir}/explor.pkg.tar.zst" "$asset_url" 2>/dev/null; then
+        echo -e "${YELLOW}[AVISO]${NC} Falló la descarga de Explor."
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    echo -e "  Instalando el paquete con pacman..."
+    if ! sudo pacman -U --noconfirm "${tmpdir}/explor.pkg.tar.zst"; then
+        echo -e "${YELLOW}[AVISO]${NC} pacman no pudo instalar Explor."
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    rm -rf "$tmpdir"
+
+    sudo update-desktop-database /usr/share/applications 2>/dev/null || true
+    sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+
+    if [ -x /usr/local/bin/explor ] && [ -f /usr/share/applications/com.demonc.explor.desktop ]; then
+        echo -e "${GREEN}[OK]${NC} Explor ${tag} instalado."
+        return 0
+    fi
+    echo -e "${YELLOW}[AVISO]${NC} Explor se instaló pero no se localizó correctamente."
+    return 1
+}
+
+EXPLOR_AVAILABLE=0
+if [ -x /usr/local/bin/explor ] && [ -f /usr/share/applications/com.demonc.explor.desktop ]; then
+    EXPLOR_AVAILABLE=1
+fi
+
+# Se intenta siempre: install_explor() no hace nada si la version instalada ya es
+# la ultima release, y actualiza si esta obsoleta. El "|| true" evita que un
+# fallo de descarga/instalacion aborte el script por culpa de "set -e".
+if [ "$INSTALL_EXPLOR" = "1" ]; then
+    install_explor || true
+
+    if [ -x /usr/local/bin/explor ] && [ -f /usr/share/applications/com.demonc.explor.desktop ]; then
+        EXPLOR_AVAILABLE=1
+    elif [ "$EXPLOR_AVAILABLE" = "0" ]; then
+        # Solo se recurre a Nautilus si Explor no quedo disponible.
+        echo -e "${YELLOW}[AVISO]${NC} Se usará Nautilus como explorador de archivos."
+    fi
+fi
+
+# Si el usuario no forzó un gestor concreto, Explor tiene prioridad.
+if [ "$FILE_MANAGER_FORCED" = "0" ] && [ "$EXPLOR_AVAILABLE" = "1" ]; then
+    FILE_MANAGER_DESKTOP="explor.desktop"
+fi
+
+# ------------------------------------------------------------------------------
+# 7. Configuración de Kitty y Sistema
+# ------------------------------------------------------------------------------
+echo -e "${YELLOW}[7/12] Configurando Kitty, MIME de archivos y Servicios...${NC}"
 
 if [ -d "$REPO_DIR/kitty" ]; then
     cp -a "$REPO_DIR/kitty/." "$KITTY_CONFIG_DIR/"
@@ -358,7 +468,6 @@ x-scheme-handler/http=zen.desktop
 x-scheme-handler/https=zen.desktop
 x-scheme-handler/about=zen.desktop
 x-scheme-handler/unknown=zen.desktop
-inode/directory=org.gnome.Nautilus.desktop
 application/pdf=shell-pdf.desktop
 application/x-pdf=shell-pdf.desktop
 application/x-bzpdf=shell-pdf.desktop
@@ -403,7 +512,6 @@ x-scheme-handler/http=zen.desktop;
 x-scheme-handler/https=zen.desktop;
 x-scheme-handler/about=zen.desktop;
 x-scheme-handler/unknown=zen.desktop;
-inode/directory=org.gnome.Nautilus.desktop;
 application/pdf=shell-pdf.desktop;
 application/x-pdf=shell-pdf.desktop;
 application/x-bzpdf=shell-pdf.desktop;
@@ -443,14 +551,23 @@ video/3gpp2=shell-video.desktop;
 video/mp2t=shell-video.desktop;
 MIME_CONF
 
+# Inyectar el gestor de archivos elegido en ambas secciones del mimeapps.list
+sed -i "/^\[Default Applications\]$/a inode/directory=${FILE_MANAGER_DESKTOP}" "$USER_HOME/.config/mimeapps.list"
+sed -i "/^\[Added Associations\]$/a inode/directory=${FILE_MANAGER_DESKTOP};" "$USER_HOME/.config/mimeapps.list"
+
+if ! [ -f "/usr/share/applications/${FILE_MANAGER_DESKTOP}" ] && ! [ -f "$USER_HOME/.local/share/applications/${FILE_MANAGER_DESKTOP}" ]; then
+    echo -e "${YELLOW}[AVISO]${NC} No se encuentra ${FILE_MANAGER_DESKTOP}; revisa FILE_MANAGER_DESKTOP."
+fi
+echo -e "${BLUE}[INFO]${NC} Explorador de archivos predeterminado: ${BOLD}${FILE_MANAGER_DESKTOP}${NC}"
+
 if command -v xdg-mime >/dev/null 2>&1; then
-    xdg-mime default org.gnome.Nautilus.desktop inode/directory 2>/dev/null || true
+    xdg-mime default "${FILE_MANAGER_DESKTOP}" inode/directory 2>/dev/null || true
     xdg-mime default shell-image.desktop image/png image/jpeg image/jpg image/webp image/gif image/svg+xml image/avif image/bmp image/tiff image/heic image/heif image/jxl 2>/dev/null || true
     xdg-mime default shell-pdf.desktop application/pdf application/x-pdf application/x-bzpdf application/x-gzpdf 2>/dev/null || true
     xdg-mime default shell-video.desktop video/mp4 video/webm video/x-matroska video/quicktime video/x-msvideo video/ogg video/mpeg video/avi video/x-flv video/x-ms-wmv video/3gpp video/3gpp2 video/mp2t 2>/dev/null || true
 fi
 
-# Inicializar directorios de usuario y anclar marcadores estándar en Files / Nautilus
+# Inicializar directorios de usuario y anclar marcadores estándar en GTK
 if command -v xdg-user-dirs-update >/dev/null 2>&1; then
     xdg-user-dirs-update --force 2>/dev/null || true
 fi
@@ -488,9 +605,9 @@ fi
 sudo usermod -aG video,lp,scanner "$USER" 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
-# 7. Configuración de Shell Zsh, Oh My Zsh y Prompt Starship
+# 8. Configuración de Shell Zsh, Oh My Zsh y Prompt Starship
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[7/11] Configurando Zsh, Oh My Zsh y Starship...${NC}"
+echo -e "${YELLOW}[8/12] Configurando Zsh, Oh My Zsh y Starship...${NC}"
 
 # 1. Instalar configuración de Starship
 mkdir -p "$USER_HOME/.config"
@@ -626,9 +743,9 @@ if command -v zsh >/dev/null 2>&1; then
 fi
 
 # ------------------------------------------------------------------------------
-# 8. Inicialización del Tema y Arranque
+# 9. Inicialización del Tema y Arranque
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[8/11] Inicializando tema y sincronización...${NC}"
+echo -e "${YELLOW}[9/12] Inicializando tema y sincronización...${NC}"
 
 # Inicializar con Default
 if [ -f "$REPO_DIR/scripts/theme_manager.py" ]; then
@@ -637,9 +754,9 @@ if [ -f "$REPO_DIR/scripts/theme_manager.py" ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 9. Configuración de Seamless Login
+# 10. Configuración de Seamless Login
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[9/11] Configurando Seamless Login...${NC}"
+echo -e "${YELLOW}[10/12] Configurando Seamless Login...${NC}"
 
 # 1. Configurar Autologin en tty1 con systemd agetty
 if [ -d "/etc/systemd/system" ]; then
@@ -688,9 +805,9 @@ if command -v systemctl >/dev/null 2>&1; then
 fi
 
 # ------------------------------------------------------------------------------
-# 10. Desinstalación Automática de GNOME Desktop y GDM
+# 11. Desinstalación Automática de GNOME Desktop y GDM
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[10/11] Desinstalando GNOME Desktop y GDM del sistema...${NC}"
+echo -e "${YELLOW}[11/12] Desinstalando GNOME Desktop y GDM del sistema...${NC}"
 
 # 1. Deshabilitar y detener servicio GDM
 if command -v systemctl >/dev/null 2>&1; then
@@ -720,9 +837,9 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 11. Herramientas de Desarrollo con IA: OpenCode & Antigravity CLI
+# 12. Herramientas de Desarrollo con IA: OpenCode & Antigravity CLI
 # ------------------------------------------------------------------------------
-echo -e "${YELLOW}[11/11] Instalando herramientas de IA (OpenCode & Antigravity CLI)...${NC}"
+echo -e "${YELLOW}[12/12] Instalando herramientas de IA (OpenCode & Antigravity CLI)...${NC}"
 
 echo -e "  -> Instalando OpenCode..."
 curl -fsSL https://opencode.ai/install | bash 2>/dev/null || {
@@ -775,7 +892,7 @@ echo -e "  • ${BOLD}SUPER + Enter${NC}          : Abrir terminal Kitty (transp
   • ${BOLD}SUPER + Shift + W${NC}      : Selector de fondos de pantalla
   • ${BOLD}SUPER + Shift + T${NC}      : Selector de temas de color
   • ${BOLD}SUPER + Shift + Flechas${NC}: Mover ventanas de posición
-  • ${BOLD}SUPER + E${NC}              : Explorador de archivos (Dolphin)
+  • ${BOLD}SUPER + E${NC}              : Explorador de archivos (Explor)
   • ${BOLD}Zsh + Starship Prompt${NC}  : Shell interactiva con Oh My Zsh y diseño Demonc"
 echo ""
 echo -e "  • ${CYAN}Seamless Login${NC}       : Arrancará directamente a Hyprland sin pantalla de GDM."

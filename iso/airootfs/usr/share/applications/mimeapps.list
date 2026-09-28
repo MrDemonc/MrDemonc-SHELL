@@ -1,3 +1,8 @@
+# Gestor de archivos de la SESION LIVE de la ISO: Nautilus a proposito.
+# El live no instala Explor (no esta en los repos de pacman), asi que apuntar
+# aqui a explor.desktop dejaria la apertura de carpetas sin aplicacion.
+# Al instalar, arch-iso-install.sh descarga Explor y sobrescribe este archivo
+# en el sistema de destino con inode/directory=explor.desktop.
 [Default Applications]
 text/html=zen.desktop
 x-scheme-handler/http=zen.desktop

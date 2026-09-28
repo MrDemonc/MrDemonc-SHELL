@@ -1,3 +1,6 @@
+# Plantilla para la SESION LIVE de la ISO: Nautilus a proposito (ver nota en
+# /usr/share/applications/mimeapps.list). Al instalar, arch-iso-install.sh la
+# sobrescribe con inode/directory=explor.desktop.
 [Default Applications]
 text/html=zen.desktop
 x-scheme-handler/http=zen.desktop

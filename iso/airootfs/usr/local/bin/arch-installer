@@ -6,6 +6,20 @@
 set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Explorador de archivos.
+#   INSTALL_EXPLOR=0                 -> no descargar Explor (usar Nautilus)
+#   FILE_MANAGER_DESKTOP=<x>.desktop -> forzar un gestor concreto
+# Sin forzar, gana Explor si se pudo instalar; si no, Nautilus.
+INSTALL_EXPLOR="${INSTALL_EXPLOR:-1}"
+EXPLOR_REPO="MrDemonc/Explor"
+# Detectar si el usuario pasó el valor explícitamente (${VAR+x}), no si es el default.
+if [ -n "${FILE_MANAGER_DESKTOP+x}" ]; then
+    FILE_MANAGER_FORCED=1
+else
+    FILE_MANAGER_FORCED=0
+fi
+FILE_MANAGER_DESKTOP="${FILE_MANAGER_DESKTOP:-org.gnome.Nautilus.desktop}"
+
 # ------------------------------------------------------------------------------
 # 1. Configuración de Terminal, Paleta Tokyo Night y Logo
 # ------------------------------------------------------------------------------
@@ -961,7 +975,7 @@ tips=(
     "Super + Return abre la terminal Kitty con la paleta de colores activa"
     "Super + Space abre el menú lanzador de aplicaciones del sistema"
     "Super + W cierra de inmediato la ventana seleccionada"
-    "Super + E abre el gestor de archivos Dolphin"
+    "Super + E abre el gestor de archivos Explor"
     "Super + Shift + W abre el selector dinámico de fondos de pantalla"
     "Super + Shift + T cambia rápidamente entre temas oscuros y claros"
     "Super + L bloquea tu sesión de forma segura con Quickshell Lock Screen"
@@ -1192,6 +1206,8 @@ perform_installation_worker() {
         quickshell
         kitty
         nautilus
+        gtk4
+        libadwaita
         gnome-disk-utility
         font-manager
         gvfs
@@ -2306,6 +2322,99 @@ if command -v starship >/dev/null 2>&1; then
 fi
 BASHRC
 
+    # ------------------------------------------------------------------
+    # Explorador de archivos: instalar Explor desde GitHub Releases
+    # ------------------------------------------------------------------
+    install_explor_iso() {
+        local machine_arch release_json tag asset_url pkgfile installed_ver
+
+        if ! command -v curl >/dev/null 2>&1; then
+            say "curl no disponible; se omite la instalación de Explor."
+            return 1
+        fi
+
+        machine_arch="$(uname -m)"
+        case "$machine_arch" in
+            x86_64|amd64) machine_arch="x86_64" ;;
+            *)
+                say "Explor solo se publica para x86_64 (esta máquina: ${machine_arch})."
+                return 1
+                ;;
+        esac
+
+        step "Descargando el explorador de archivos Explor..."
+        release_json="$(curl -fsSL --max-time 30 "https://api.github.com/repos/${EXPLOR_REPO}/releases/latest" 2>/dev/null || true)"
+        if [ -z "$release_json" ]; then
+            say "No se pudo contactar con la API de GitHub; se usará Nautilus."
+            return 1
+        fi
+
+        tag="$(printf '%s' "$release_json" | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4)"
+        asset_url="$(printf '%s' "$release_json" | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | grep -E "${machine_arch}\.pkg\.tar\.(zst|xz|gz)$" | head -1)"
+
+        if [ -z "$tag" ] || [ -z "$asset_url" ]; then
+            say "No hay paquete de Explor para ${machine_arch} en la última release."
+            return 1
+        fi
+
+        installed_ver="$(arch-chroot /mnt pacman -Q explor 2>/dev/null | awk '{print $2}' | cut -d- -f1 || true)"
+        if [ "$installed_ver" = "$tag" ] && [ -x /mnt/usr/local/bin/explor ]; then
+            say "Explor ${tag} ya instalado."
+            return 0
+        fi
+
+        # El paquete se copia a /mnt/tmp para que sea visible dentro del chroot.
+        pkgfile="/mnt/tmp/explor-${tag}-${machine_arch}.pkg.tar.zst"
+        mkdir -p /mnt/tmp
+        if ! curl -fL --progress-bar -o "$pkgfile" "$asset_url" 2>/dev/null; then
+            say "Falló la descarga de Explor."
+            rm -f "$pkgfile"
+            return 1
+        fi
+
+        step "Instalando Explor ${tag} en el sistema..."
+        if ! arch-chroot /mnt pacman -U --noconfirm --needed "/tmp/$(basename "$pkgfile")"; then
+            say "pacman no pudo instalar Explor."
+            rm -f "$pkgfile"
+            return 1
+        fi
+        rm -f "$pkgfile"
+
+        arch-chroot /mnt update-desktop-database /usr/share/applications 2>/dev/null || true
+        arch-chroot /mnt gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+
+        if [ -x /mnt/usr/local/bin/explor ] && [ -f /mnt/usr/share/applications/com.demonc.explor.desktop ]; then
+            say "Explor ${tag} instalado correctamente."
+            return 0
+        fi
+        say "Explor se instaló pero no se localizó correctamente."
+        return 1
+    }
+
+    EXPLOR_AVAILABLE=0
+    if [ -x /mnt/usr/local/bin/explor ] && [ -f /mnt/usr/share/applications/com.demonc.explor.desktop ]; then
+        EXPLOR_AVAILABLE=1
+    fi
+
+    if [ "$INSTALL_EXPLOR" = "1" ]; then
+        # install_explor_iso() no hace nada si la version instalada ya es la
+        # ultima release y actualiza si esta obsoleta. El "|| true" evita que
+        # un fallo de descarga/instalacion aborte el instalador.
+        install_explor_iso || true
+
+        if [ -x /mnt/usr/local/bin/explor ] && [ -f /mnt/usr/share/applications/com.demonc.explor.desktop ]; then
+            EXPLOR_AVAILABLE=1
+        elif [ "$EXPLOR_AVAILABLE" = "0" ]; then
+            # Solo se recurre a Nautilus si Explor no quedo disponible.
+            say "Se usará Nautilus como explorador de archivos."
+        fi
+    fi
+
+    # Si el usuario no forzó un gestor concreto, Explor tiene prioridad.
+    if [ "$FILE_MANAGER_FORCED" = "0" ] && [ "$EXPLOR_AVAILABLE" = "1" ]; then
+        FILE_MANAGER_DESKTOP="explor.desktop"
+    fi
+
     # Establecer asociaciones MIME predeterminadas (Imágenes, PDF, Videos, Navegador y Gestor de archivos)
     mkdir -p "$USER_HOME/.config" "/mnt/etc/skel/.config" "/mnt/usr/share/applications" "/mnt/etc/xdg"
     cat << 'MIME_CONF' > "$USER_HOME/.config/mimeapps.list"
@@ -2315,7 +2424,6 @@ x-scheme-handler/http=zen.desktop
 x-scheme-handler/https=zen.desktop
 x-scheme-handler/about=zen.desktop
 x-scheme-handler/unknown=zen.desktop
-inode/directory=org.gnome.Nautilus.desktop
 application/pdf=shell-pdf.desktop
 application/x-pdf=shell-pdf.desktop
 application/x-bzpdf=shell-pdf.desktop
@@ -2360,7 +2468,6 @@ x-scheme-handler/http=zen.desktop;
 x-scheme-handler/https=zen.desktop;
 x-scheme-handler/about=zen.desktop;
 x-scheme-handler/unknown=zen.desktop;
-inode/directory=org.gnome.Nautilus.desktop;
 application/pdf=shell-pdf.desktop;
 application/x-pdf=shell-pdf.desktop;
 application/x-bzpdf=shell-pdf.desktop;
@@ -2400,6 +2507,10 @@ video/3gpp2=shell-video.desktop;
 video/mp2t=shell-video.desktop;
 MIME_CONF
 
+    # Inyectar el gestor de archivos elegido en ambas secciones del mimeapps.list
+    sed -i "/^\[Default Applications\]$/a inode/directory=${FILE_MANAGER_DESKTOP}" "$USER_HOME/.config/mimeapps.list"
+    sed -i "/^\[Added Associations\]$/a inode/directory=${FILE_MANAGER_DESKTOP};" "$USER_HOME/.config/mimeapps.list"
+
     mkdir -p "$USER_HOME/.local/share/applications" "/mnt/etc/skel/.local/share/applications"
     cp -f "$USER_HOME/.config/mimeapps.list" "$USER_HOME/.local/share/applications/mimeapps.list" 2>/dev/null || true
     cp -f "$USER_HOME/.config/mimeapps.list" /mnt/etc/skel/.config/mimeapps.list 2>/dev/null || true
@@ -2412,7 +2523,7 @@ MIME_CONF
     arch-chroot /mnt update-desktop-database /usr/share/applications 2>/dev/null || true
     arch-chroot /mnt su - "$SYS_USER" -c "update-desktop-database ~/.local/share/applications" 2>/dev/null || true
 
-    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default org.gnome.Nautilus.desktop inode/directory" 2>/dev/null || true
+    arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default ${FILE_MANAGER_DESKTOP} inode/directory" 2>/dev/null || true
     arch-chroot /mnt su - "$SYS_USER" -c "xdg-settings set default-web-browser zen.desktop 2>/dev/null || true"
     for proto in x-scheme-handler/http x-scheme-handler/https text/html; do
         arch-chroot /mnt su - "$SYS_USER" -c "xdg-mime default zen.desktop $proto" 2>/dev/null || true
@@ -2464,7 +2575,7 @@ MIME_CONF
     cp -f "$USER_HOME/.zlogin" /mnt/etc/skel/
     cp -f "$USER_HOME/.bash_profile" /mnt/etc/skel/
     cp -f "$USER_HOME/.bashrc" /mnt/etc/skel/
-    # Sincronizar marcadores predeterminados de Files / Nautilus para el usuario
+    # Sincronizar marcadores predeterminados de GTK para el usuario
     if [ -f "$SYSTEM_SHELL/scripts/setup_bookmarks.py" ]; then
         python3 "$SYSTEM_SHELL/scripts/setup_bookmarks.py" --home "$USER_HOME" -q 2>/dev/null || true
     fi

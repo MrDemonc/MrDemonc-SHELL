@@ -146,7 +146,7 @@ def get_recent_apps(all_apps):
 
     # 2. Si faltan apps para completar 4, buscar aplicaciones comunes instaladas
     if len(recents) < 4:
-        defaults = ["kitty", "firefox", "nautilus", "dolphin", "thunar", "chromium", "htop", "terminal"]
+        defaults = ["kitty", "firefox", "nautilus", "chromium", "htop", "terminal"]
         for d in defaults:
             for app in all_apps:
                 exec_lower = (app.get("exec") or "").lower()

@@ -842,7 +842,7 @@ def sync_gtk_theme(theme_data):
         color_scheme = "prefer-dark" if is_dark else "prefer-light"
         accent_enum = get_nearest_gnome_accent(primary)
 
-        # Mantener los iconos originales de Adwaita para Files / Nautilus
+        # Mantener los iconos originales de Adwaita para el explorador de archivos
         icon_theme = "Adwaita"
 
         # 1. Configuración oficial en GSettings (Libadwaita / GTK4 / XDG Portals / Navegadores)

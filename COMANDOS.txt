@@ -69,7 +69,7 @@
 • Atajos dentro de la ventana de Wallpapers:
     ↑ / ↓ : Navegar entre imágenes disponibles
     Enter / Espacio : Aplicar fondo enfocado
-    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador de archivos (Nautilus) para añadir nuevas imágenes
+    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador de archivos (Explor) para añadir nuevas imágenes
     Esc : Cerrar ventana
 
 
@@ -122,7 +122,7 @@
 • SUPER + Espacio           : Lanzador de aplicaciones
 • SUPER + N                 : Panel / Centro de Notificaciones y Mensajes
 • SUPER + ESC (o SUPER + M) : Menú de Apagado y Sesión (Apagar, Reiniciar, Suspender, Bloquear, Cerrar Sesión, Hibernar)
-• SUPER + E                 : Explorador de archivos (Nautilus)
+• SUPER + E                 : Explorador de archivos (Explor)
 • SUPER + Flechas           : Cambiar foco entre ventanas
 • SUPER + SHIFT + Flechas   : Mover ventanas de posición en la pantalla
 
