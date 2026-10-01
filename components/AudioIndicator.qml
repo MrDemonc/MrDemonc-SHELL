@@ -49,7 +49,7 @@ Item {
     }
 
     function setMasterVolume(val) {
-        val = Math.max(0, Math.min(150, Math.round(val)));
+        val = Math.max(0, Math.min(100, Math.round(val)));
         root.masterVolume = val;
         actionProc.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (val / 100.0).toFixed(2)];
         actionProc.running = false;
@@ -85,7 +85,7 @@ Item {
     }
 
     function setAppVolume(index, val) {
-        val = Math.max(0, Math.min(150, Math.round(val)));
+        val = Math.max(0, Math.min(100, Math.round(val)));
         actionProc.command = ["pactl", "set-sink-input-volume", index.toString(), val.toString() + "%"];
         actionProc.running = false;
         actionProc.running = true;

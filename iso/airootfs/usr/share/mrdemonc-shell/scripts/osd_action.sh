@@ -33,7 +33,8 @@ get_volume() {
             muted="true"
         fi
     fi
-    [ "$vol" -gt 150 ] && vol=150
+    [ "$vol" -gt 100 ] && vol=100
+    [ "$vol" -lt 0 ] && vol=0
     echo "$vol:$muted"
 }
 
@@ -103,10 +104,16 @@ except Exception:
 case "$ACTION" in
     volume-up|vol-up|volume-raise)
         STEP="${2:-5%}"
+        [[ "$STEP" != *% ]] && STEP="${STEP}%"
         if command -v wpctl >/dev/null 2>&1; then
-            wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ "$STEP+"
+            wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ "$STEP+"
         elif command -v pactl >/dev/null 2>&1; then
-            pactl set-sink-volume @DEFAULT_SINK@ "+$STEP"
+            IFS=':' read -r cur_v _ <<< "$(get_volume)"
+            step_num="${STEP//%/}"
+            step_num="${step_num//+/}"
+            new_v=$((cur_v + step_num))
+            [ "$new_v" -gt 100 ] && new_v=100
+            pactl set-sink-volume @DEFAULT_SINK@ "${new_v}%"
         fi
         IFS=':' read -r v m <<< "$(get_volume)"
         send_osd "{\"type\":\"volume\",\"value\":$v,\"muted\":$m}"
@@ -115,6 +122,7 @@ case "$ACTION" in
 
     volume-down|vol-down|volume-lower)
         STEP="${2:-5%}"
+        [[ "$STEP" != *% ]] && STEP="${STEP}%"
         if command -v wpctl >/dev/null 2>&1; then
             wpctl set-volume @DEFAULT_AUDIO_SINK@ "$STEP-"
         elif command -v pactl >/dev/null 2>&1; then
@@ -139,10 +147,11 @@ case "$ACTION" in
     volume-set)
         TARGET="${2:-50}"
         TARGET="${TARGET//%/}"
+        [ "$TARGET" -gt 100 ] && TARGET=100
+        [ "$TARGET" -lt 0 ] && TARGET=0
         if command -v wpctl >/dev/null 2>&1; then
-            local dec
             dec=$(awk -v t="$TARGET" 'BEGIN { printf "%.2f", t / 100.0 }')
-            wpctl set-volume @DEFAULT_AUDIO_SINK@ "$dec"
+            wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ "$dec"
         elif command -v pactl >/dev/null 2>&1; then
             pactl set-sink-volume @DEFAULT_SINK@ "${TARGET}%"
         fi

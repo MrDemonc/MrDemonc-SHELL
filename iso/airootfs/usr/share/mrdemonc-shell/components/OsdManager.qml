@@ -24,7 +24,7 @@ QtObject {
 
                     if (msg.type) {
                         root.osdType = msg.type;
-                        root.osdValue = Math.max(0, Math.min(150, parseInt(msg.value) || 0));
+                        root.osdValue = Math.max(0, Math.min(100, parseInt(msg.value) || 0));
                         root.osdMuted = !!msg.muted;
                         root.isOsdVisible = true;
                         hideTimer.restart();
@@ -46,7 +46,7 @@ QtObject {
 
     function showVolume(val, muted) {
         root.osdType = "volume";
-        root.osdValue = Math.max(0, Math.min(150, Math.round(val)));
+        root.osdValue = Math.max(0, Math.min(100, Math.round(val)));
         root.osdMuted = !!muted;
         root.isOsdVisible = true;
         hideTimer.restart();

@@ -56,6 +56,7 @@ def get_audio_data():
                 except Exception:
                     pass
             vol_pct = int(sum(vol_vals) / len(vol_vals)) if vol_vals else 0
+            vol_pct = max(0, min(100, vol_pct))
             muted = s.get("mute", False)
 
             if is_default:

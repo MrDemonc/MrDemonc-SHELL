@@ -994,7 +994,7 @@ PanelWindow {
                                         id: volSlider
                                         Layout.fillWidth: true
                                         from: 0
-                                        to: 150
+                                        to: 100
                                         stepSize: 1
                                         value: ControlCenterManager.masterVolume
                                         onMoved: ControlCenterManager.setMasterVolume(value)

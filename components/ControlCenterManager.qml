@@ -300,7 +300,7 @@ QtObject {
     }
 
     function setMasterVolume(val) {
-        val = Math.max(0, Math.min(150, Math.round(val)));
+        val = Math.max(0, Math.min(100, Math.round(val)));
         mgr.masterVolume = val;
         audioActionProc.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (val / 100.0).toFixed(2)];
         audioActionProc.running = false;
@@ -336,7 +336,7 @@ QtObject {
     }
 
     function setAppVolume(index, val) {
-        val = Math.max(0, Math.min(150, Math.round(val)));
+        val = Math.max(0, Math.min(100, Math.round(val)));
         audioActionProc.command = ["pactl", "set-sink-input-volume", index.toString(), val.toString() + "%"];
         audioActionProc.running = false;
         audioActionProc.running = true;
