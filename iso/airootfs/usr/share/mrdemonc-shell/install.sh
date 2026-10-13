@@ -118,6 +118,7 @@ PACKAGES=(
     gst-plugin-pipewire
     gst-plugins-good
     libcamera
+    qt6-multimedia-ffmpeg
 )
 
 if command -v pacman >/dev/null 2>&1; then

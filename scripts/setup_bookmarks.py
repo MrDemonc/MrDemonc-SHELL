@@ -129,11 +129,18 @@ def sync_bookmarks(home_dir, quiet=False):
     os.makedirs(gtk3_dir, exist_ok=True)
     bookmarks_file = os.path.join(gtk3_dir, "bookmarks")
 
+    # Si se invoca desde instalador en chroot (/mnt/home/...), traducir URI al sistema final
+    target_home = home_dir
+    if home_dir.startswith("/mnt/"):
+        target_home = home_dir[4:]  # "/home/..." o ruta sin /mnt
+    elif "/mnt/home/" in home_dir:
+        idx = home_dir.find("/mnt/home/")
+        target_home = home_dir[idx + 4:]
+
     target_paths = get_user_dirs(home_dir)
 
     # Leer entradas existentes
     existing_lines = []
-    existing_paths = set()
     if os.path.exists(bookmarks_file):
         try:
             with open(bookmarks_file, "r", encoding="utf-8", errors="replace") as f:
@@ -144,29 +151,52 @@ def sync_bookmarks(home_dir, quiet=False):
                     parts = line_str.split(maxsplit=1)
                     uri = parts[0]
                     p = uri_to_path(uri)
-                    if p:
-                        existing_paths.add(p)
-                    existing_lines.append((line_str, p))
+                    existing_lines.append((line_str, uri, p))
         except Exception as e:
             if not quiet:
                 print(f"[!] Error al leer marcadores existentes: {e}", file=sys.stderr)
 
     # Construir líneas estándar (al inicio)
     standard_lines = []
+    standard_uris = set()
+    standard_names = set()
     for p in target_paths:
         try:
             os.makedirs(p, exist_ok=True)
         except Exception:
             pass
-        uri = path_to_uri(p)
         name = os.path.basename(p)
+        uri_p = p
+        if home_dir != target_home and p.startswith(home_dir):
+            uri_p = os.path.join(target_home, os.path.relpath(p, home_dir))
+        uri = path_to_uri(uri_p)
         standard_lines.append(f"{uri} {name}")
+        standard_uris.add(uri)
+        standard_names.add(name.lower())
 
-    # Preservar marcadores personalizados existentes que no pertenezcan a carpetas estándar
+    # Preservar marcadores personalizados existentes válidos
     custom_lines = []
-    for line_str, p in existing_lines:
-        if p not in target_paths:
-            custom_lines.append(line_str)
+    seen_uris = set(standard_uris)
+    for line_str, uri, p in existing_lines:
+        if not uri or uri in seen_uris:
+            continue
+
+        # Descartar rutas inválidas residuales de instalador en /mnt/
+        if uri.startswith("file:///mnt/") or (p and p.startswith("/mnt/")):
+            continue
+
+        parts = line_str.split(maxsplit=1)
+        label = parts[1] if len(parts) > 1 else (os.path.basename(p) if p else "")
+        # Descartar si el nombre coincide con las carpetas estándar ya agregadas
+        if label.lower() in standard_names:
+            continue
+
+        # Descartar si la ruta coincide con una de las carpetas estándar
+        if p and (p in target_paths or (home_dir != target_home and p.startswith(target_home))):
+            continue
+
+        seen_uris.add(uri)
+        custom_lines.append(line_str)
 
     final_lines = standard_lines + custom_lines
     new_content = "\n".join(final_lines) + "\n"

@@ -12,7 +12,16 @@ SEARCH_DIRS=(
 
 TARGET_FILE=""
 if [ -n "$1" ]; then
-    TARGET_FILE="$(realpath "$1")"
+    ARG="$1"
+    if [[ "$ARG" =~ ^file:// ]]; then
+        ARG="${ARG#file://}"
+        ARG="$(python3 -c "import urllib.parse, sys; print(urllib.parse.unquote(sys.argv[1]))" "$ARG" 2>/dev/null || echo "$ARG")"
+    fi
+    if [ -e "$ARG" ]; then
+        TARGET_FILE="$(realpath "$ARG" 2>/dev/null || echo "$ARG")"
+    else
+        TARGET_FILE="$ARG"
+    fi
 fi
 
 for dir in "${SEARCH_DIRS[@]}"; do

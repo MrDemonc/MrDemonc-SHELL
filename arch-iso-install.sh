@@ -1285,6 +1285,7 @@ perform_installation_worker() {
         gst-plugin-pipewire
         gst-plugins-good
         libcamera
+        qt6-multimedia-ffmpeg
         android-tools
         android-udev
         cmake

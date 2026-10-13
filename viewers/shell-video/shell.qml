@@ -17,7 +17,15 @@ FloatingWindow {
     implicitHeight: 580
 
     property string currentPath: Quickshell.env("TARGET_FILE") || ""
-    property string currentFilename: currentPath ? currentPath.split('/').pop() : ""
+    property string currentFilename: {
+        if (!currentPath) return "";
+        let clean = currentPath;
+        if (clean.startsWith("file://")) clean = clean.substring(7);
+        try {
+            clean = decodeURIComponent(clean);
+        } catch(e) {}
+        return clean.split('/').pop();
+    }
     property bool isFullscreen: false
     property bool isLoop: false
     property bool controlsVisible: true
@@ -88,8 +96,18 @@ FloatingWindow {
         id: player
         audioOutput: audioOut
         videoOutput: videoOut
-        source: win.currentPath ? ("file://" + win.currentPath) : ""
+        source: {
+            if (!win.currentPath) return "";
+            if (win.currentPath.startsWith("file://") || win.currentPath.startsWith("http://") || win.currentPath.startsWith("https://")) {
+                return win.currentPath;
+            }
+            return "file://" + win.currentPath;
+        }
         loops: win.isLoop ? MediaPlayer.Infinite : 1
+
+        onErrorOccurred: function(error, errorString) {
+            console.error("[shell-video] Error al reproducir video:", errorString, "(Código: " + error + ")");
+        }
 
         Component.onCompleted: {
             if (win.currentPath) {

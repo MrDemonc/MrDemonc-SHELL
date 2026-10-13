@@ -107,6 +107,8 @@ paru -S --needed quickshell
 * **`pipewire-v4l2`**: Capa de compatibilidad V4L2 nativa sobre PipeWire para acceso a cámaras web.
 * **`gst-plugin-pipewire` & `gst-plugins-good`**: Plugins de captura multimedia y codecs para cámaras UVC en navegadores, OBS y videollamadas.
 * **`libcamera`**: Framework moderno de soporte de cámaras en Linux.
+* **`qt6-multimedia-ffmpeg`**: Backend multimedia FFmpeg y módulos de QML QtMultimedia requeridos por el reproductor integrado de video (`shell-video`).
+
 
 ### 12. Herramientas de Desarrollo con Inteligencia Artificial (Instalación Automática)
 * **`opencode`**: Agente y asistente de desarrollo para terminal (`curl -fsSL https://opencode.ai/install | bash`).

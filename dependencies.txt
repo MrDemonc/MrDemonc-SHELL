@@ -108,3 +108,7 @@ gst-plugin-pipewire
 gst-plugins-good
 libcamera
 
+# --- Reproducción Multimedia en Quickshell (shell-video) ---
+qt6-multimedia-ffmpeg
+
+

@@ -162,6 +162,7 @@ pipewire-v4l2
 gst-plugin-pipewire
 gst-plugins-good
 libcamera
+qt6-multimedia-ffmpeg
 bluez
 bluez-utils
 alsa-firmware
