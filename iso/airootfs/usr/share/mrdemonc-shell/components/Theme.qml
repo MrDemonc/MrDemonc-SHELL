@@ -96,10 +96,10 @@ QtObject {
         theme.cyan = parsed.cyan || (theme.isDark ? "#89dceb" : "#04a5e5");
         theme.pink = parsed.pink || (theme.isDark ? "#f5c2e7" : "#ea76cb");
 
-        // Sincronizar inmediatamente el wallpaper del tema con WallpaperManager si está disponible
+        // Solo inicializar el wallpaper si WallpaperManager aún no tiene ninguno asignado
         let wp = parsed.wallpaperPath || (parsed.wallpaper && parsed._dir ? (parsed._dir + "/" + parsed.wallpaper) : "");
         try {
-            if (wp && typeof WallpaperManager !== "undefined" && WallpaperManager.currentWallpaper !== wp) {
+            if (wp && typeof WallpaperManager !== "undefined" && (!WallpaperManager.currentWallpaper || WallpaperManager.currentWallpaper === "")) {
                 WallpaperManager.currentWallpaper = wp;
             }
         } catch (e) {}

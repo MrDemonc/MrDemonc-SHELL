@@ -291,6 +291,14 @@ def set_wallpaper(path):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    wp_trigger = os.path.join(runtime_dir, "quickshell_wallpaper_reload.toggle")
+    try:
+        with open(wp_trigger, 'w') as f:
+            f.write(path)
+    except Exception:
+        pass
+
     return {"status": "ok", "current": data}
 
 def open_folder():

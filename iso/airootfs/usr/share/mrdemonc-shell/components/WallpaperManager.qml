@@ -86,20 +86,40 @@ QtObject {
     function setWallpaper(path) {
         if (!path) return;
         currentWallpaper = path;
-        setProc.command = [Quickshell.shellDir + "/scripts/wallpaper_manager.py", "set", path];
-        setProc.running = false;
-        setProc.running = true;
+        let cmd = [Quickshell.shellDir + "/scripts/wallpaper_manager.py", "set", path];
+        if (setProc.running) {
+            setProc.running = false;
+            Qt.callLater(function() {
+                setProc.command = cmd;
+                setProc.running = true;
+            });
+        } else {
+            setProc.command = cmd;
+            setProc.running = true;
+        }
     }
 
     function openFolder() {
-        openFolderProc.running = false;
-        openFolderProc.running = true;
+        if (openFolderProc.running) {
+            openFolderProc.running = false;
+            Qt.callLater(function() { openFolderProc.running = true; });
+        } else {
+            openFolderProc.running = true;
+        }
     }
 
     function refreshList() {
-        listProc.running = false;
-        listProc.running = true;
-        getCurProc.running = false;
-        getCurProc.running = true;
+        if (listProc.running) {
+            listProc.running = false;
+            Qt.callLater(function() { listProc.running = true; });
+        } else {
+            listProc.running = true;
+        }
+        if (getCurProc.running) {
+            getCurProc.running = false;
+            Qt.callLater(function() { getCurProc.running = true; });
+        } else {
+            getCurProc.running = true;
+        }
     }
 }
