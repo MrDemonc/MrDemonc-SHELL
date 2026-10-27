@@ -451,6 +451,10 @@ PanelWindow {
                     if (edge && edge !== PopoutManager.barPosition) {
                         PopoutManager.setBarPosition(edge);
                     }
+                } else {
+                    if (PopoutManager.hasPopout) {
+                        PopoutManager.close();
+                    }
                 }
             }
 

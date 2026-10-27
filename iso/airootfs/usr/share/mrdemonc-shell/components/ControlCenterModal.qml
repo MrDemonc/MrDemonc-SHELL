@@ -623,7 +623,6 @@ PanelWindow {
                                                 MouseArea {
                                                     id: btnConnMouse
                                                     anchors.fill: parent
-                                                    enabled: !modelData.inUse
                                                     hoverEnabled: true
                                                     cursorShape: Qt.PointingHandCursor
                                                     onClicked: {

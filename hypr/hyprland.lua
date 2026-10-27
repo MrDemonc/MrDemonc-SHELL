@@ -36,7 +36,7 @@ pcall(require, "monitors")
 local userHome    = os.getenv("HOME") or ""
 local binDir      = (userHome ~= "" and (userHome .. "/.local/bin")) or "/usr/local/bin"
 local terminal    = binDir .. "/shell-terminal"
-local fileManager = "explor"
+local fileManager = "nautilus"
 local menu        = binDir .. "/shell-apps"
 
 -- Helper global para control de DPMS en Hyprland Lua

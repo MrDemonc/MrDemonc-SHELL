@@ -69,7 +69,7 @@
 • Atajos dentro de la ventana de Wallpapers:
     ↑ / ↓ : Navegar entre imágenes disponibles
     Enter / Espacio : Aplicar fondo enfocado
-    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador de archivos (Explor) para añadir nuevas imágenes
+    i : Abrir la carpeta ~/Pictures/Wallpapers en el explorador de archivos (Nautilus) para añadir nuevas imágenes
     Esc : Cerrar ventana
 
 

@@ -166,23 +166,39 @@ QtObject {
     }
 
     function connectWifi(ssidName, password, isHidden) {
+        if (!ssidName) return;
         isNetworkScanning = true;
-        let args = ["nmcli", "dev", "wifi", "connect", ssidName];
+        let cmd;
         if (password && password.length > 0) {
-            args.push("password", password);
+            cmd = ["sh", "-c", 'SSID="$1"; PW="$2"; HIDDEN="$3"; if [ "$HIDDEN" = "true" ]; then nmcli dev wifi connect "$SSID" password "$PW" hidden yes; else nmcli dev wifi connect "$SSID" password "$PW"; fi', "sh", ssidName, password, isHidden ? "true" : "false"];
+        } else {
+            cmd = ["sh", "-c", 'SSID="$1"; nmcli connection up id "$SSID" 2>/dev/null || nmcli dev wifi connect "$SSID"', "sh", ssidName];
         }
-        if (isHidden) {
-            args.push("hidden", "yes");
+
+        if (netActionProc.running) {
+            netActionProc.running = false;
+            Qt.callLater(function() {
+                netActionProc.command = cmd;
+                netActionProc.running = true;
+            });
+        } else {
+            netActionProc.command = cmd;
+            netActionProc.running = true;
         }
-        netActionProc.command = args;
-        netActionProc.running = false;
-        netActionProc.running = true;
     }
 
     function disconnectWifi() {
-        netActionProc.command = ["sh", "-c", "nmcli dev disconnect $(nmcli -t -f DEVICE,TYPE dev | grep ':wifi$' | cut -d: -f1 | head -n1)"];
-        netActionProc.running = false;
-        netActionProc.running = true;
+        let cmd = ["sh", "-c", "nmcli dev disconnect $(nmcli -t -f DEVICE,TYPE dev | grep ':wifi$' | cut -d: -f1 | head -n1)"];
+        if (netActionProc.running) {
+            netActionProc.running = false;
+            Qt.callLater(function() {
+                netActionProc.command = cmd;
+                netActionProc.running = true;
+            });
+        } else {
+            netActionProc.command = cmd;
+            netActionProc.running = true;
+        }
     }
 
     // -------------------------------------------------------------------------

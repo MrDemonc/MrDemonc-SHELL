@@ -19,6 +19,8 @@ Item {
     property var networks: []
     property bool isScanning: false
     property bool isManualScanning: false
+    property bool isConnecting: false
+    property string connectingToSsid: ""
 
     property bool isHovered: false
     readonly property bool isPopoutActive: PopoutManager.activePopout === "wifi"
@@ -51,32 +53,50 @@ Item {
 
     Process {
         id: connectProc
-        onExited: { root.rescan(); }
+        onExited: {
+            root.isConnecting = false;
+            root.connectingToSsid = "";
+            root.rescan();
+        }
     }
 
     function connectToNetwork(ssidName, password, isHidden) {
+        if (!ssidName) return;
         root.isScanning = true;
-        if (isHidden) {
-            if (password && password.length > 0) {
-                connectProc.command = ["nmcli", "dev", "wifi", "connect", ssidName, "password", password, "hidden", "yes"];
-            } else {
-                connectProc.command = ["nmcli", "dev", "wifi", "connect", ssidName, "hidden", "yes"];
-            }
+        root.isConnecting = true;
+        root.connectingToSsid = ssidName;
+
+        let cmd;
+        if (password && password.length > 0) {
+            cmd = ["sh", "-c", 'SSID="$1"; PW="$2"; HIDDEN="$3"; if [ "$HIDDEN" = "true" ]; then nmcli dev wifi connect "$SSID" password "$PW" hidden yes; else nmcli dev wifi connect "$SSID" password "$PW"; fi', "sh", ssidName, password, isHidden ? "true" : "false"];
         } else {
-            if (password && password.length > 0) {
-                connectProc.command = ["nmcli", "dev", "wifi", "connect", ssidName, "password", password];
-            } else {
-                connectProc.command = ["nmcli", "dev", "wifi", "connect", ssidName];
-            }
+            cmd = ["sh", "-c", 'SSID="$1"; nmcli connection up id "$SSID" 2>/dev/null || nmcli dev wifi connect "$SSID"', "sh", ssidName];
         }
-        connectProc.running = false;
-        connectProc.running = true;
+
+        if (connectProc.running) {
+            connectProc.running = false;
+            Qt.callLater(function() {
+                connectProc.command = cmd;
+                connectProc.running = true;
+            });
+        } else {
+            connectProc.command = cmd;
+            connectProc.running = true;
+        }
     }
 
     function disconnectCurrent() {
-        connectProc.command = ["sh", "-c", "nmcli dev disconnect $(nmcli -t -f DEVICE,TYPE dev | grep ':wifi$' | cut -d: -f1 | head -n1)"];
-        connectProc.running = false;
-        connectProc.running = true;
+        let cmd = ["sh", "-c", "nmcli dev disconnect $(nmcli -t -f DEVICE,TYPE dev | grep ':wifi$' | cut -d: -f1 | head -n1)"];
+        if (connectProc.running) {
+            connectProc.running = false;
+            Qt.callLater(function() {
+                connectProc.command = cmd;
+                connectProc.running = true;
+            });
+        } else {
+            connectProc.command = cmd;
+            connectProc.running = true;
+        }
     }
 
     function rescan() {

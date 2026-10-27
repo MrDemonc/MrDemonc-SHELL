@@ -529,8 +529,28 @@ Item {
                         elide: Text.ElideRight
                     }
 
+                    // Indicador de conexión en progreso
                     Text {
-                        visible: modelData.isSaved && !modelData.inUse
+                        id: connectingNetSpinner
+                        visible: networkRef && networkRef.isConnecting && networkRef.connectingToSsid === modelData.rawSsid
+                        text: "󰑐"
+                        color: Theme.primary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+
+                        RotationAnimation {
+                            target: connectingNetSpinner
+                            property: "rotation"
+                            from: 0
+                            to: 360
+                            duration: 800
+                            loops: Animation.Infinite
+                            running: connectingNetSpinner.visible
+                        }
+                    }
+
+                    Text {
+                        visible: (!networkRef || !networkRef.isConnecting || networkRef.connectingToSsid !== modelData.rawSsid) && modelData.isSaved && !modelData.inUse
                         text: "󰌨"
                         color: Theme.primary
                         font.family: Theme.fontFamily
@@ -538,7 +558,7 @@ Item {
                     }
 
                     Text {
-                        visible: !modelData.isSaved && modelData.security && modelData.security !== "Abierta"
+                        visible: (!networkRef || !networkRef.isConnecting || networkRef.connectingToSsid !== modelData.rawSsid) && !modelData.isSaved && modelData.security && modelData.security !== "Abierta"
                         text: "󰌾"
                         color: Theme.overlay
                         font.family: Theme.fontFamily
@@ -546,7 +566,7 @@ Item {
                     }
 
                     Text {
-                        visible: modelData.inUse
+                        visible: (!networkRef || !networkRef.isConnecting || networkRef.connectingToSsid !== modelData.rawSsid) && modelData.inUse
                         text: "󰄬"
                         color: Theme.success
                         font.family: Theme.fontFamily
@@ -560,8 +580,8 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (modelData.inUse) return;
-                        if (modelData.isSaved) {
+                        // Permitir reconectar a redes guardadas o actualmente marcadas en uso
+                        if (modelData.isSaved || modelData.inUse) {
                             if (networkRef) networkRef.connectToNetwork(modelData.rawSsid, "", false);
                             return;
                         }

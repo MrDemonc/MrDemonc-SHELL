@@ -65,26 +65,16 @@ cd ~/Documentos/MrDemonc-SHELL
 ./install.sh
 ```
 
-### Explorador de archivos: Explor
+### Explorador de archivos: Nautilus (GNOME Files)
 
-El script instala **Explor** como explorador de archivos predeterminado. Consulta la API de
-GitHub, descarga el último `.pkg.tar.zst` publicado en
-[MrDemonc/Explor](https://github.com/MrDemonc/Explor/releases) y lo instala con `pacman -U`.
-Después asocia `inode/directory` a `explor.desktop`, de modo que cualquier aplicación que
-abra una carpeta (inkscape, firefox, zen, etc.) lo use.
-
-Si la descarga falla, si el asset no existe para tu arquitectura (solo se publica `x86_64`)
-o si ya tienes Explor en una versión igual o superior, el script **no se detiene**: cae
-automáticamente a Nautilus y lo deja instalado como respaldo.
+El script y la shell configuran **Nautilus** (GNOME Files) como explorador de archivos predeterminado.
+Asocia `inode/directory` a `org.gnome.Nautilus.desktop`, de modo que cualquier aplicación que
+abra una carpeta lo use, y se lanza con el atajo global `SUPER + E`.
 
 Variables de entorno disponibles:
 
 ```bash
-# No descargar Explor (usar el ya instalado, o Nautilus si no está)
-INSTALL_EXPLOR=0 ./install.sh
-
-# Forzar un gestor concreto e ignorar la autodetección
-FILE_MANAGER_DESKTOP=explor.desktop ./install.sh
+# Forzar un gestor concreto si deseas uno diferente
 FILE_MANAGER_DESKTOP=org.gnome.Nautilus.desktop ./install.sh
 ```
 

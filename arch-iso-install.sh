@@ -6,18 +6,7 @@
 set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Explorador de archivos.
-#   INSTALL_EXPLOR=0                 -> no descargar Explor (usar Nautilus)
-#   FILE_MANAGER_DESKTOP=<x>.desktop -> forzar un gestor concreto
-# Sin forzar, gana Explor si se pudo instalar; si no, Nautilus.
-INSTALL_EXPLOR="${INSTALL_EXPLOR:-1}"
-EXPLOR_REPO="MrDemonc/Explor"
-# Detectar si el usuario pasó el valor explícitamente (${VAR+x}), no si es el default.
-if [ -n "${FILE_MANAGER_DESKTOP+x}" ]; then
-    FILE_MANAGER_FORCED=1
-else
-    FILE_MANAGER_FORCED=0
-fi
+# Explorador de archivos predeterminado (GNOME Files / Nautilus).
 FILE_MANAGER_DESKTOP="${FILE_MANAGER_DESKTOP:-org.gnome.Nautilus.desktop}"
 
 # ------------------------------------------------------------------------------
@@ -2324,97 +2313,10 @@ fi
 BASHRC
 
     # ------------------------------------------------------------------
-    # Explorador de archivos: instalar Explor desde GitHub Releases
+    # Explorador de archivos: Nautilus (GNOME Files)
     # ------------------------------------------------------------------
-    install_explor_iso() {
-        local machine_arch release_json tag asset_url pkgfile installed_ver
-
-        if ! command -v curl >/dev/null 2>&1; then
-            say "curl no disponible; se omite la instalación de Explor."
-            return 1
-        fi
-
-        machine_arch="$(uname -m)"
-        case "$machine_arch" in
-            x86_64|amd64) machine_arch="x86_64" ;;
-            *)
-                say "Explor solo se publica para x86_64 (esta máquina: ${machine_arch})."
-                return 1
-                ;;
-        esac
-
-        step "Descargando el explorador de archivos Explor..."
-        release_json="$(curl -fsSL --max-time 30 "https://api.github.com/repos/${EXPLOR_REPO}/releases/latest" 2>/dev/null || true)"
-        if [ -z "$release_json" ]; then
-            say "No se pudo contactar con la API de GitHub; se usará Nautilus."
-            return 1
-        fi
-
-        tag="$(printf '%s' "$release_json" | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4)"
-        asset_url="$(printf '%s' "$release_json" | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | grep -E "${machine_arch}\.pkg\.tar\.(zst|xz|gz)$" | head -1)"
-
-        if [ -z "$tag" ] || [ -z "$asset_url" ]; then
-            say "No hay paquete de Explor para ${machine_arch} en la última release."
-            return 1
-        fi
-
-        installed_ver="$(arch-chroot /mnt pacman -Q explor 2>/dev/null | awk '{print $2}' | cut -d- -f1 || true)"
-        if [ "$installed_ver" = "$tag" ] && [ -x /mnt/usr/local/bin/explor ]; then
-            say "Explor ${tag} ya instalado."
-            return 0
-        fi
-
-        # El paquete se copia a /mnt/tmp para que sea visible dentro del chroot.
-        pkgfile="/mnt/tmp/explor-${tag}-${machine_arch}.pkg.tar.zst"
-        mkdir -p /mnt/tmp
-        if ! curl -fL --progress-bar -o "$pkgfile" "$asset_url" 2>/dev/null; then
-            say "Falló la descarga de Explor."
-            rm -f "$pkgfile"
-            return 1
-        fi
-
-        step "Instalando Explor ${tag} en el sistema..."
-        if ! arch-chroot /mnt pacman -U --noconfirm --needed "/tmp/$(basename "$pkgfile")"; then
-            say "pacman no pudo instalar Explor."
-            rm -f "$pkgfile"
-            return 1
-        fi
-        rm -f "$pkgfile"
-
-        arch-chroot /mnt update-desktop-database /usr/share/applications 2>/dev/null || true
-        arch-chroot /mnt gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
-
-        if [ -x /mnt/usr/local/bin/explor ] && [ -f /mnt/usr/share/applications/com.demonc.explor.desktop ]; then
-            say "Explor ${tag} instalado correctamente."
-            return 0
-        fi
-        say "Explor se instaló pero no se localizó correctamente."
-        return 1
-    }
-
-    EXPLOR_AVAILABLE=0
-    if [ -x /mnt/usr/local/bin/explor ] && [ -f /mnt/usr/share/applications/com.demonc.explor.desktop ]; then
-        EXPLOR_AVAILABLE=1
-    fi
-
-    if [ "$INSTALL_EXPLOR" = "1" ]; then
-        # install_explor_iso() no hace nada si la version instalada ya es la
-        # ultima release y actualiza si esta obsoleta. El "|| true" evita que
-        # un fallo de descarga/instalacion aborte el instalador.
-        install_explor_iso || true
-
-        if [ -x /mnt/usr/local/bin/explor ] && [ -f /mnt/usr/share/applications/com.demonc.explor.desktop ]; then
-            EXPLOR_AVAILABLE=1
-        elif [ "$EXPLOR_AVAILABLE" = "0" ]; then
-            # Solo se recurre a Nautilus si Explor no quedo disponible.
-            say "Se usará Nautilus como explorador de archivos."
-        fi
-    fi
-
-    # Si el usuario no forzó un gestor concreto, Explor tiene prioridad.
-    if [ "$FILE_MANAGER_FORCED" = "0" ] && [ "$EXPLOR_AVAILABLE" = "1" ]; then
-        FILE_MANAGER_DESKTOP="explor.desktop"
-    fi
+    step "Configurando Nautilus como explorador de archivos predeterminado..."
+    FILE_MANAGER_DESKTOP="org.gnome.Nautilus.desktop"
 
     # Establecer asociaciones MIME predeterminadas (Imágenes, PDF, Videos, Navegador y Gestor de archivos)
     mkdir -p "$USER_HOME/.config" "/mnt/etc/skel/.config" "/mnt/usr/share/applications" "/mnt/etc/xdg"
