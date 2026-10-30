@@ -177,7 +177,7 @@ PanelWindow {
                             { id: "network", label: "Wi-Fi y Red", icon: "󰖩" },
                             { id: "bluetooth", label: "Bluetooth", icon: "󰂯" },
                             { id: "audio", label: "Audio y Sonido", icon: "󰕾" },
-                            { id: "display", label: "Pantalla y Luz", icon: "󰃠" },
+                            { id: "display", label: "Pantalla y Efectos", icon: "󰃠" },
                             { id: "power", label: "Batería y Energía", icon: "󰂄" },
                             { id: "bar", label: "Barra de Sistema", icon: "󰒓" },
                             { id: "desktop", label: "Escritorio e Iconos", icon: "󰇄" },
@@ -1218,270 +1218,510 @@ PanelWindow {
                         }
                     }
 
-                    // 4. PESTAÑA: PANTALLA Y LUZ NOCTURNA
+                    // 4. PESTAÑA: PANTALLA, BRILLO Y EFECTOS VISUALES
                     Item {
                         id: tabDisplayView
                         anchors.fill: parent
                         anchors.margins: 16
                         visible: ControlCenterManager.activeTab === "display"
 
-                        ColumnLayout {
+                        Flickable {
+                            id: displayFlickable
                             anchors.fill: parent
-                            spacing: 16
+                            contentWidth: width
+                            contentHeight: displayCol.implicitHeight + 20
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
 
-                            Text {
-                                text: "BRILLO DE LA PANTALLA"
-                                color: Theme.overlay
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                font.bold: true
-                            }
+                            ColumnLayout {
+                                id: displayCol
+                                width: parent.width - 10
+                                spacing: 14
 
-                            // Slider de Brillo
-                            Rectangle {
-                                Layout.fillWidth: true
-                                implicitHeight: 52
-                                radius: Theme.radiusSmall
-                                color: Theme.bgSurface
-                                border.color: Theme.border
-                                border.width: 1
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 10
-                                    spacing: 12
-
-                                    Text {
-                                        text: "󰃠"
-                                        color: Theme.warning
-                                        font.family: Theme.iconFontFamily
-                                        font.pixelSize: 16
-                                    }
-
-                                    Slider {
-                                        id: brightSlider
-                                        Layout.fillWidth: true
-                                        from: 5
-                                        to: 100
-                                        stepSize: 1
-                                        value: ControlCenterManager.brightness
-                                        onMoved: ControlCenterManager.setBrightness(value)
-
-                                        background: Rectangle {
-                                            x: brightSlider.leftPadding
-                                            y: brightSlider.topPadding + brightSlider.availableHeight / 2 - height / 2
-                                            implicitWidth: 200
-                                            implicitHeight: 6
-                                            width: brightSlider.availableWidth
-                                            height: implicitHeight
-                                            radius: 3
-                                            color: Theme.bgHover
-
-                                            Rectangle {
-                                                width: brightSlider.visualPosition * parent.width
-                                                height: parent.height
-                                                color: Theme.warning
-                                                radius: 3
-                                            }
-                                        }
-
-                                        handle: Rectangle {
-                                            x: brightSlider.leftPadding + brightSlider.visualPosition * (brightSlider.availableWidth - width)
-                                            y: brightSlider.topPadding + brightSlider.availableHeight / 2 - height / 2
-                                            implicitWidth: 16
-                                            implicitHeight: 16
-                                            radius: 8
-                                            color: "#ffffff"
-                                            border.color: Theme.warning
-                                            border.width: 2
-                                        }
-                                    }
-
-                                    Text {
-                                        Layout.preferredWidth: 42
-                                        horizontalAlignment: Text.AlignRight
-                                        text: Math.round(brightSlider.value) + "%"
-                                        color: Theme.text
-                                        font.family: Theme.monoFontFamily
-                                        font.pixelSize: 11
-                                        font.bold: true
-                                    }
-                                }
-                            }
-
-                            // Sección Luz Nocturna
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 12
-
+                                // ---------------------------------------------------------
+                                // 1. BRILLO DE LA PANTALLA
+                                // ---------------------------------------------------------
                                 ColumnLayout {
-                                    spacing: 2
+                                    Layout.fillWidth: true
+                                    spacing: 6
+
                                     Text {
-                                        text: "Filtro de Luz Azul (Luz Nocturna)"
-                                        color: Theme.text
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 13
-                                        font.bold: true
-                                    }
-                                    Text {
-                                        text: ControlCenterManager.nightLightEnabled ? ("Temperatura cálida activa: " + ControlCenterManager.nightLightTemp + " K") : "Colores naturales de pantalla"
-                                        color: ControlCenterManager.nightLightEnabled ? Theme.warning : Theme.overlay
+                                        text: "BRILLO DE LA PANTALLA"
+                                        color: Theme.overlay
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10
+                                        font.bold: true
                                     }
-                                }
-
-                                Item { Layout.fillWidth: true }
-
-                                // Switch Maestro Luz Nocturna
-                                Rectangle {
-                                    implicitWidth: 44
-                                    implicitHeight: 24
-                                    radius: 12
-                                    color: ControlCenterManager.nightLightEnabled ? Theme.warning : Theme.bgHover
-
-                                    Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
 
                                     Rectangle {
-                                        x: ControlCenterManager.nightLightEnabled ? parent.width - width - 3 : 3
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 18
-                                        height: 18
-                                        radius: 9
-                                        color: "#ffffff"
+                                        Layout.fillWidth: true
+                                        implicitHeight: 52
+                                        radius: Theme.radiusSmall
+                                        color: Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
 
-                                        Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
-                                    }
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            spacing: 12
 
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: ControlCenterManager.toggleNightLight()
+                                            Text {
+                                                text: "󰃠"
+                                                color: Theme.warning
+                                                font.family: Theme.iconFontFamily
+                                                font.pixelSize: 16
+                                            }
+
+                                            Slider {
+                                                id: brightSlider
+                                                Layout.fillWidth: true
+                                                from: 5
+                                                to: 100
+                                                stepSize: 1
+                                                value: ControlCenterManager.brightness
+                                                onMoved: ControlCenterManager.setBrightness(value)
+
+                                                background: Rectangle {
+                                                    x: brightSlider.leftPadding
+                                                    y: brightSlider.topPadding + brightSlider.availableHeight / 2 - height / 2
+                                                    implicitWidth: 200
+                                                    implicitHeight: 6
+                                                    width: brightSlider.availableWidth
+                                                    height: implicitHeight
+                                                    radius: 3
+                                                    color: Theme.bgHover
+
+                                                    Rectangle {
+                                                        width: brightSlider.visualPosition * parent.width
+                                                        height: parent.height
+                                                        color: Theme.warning
+                                                        radius: 3
+                                                    }
+                                                }
+
+                                                handle: Rectangle {
+                                                    x: brightSlider.leftPadding + brightSlider.visualPosition * (brightSlider.availableWidth - width)
+                                                    y: brightSlider.topPadding + brightSlider.availableHeight / 2 - height / 2
+                                                    implicitWidth: 16
+                                                    implicitHeight: 16
+                                                    radius: 8
+                                                    color: "#ffffff"
+                                                    border.color: Theme.warning
+                                                    border.width: 2
+                                                }
+                                            }
+
+                                            Text {
+                                                Layout.preferredWidth: 42
+                                                horizontalAlignment: Text.AlignRight
+                                                text: Math.round(brightSlider.value) + "%"
+                                                color: Theme.text
+                                                font.family: Theme.monoFontFamily
+                                                font.pixelSize: 11
+                                                font.bold: true
+                                            }
+                                        }
                                     }
                                 }
-                            }
 
-                            // Slider Temperatura de Color
-                            Rectangle {
-                                Layout.fillWidth: true
-                                implicitHeight: 64
-                                radius: Theme.radiusSmall
-                                color: Theme.bgSurface
-                                border.color: Theme.border
-                                border.width: 1
-
+                                // ---------------------------------------------------------
+                                // 2. FILTRO DE LUZ AZUL (LUZ NOCTURNA)
+                                // ---------------------------------------------------------
                                 ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 10
-                                    spacing: 4
+                                    Layout.fillWidth: true
+                                    spacing: 6
 
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        Text {
-                                            text: "Calidez de Color"
-                                            color: Theme.subtext
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 11
-                                        }
-                                        Item { Layout.fillWidth: true }
-                                        Text {
-                                            text: ControlCenterManager.nightLightTemp + " K"
-                                            color: Theme.warning
-                                            font.family: Theme.monoFontFamily
-                                            font.pixelSize: 11
-                                            font.bold: true
-                                        }
-                                    }
+                                        spacing: 12
 
-                                    Slider {
-                                        id: tempSlider
-                                        Layout.fillWidth: true
-                                        from: 2500
-                                        to: 6500
-                                        stepSize: 100
-                                        value: ControlCenterManager.nightLightTemp
-                                        onMoved: ControlCenterManager.setNightLightTemp(value)
-
-                                        background: Rectangle {
-                                            x: tempSlider.leftPadding
-                                            y: tempSlider.topPadding + tempSlider.availableHeight / 2 - height / 2
-                                            implicitWidth: 200
-                                            implicitHeight: 6
-                                            width: tempSlider.availableWidth
-                                            height: implicitHeight
-                                            radius: 3
-                                            gradient: Gradient {
-                                                orientation: Gradient.Horizontal
-                                                GradientStop { position: 0.0; color: "#ff8438" }
-                                                GradientStop { position: 0.5; color: "#ffc17a" }
-                                                GradientStop { position: 1.0; color: "#bcdcff" }
+                                        ColumnLayout {
+                                            spacing: 2
+                                            Text {
+                                                text: "Filtro de Luz Azul (Luz Nocturna)"
+                                                color: Theme.text
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
+                                            Text {
+                                                text: ControlCenterManager.nightLightEnabled ? ("Temperatura cálida activa: " + ControlCenterManager.nightLightTemp + " K") : "Colores naturales de pantalla"
+                                                color: ControlCenterManager.nightLightEnabled ? Theme.warning : Theme.overlay
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
                                             }
                                         }
 
-                                        handle: Rectangle {
-                                            x: tempSlider.leftPadding + tempSlider.visualPosition * (tempSlider.availableWidth - width)
-                                            y: tempSlider.topPadding + tempSlider.availableHeight / 2 - height / 2
-                                            implicitWidth: 16
-                                            implicitHeight: 16
-                                            radius: 8
-                                            color: "#ffffff"
-                                            border.color: Theme.warning
-                                            border.width: 2
+                                        Item { Layout.fillWidth: true }
+
+                                        // Switch Maestro Luz Nocturna
+                                        Rectangle {
+                                            implicitWidth: 44
+                                            implicitHeight: 24
+                                            radius: 12
+                                            color: ControlCenterManager.nightLightEnabled ? Theme.warning : Theme.bgHover
+
+                                            Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
+
+                                            Rectangle {
+                                                x: ControlCenterManager.nightLightEnabled ? parent.width - width - 3 : 3
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 18
+                                                height: 18
+                                                radius: 9
+                                                color: "#ffffff"
+
+                                                Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: ControlCenterManager.toggleNightLight()
+                                            }
+                                        }
+                                    }
+
+                                    // Slider Temperatura de Color
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 64
+                                        radius: Theme.radiusSmall
+                                        color: Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
+
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            spacing: 4
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Text {
+                                                    text: "Calidez de Color"
+                                                    color: Theme.subtext
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 11
+                                                }
+                                                Item { Layout.fillWidth: true }
+                                                Text {
+                                                    text: ControlCenterManager.nightLightTemp + " K"
+                                                    color: Theme.warning
+                                                    font.family: Theme.monoFontFamily
+                                                    font.pixelSize: 11
+                                                    font.bold: true
+                                                }
+                                            }
+
+                                            Slider {
+                                                id: tempSlider
+                                                Layout.fillWidth: true
+                                                from: 2500
+                                                to: 6500
+                                                stepSize: 100
+                                                value: ControlCenterManager.nightLightTemp
+                                                onMoved: ControlCenterManager.setNightLightTemp(value)
+
+                                                background: Rectangle {
+                                                    x: tempSlider.leftPadding
+                                                    y: tempSlider.topPadding + tempSlider.availableHeight / 2 - height / 2
+                                                    implicitWidth: 200
+                                                    implicitHeight: 6
+                                                    width: tempSlider.availableWidth
+                                                    height: implicitHeight
+                                                    radius: 3
+                                                    gradient: Gradient {
+                                                        orientation: Gradient.Horizontal
+                                                        GradientStop { position: 0.0; color: "#ff8438" }
+                                                        GradientStop { position: 0.5; color: "#ffc17a" }
+                                                        GradientStop { position: 1.0; color: "#bcdcff" }
+                                                    }
+                                                }
+
+                                                handle: Rectangle {
+                                                    x: tempSlider.leftPadding + tempSlider.visualPosition * (tempSlider.availableWidth - width)
+                                                    y: tempSlider.topPadding + tempSlider.availableHeight / 2 - height / 2
+                                                    implicitWidth: 16
+                                                    implicitHeight: 16
+                                                    radius: 8
+                                                    color: "#ffffff"
+                                                    border.color: Theme.warning
+                                                    border.width: 2
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Presets rápidos de temperatura
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+
+                                        readonly property var presets: [
+                                            { label: "Lectura (3000K)", temp: 3000 },
+                                            { label: "Noche (4000K)", temp: 4000 },
+                                            { label: "Atardecer (5000K)", temp: 5000 },
+                                            { label: "Neutral (6500K)", temp: 6500 }
+                                        ]
+
+                                        Repeater {
+                                            model: parent.presets
+                                            delegate: Rectangle {
+                                                Layout.fillWidth: true
+                                                implicitHeight: 26
+                                                radius: Theme.radiusSmall
+                                                color: (ControlCenterManager.nightLightTemp === modelData.temp && ControlCenterManager.nightLightEnabled) ?
+                                                       Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.2) :
+                                                       (preMouse.containsMouse ? Theme.bgHover : Theme.bgSurface)
+                                                border.color: (ControlCenterManager.nightLightTemp === modelData.temp && ControlCenterManager.nightLightEnabled) ? Theme.warning : Theme.border
+                                                border.width: 1
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: modelData.label
+                                                    color: (ControlCenterManager.nightLightTemp === modelData.temp && ControlCenterManager.nightLightEnabled) ? Theme.warning : Theme.subtext
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 9
+                                                    font.bold: true
+                                                }
+
+                                                MouseArea {
+                                                    id: preMouse
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        ControlCenterManager.setNightLightTemp(modelData.temp);
+                                                        if (!ControlCenterManager.nightLightEnabled && modelData.temp < 6500) {
+                                                            ControlCenterManager.toggleNightLight();
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            // Presets rápidos de temperatura
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 8
+                                // ---------------------------------------------------------
+                                // 3. EFECTO DE VENTANAS GELATINOSAS (WOBBLE / COMPIZ)
+                                // ---------------------------------------------------------
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: wobbleCol.implicitHeight + 20
+                                    radius: Theme.radiusSmall
+                                    color: Theme.bgSurface
+                                    border.color: ControlCenterManager.wobbleEnabled ? Theme.primary : Theme.border
+                                    border.width: 1
 
-                                readonly property var presets: [
-                                    { label: "Lectura (3000K)", temp: 3000 },
-                                    { label: "Noche (4000K)", temp: 4000 },
-                                    { label: "Atardecer (5000K)", temp: 5000 },
-                                    { label: "Neutral (6500K)", temp: 6500 }
-                                ]
+                                    ColumnLayout {
+                                        id: wobbleCol
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: 10
 
-                                Repeater {
-                                    model: parent.presets
-                                    delegate: Rectangle {
-                                        Layout.fillWidth: true
-                                        implicitHeight: 28
-                                        radius: Theme.radiusSmall
-                                        color: (ControlCenterManager.nightLightTemp === modelData.temp && ControlCenterManager.nightLightEnabled) ?
-                                               Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.2) :
-                                               (preMouse.containsMouse ? Theme.bgHover : Theme.bgSurface)
-                                        border.color: (ControlCenterManager.nightLightTemp === modelData.temp && ControlCenterManager.nightLightEnabled) ? Theme.warning : Theme.border
-                                        border.width: 1
+                                        // Fila de Encabezado + Switch Maestro
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 10
 
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: modelData.label
-                                            color: (ControlCenterManager.nightLightTemp === modelData.temp && ControlCenterManager.nightLightEnabled) ? Theme.warning : Theme.subtext
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 9
-                                            font.bold: true
+                                            Text {
+                                                text: "󰍹"
+                                                color: ControlCenterManager.wobbleEnabled ? Theme.primary : Theme.overlay
+                                                font.family: Theme.iconFontFamily
+                                                font.pixelSize: 18
+                                            }
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 1
+
+                                                Text {
+                                                    text: "Ventanas Gelatinosas (Wobble / Compiz)"
+                                                    color: Theme.text
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 12
+                                                    font.bold: true
+                                                }
+
+                                                Text {
+                                                    text: ControlCenterManager.wobbleEnabled ? "Física elástica activa al mover ventanas (Hyprland 0.57)" : "Efecto desactivado (movimiento rígido estándar)"
+                                                    color: ControlCenterManager.wobbleEnabled ? Theme.primary : Theme.overlay
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 9
+                                                }
+                                            }
+
+                                            // Switch Maestro
+                                            Rectangle {
+                                                implicitWidth: 44
+                                                implicitHeight: 24
+                                                radius: 12
+                                                color: ControlCenterManager.wobbleEnabled ? Theme.primary : Theme.bgHover
+
+                                                Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
+
+                                                Rectangle {
+                                                    x: ControlCenterManager.wobbleEnabled ? parent.width - width - 3 : 3
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    width: 18
+                                                    height: 18
+                                                    radius: 9
+                                                    color: "#ffffff"
+
+                                                    Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+                                                }
+
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: ControlCenterManager.toggleWobble()
+                                                }
+                                            }
                                         }
 
-                                        MouseArea {
-                                            id: preMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                ControlCenterManager.setNightLightTemp(modelData.temp);
-                                                if (!ControlCenterManager.nightLightEnabled && modelData.temp < 6500) {
-                                                    ControlCenterManager.toggleNightLight();
+                                        // Controles detallados (visibles cuando el efecto está activo)
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+                                            visible: ControlCenterManager.wobbleEnabled
+
+                                            // Presets de Elasticidad
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 6
+
+                                                readonly property var presets: [
+                                                    { id: "subtle", label: "Sutil" },
+                                                    { id: "compiz", label: "Compiz Clásico" },
+                                                    { id: "jelly", label: "Gelatina Total" }
+                                                ]
+
+                                                Repeater {
+                                                    model: parent.presets
+                                                    delegate: Rectangle {
+                                                        Layout.fillWidth: true
+                                                        implicitHeight: 26
+                                                        radius: Theme.radiusSmall
+                                                        readonly property bool isSelected: ControlCenterManager.wobblePreset === modelData.id
+                                                        color: isSelected ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.2) :
+                                                               (wobMouse.containsMouse ? Theme.bgHover : Theme.bg)
+                                                        border.color: isSelected ? Theme.primary : Theme.border
+                                                        border.width: 1
+
+                                                        Text {
+                                                            anchors.centerIn: parent
+                                                            text: modelData.label
+                                                            color: parent.isSelected ? Theme.primary : Theme.subtext
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 10
+                                                            font.bold: parent.isSelected
+                                                        }
+
+                                                        MouseArea {
+                                                            id: wobMouse
+                                                            anchors.fill: parent
+                                                            hoverEnabled: true
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: ControlCenterManager.setWobblePreset(modelData.id)
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Slider de Intensidad / Elasticidad
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 8
+
+                                                Text {
+                                                    text: "Intensidad del Rebote"
+                                                    color: Theme.subtext
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 10
+                                                }
+
+                                                Slider {
+                                                    id: intensitySlider
+                                                    Layout.fillWidth: true
+                                                    from: 5
+                                                    to: 50
+                                                    stepSize: 1
+                                                    value: Math.round(ControlCenterManager.wobbleIntensity * 100)
+                                                    onMoved: ControlCenterManager.setWobbleIntensity(value / 100.0)
+
+                                                    background: Rectangle {
+                                                        x: intensitySlider.leftPadding
+                                                        y: intensitySlider.topPadding + intensitySlider.availableHeight / 2 - height / 2
+                                                        implicitWidth: 150
+                                                        implicitHeight: 5
+                                                        width: intensitySlider.availableWidth
+                                                        height: implicitHeight
+                                                        radius: 2.5
+                                                        color: Theme.bgHover
+
+                                                        Rectangle {
+                                                            width: intensitySlider.visualPosition * parent.width
+                                                            height: parent.height
+                                                            color: Theme.primary
+                                                            radius: 2.5
+                                                        }
+                                                    }
+
+                                                    handle: Rectangle {
+                                                        x: intensitySlider.leftPadding + intensitySlider.visualPosition * (intensitySlider.availableWidth - width)
+                                                        y: intensitySlider.topPadding + intensitySlider.availableHeight / 2 - height / 2
+                                                        implicitWidth: 14
+                                                        implicitHeight: 14
+                                                        radius: 7
+                                                        color: "#ffffff"
+                                                        border.color: Theme.primary
+                                                        border.width: 2
+                                                    }
+                                                }
+
+                                                Rectangle {
+                                                    implicitWidth: 46
+                                                    implicitHeight: 20
+                                                    radius: 10
+                                                    color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                                                    border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.4)
+                                                    border.width: 1
+
+                                                    Text {
+                                                        anchors.centerIn: parent
+                                                        text: "x" + (ControlCenterManager.wobbleIntensity).toFixed(2)
+                                                        color: Theme.primary
+                                                        font.family: Theme.monoFontFamily
+                                                        font.pixelSize: 9
+                                                        font.bold: true
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
+                        }
 
-                            Item { Layout.fillHeight: true }
+                        // Barra de desplazamiento visual para la pestaña de Pantalla y Efectos
+                        Rectangle {
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: 3
+                            radius: 1.5
+                            color: Theme.bgHover
+                            visible: displayFlickable.contentHeight > displayFlickable.height
+
+                            Rectangle {
+                                width: parent.width
+                                height: Math.max(24, (displayFlickable.height / displayFlickable.contentHeight) * parent.height)
+                                y: (displayFlickable.contentY / (displayFlickable.contentHeight - displayFlickable.height)) * (parent.height - height)
+                                radius: 1.5
+                                color: Theme.primary
+                            }
                         }
                     }
 

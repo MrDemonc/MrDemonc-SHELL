@@ -326,6 +326,7 @@ hl.window_rule({
     match = { title = "^.*(Visor de Imágenes|Reproductor de Video|Visor de PDF|Captura de Pantalla).*$" },
     float = true,
     center = true,
+    no_wobble = true,
 })
 
 -- Terminal flotante centrada para actualización del sistema

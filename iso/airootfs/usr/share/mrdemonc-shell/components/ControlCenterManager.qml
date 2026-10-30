@@ -440,6 +440,7 @@ QtObject {
     function refreshDisplay() {
         if (!brightnessProc.running) brightnessProc.running = true;
         refreshNightLight();
+        refreshWobble();
     }
 
     function refreshNightLight() {
@@ -458,6 +459,86 @@ QtObject {
         mgr.nightLightTemp = val;
         mgr._pendingNightLightTemp = val;
         nightLightDebounceTimer.restart();
+    }
+
+    // -------------------------------------------------------------------------
+    // 5.1 VENTANAS GELATINOSAS (WOBBLE / COMPIZ) - HYPRLAND 0.57+
+    // -------------------------------------------------------------------------
+    property bool wobbleEnabled: true
+    property string wobblePreset: "compiz" // "subtle", "compiz", "jelly", "custom"
+    property real wobbleIntensity: 0.25
+    property real wobbleStiffness: 180.0
+    property real wobbleDamping: 11.0
+
+    property var wobbleProc: Process {
+        command: [Quickshell.shellDir + "/scripts/wobble_manager.py", "get"]
+        stdout: SplitParser {
+            onRead: data => {
+                try {
+                    let s = String(data).trim();
+                    if (!s) return;
+                    let info = JSON.parse(s);
+                    if (info && typeof info.enabled === "boolean") {
+                        mgr.wobbleEnabled = info.enabled;
+                    }
+                    if (info && info.preset) {
+                        mgr.wobblePreset = info.preset;
+                    }
+                    if (info && info.intensity !== undefined) {
+                        mgr.wobbleIntensity = info.intensity;
+                    }
+                    if (info && info.stiffness !== undefined) {
+                        mgr.wobbleStiffness = info.stiffness;
+                    }
+                    if (info && info.damping !== undefined) {
+                        mgr.wobbleDamping = info.damping;
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+
+    property var setWobbleProc: Process {
+        onExited: {
+            mgr.refreshWobble();
+        }
+    }
+
+    function refreshWobble() {
+        if (!wobbleProc.running) wobbleProc.running = true;
+    }
+
+    function toggleWobble() {
+        mgr.wobbleEnabled = !mgr.wobbleEnabled;
+        setWobbleProc.command = [Quickshell.shellDir + "/scripts/wobble_manager.py", "set_enabled", mgr.wobbleEnabled ? "true" : "false"];
+        setWobbleProc.running = false;
+        setWobbleProc.running = true;
+    }
+
+    function setWobblePreset(presetName) {
+        mgr.wobblePreset = presetName;
+        setWobbleProc.command = [Quickshell.shellDir + "/scripts/wobble_manager.py", "set_preset", presetName];
+        setWobbleProc.running = false;
+        setWobbleProc.running = true;
+    }
+
+    property real _pendingWobbleIntensity: 0.25
+    property var wobbleDebounceTimer: Timer {
+        interval: 100
+        repeat: false
+        onTriggered: {
+            setWobbleProc.command = [Quickshell.shellDir + "/scripts/wobble_manager.py", "set", mgr.wobbleStiffness.toString(), mgr.wobbleDamping.toString(), mgr._pendingWobbleIntensity.toString()];
+            setWobbleProc.running = false;
+            setWobbleProc.running = true;
+        }
+    }
+
+    function setWobbleIntensity(val) {
+        val = Math.max(0.05, Math.min(0.60, val));
+        mgr.wobbleIntensity = val;
+        mgr._pendingWobbleIntensity = val;
+        mgr.wobblePreset = "custom";
+        wobbleDebounceTimer.restart();
     }
 
     // -------------------------------------------------------------------------

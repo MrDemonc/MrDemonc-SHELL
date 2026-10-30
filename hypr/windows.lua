@@ -19,6 +19,28 @@ pcall(function()
     end
 end)
 
+-- Cargar configuración del efecto Wobble / Compiz (Hyprland 0.57+)
+local wobbleConfig = {
+    enabled   = true,
+    mesh      = 12,
+    stiffness = 180.0,
+    damping   = 11.0,
+    mass      = 1.0,
+    intensity = 0.25,
+}
+
+pcall(function()
+    local loaded = require("wobble_config")
+    if type(loaded) == "table" then
+        if loaded.enabled ~= nil then wobbleConfig.enabled = loaded.enabled end
+        if loaded.mesh then wobbleConfig.mesh = loaded.mesh end
+        if loaded.stiffness then wobbleConfig.stiffness = loaded.stiffness end
+        if loaded.damping then wobbleConfig.damping = loaded.damping end
+        if loaded.mass then wobbleConfig.mass = loaded.mass end
+        if loaded.intensity then wobbleConfig.intensity = loaded.intensity end
+    end
+end)
+
 hl.config({
     general = {
         -- Menor espacio y padding entre ventanas y bordes de pantalla
@@ -69,6 +91,16 @@ hl.config({
             vibrancy          = 0.2,
             ignore_opacity    = true,
             new_optimizations = true,
+        },
+
+        -- Efecto Ventanas Gelatinosas (Wobble / Compiz) - Hyprland 0.57+
+        wobble = {
+            enabled   = wobbleConfig.enabled,
+            mesh      = wobbleConfig.mesh,
+            stiffness = wobbleConfig.stiffness,
+            damping   = wobbleConfig.damping,
+            mass      = wobbleConfig.mass,
+            intensity = wobbleConfig.intensity,
         },
     },
 })
