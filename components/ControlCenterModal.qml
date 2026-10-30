@@ -50,8 +50,8 @@ PanelWindow {
         id: modalCard
         anchors.centerIn: parent
 
-        width: Math.min(840, parent.width - 48)
-        height: Math.min(570, parent.height - 48)
+        width: Math.min(860, parent.width - 48)
+        height: Math.min(600, parent.height - 48)
 
         color: Theme.bg
         border.color: Theme.border
@@ -180,6 +180,7 @@ PanelWindow {
                             { id: "display", label: "Pantalla y Luz", icon: "󰃠" },
                             { id: "power", label: "Batería y Energía", icon: "󰂄" },
                             { id: "bar", label: "Barra de Sistema", icon: "󰒓" },
+                            { id: "desktop", label: "Escritorio e Iconos", icon: "󰇄" },
                             { id: "apps", label: "Aplicaciones", icon: "󰏖" },
                             { id: "about", label: "Acerca de", icon: "󰋽" }
                         ]
@@ -1914,6 +1915,585 @@ PanelWindow {
                                         onClicked: PopoutManager.toggleModuleVisibility(modelData.id)
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // =========================================================
+                    // 6.1 PESTAÑA: ESCRITORIO E ICONOS
+                    // =========================================================
+                    Item {
+                        id: tabDesktopView
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        visible: ControlCenterManager.activeTab === "desktop"
+
+                        Flickable {
+                            id: deskFlickable
+                            anchors.fill: parent
+                            contentWidth: width
+                            contentHeight: deskCol.implicitHeight + 20
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            ColumnLayout {
+                                id: deskCol
+                                width: parent.width - 10
+                                spacing: 12
+
+                                // Encabezado
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+
+                                    Text {
+                                        text: "PERSONALIZACIÓN DEL ESCRITORIO E ICONOS"
+                                        color: Theme.text
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "Configura la visibilidad y tamaño de los iconos en el fondo del escritorio, carpetas, papelera y unidades."
+                                        color: Theme.overlay
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 10
+                                        wrapMode: Text.Wrap
+                                    }
+                                }
+
+                                // Interruptor maestro: Activar / Desactivar iconos en el escritorio
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 46
+                                    radius: Theme.radiusSmall
+                                    color: Theme.bgSurface
+                                    border.color: DesktopManager.enabled ? Theme.primary : Theme.border
+                                    border.width: 1
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 14
+                                        anchors.rightMargin: 14
+                                        spacing: 12
+
+                                        Text {
+                                            text: "󰇄"
+                                            color: DesktopManager.enabled ? Theme.primary : Theme.overlay
+                                            font.family: Theme.iconFontFamily
+                                            font.pixelSize: 20
+                                        }
+
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Text {
+                                                text: "Activar Iconos en el Escritorio"
+                                                color: Theme.text
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 11
+                                                font.bold: true
+                                            }
+                                            Text {
+                                                text: DesktopManager.enabled ? "Los elementos y accesos directos están visibles en la pantalla" : "Escritorio limpio sin iconos visibles"
+                                                color: Theme.overlay
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 9
+                                            }
+                                        }
+
+                                        // Switch
+                                        Rectangle {
+                                            implicitWidth: 40
+                                            implicitHeight: 22
+                                            radius: 11
+                                            color: DesktopManager.enabled ? Theme.primary : Theme.bgHover
+
+                                            Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
+
+                                            Rectangle {
+                                                x: DesktopManager.enabled ? parent.width - width - 2 : 2
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 18
+                                                height: 18
+                                                radius: 9
+                                                color: "#ffffff"
+
+                                                Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: DesktopManager.setSetting("enabled", !DesktopManager.enabled)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Tarjeta 1: Tamaño de los Iconos (Full Width, espaciosa y sin colisiones)
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 76
+                                    radius: Theme.radiusSmall
+                                    color: Theme.bgSurface
+                                    border.color: Theme.border
+                                    border.width: 1
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 6
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+
+                                            Text {
+                                                text: "󰉓"
+                                                color: Theme.primary
+                                                font.family: Theme.iconFontFamily
+                                                font.pixelSize: 13
+                                            }
+
+                                            Text {
+                                                text: "TAMAÑO DE LOS ICONOS"
+                                                color: Theme.overlay
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                            }
+
+                                            Item { Layout.fillWidth: true }
+
+                                            // Presets rápidos
+                                            RowLayout {
+                                                spacing: 4
+
+                                                Repeater {
+                                                    model: [
+                                                        { label: "36px", size: 36 },
+                                                        { label: "48px", size: 48 },
+                                                        { label: "56px", size: 56 },
+                                                        { label: "64px", size: 64 }
+                                                    ]
+
+                                                    delegate: Rectangle {
+                                                        implicitWidth: 42
+                                                        implicitHeight: 22
+                                                        radius: 4
+                                                        readonly property bool isCurrent: DesktopManager.iconSize === modelData.size
+                                                        color: isCurrent ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.2) : (presetMouse.containsMouse ? Theme.bgHover : Theme.bg)
+                                                        border.color: isCurrent ? Theme.primary : Theme.border
+                                                        border.width: 1
+
+                                                        Text {
+                                                            anchors.centerIn: parent
+                                                            text: modelData.label
+                                                            color: parent.isCurrent ? Theme.primary : Theme.subtext
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 9
+                                                            font.bold: parent.isCurrent
+                                                        }
+
+                                                        MouseArea {
+                                                            id: presetMouse
+                                                            anchors.fill: parent
+                                                            hoverEnabled: true
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: DesktopManager.setSetting("iconSize", modelData.size)
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                implicitWidth: 50
+                                                implicitHeight: 22
+                                                radius: 11
+                                                color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                                                border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.4)
+                                                border.width: 1
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: DesktopManager.iconSize + " px"
+                                                    color: Theme.primary
+                                                    font.family: Theme.monoFontFamily
+                                                    font.pixelSize: 10
+                                                    font.bold: true
+                                                }
+                                            }
+                                        }
+
+                                        Slider {
+                                            id: iconSizeSlider
+                                            Layout.fillWidth: true
+                                            from: 32
+                                            to: 80
+                                            stepSize: 4
+                                            value: DesktopManager.iconSize
+                                            onMoved: DesktopManager.setSetting("iconSize", Math.round(value))
+
+                                            background: Rectangle {
+                                                x: iconSizeSlider.leftPadding
+                                                y: iconSizeSlider.topPadding + iconSizeSlider.availableHeight / 2 - height / 2
+                                                implicitWidth: 200
+                                                implicitHeight: 6
+                                                width: iconSizeSlider.availableWidth
+                                                height: implicitHeight
+                                                radius: 3
+                                                color: Theme.bgHover
+
+                                                Rectangle {
+                                                    width: iconSizeSlider.visualPosition * parent.width
+                                                    height: parent.height
+                                                    color: Theme.primary
+                                                    radius: 3
+                                                }
+                                            }
+
+                                            handle: Rectangle {
+                                                x: iconSizeSlider.leftPadding + iconSizeSlider.visualPosition * (iconSizeSlider.availableWidth - width)
+                                                y: iconSizeSlider.topPadding + iconSizeSlider.availableHeight / 2 - height / 2
+                                                implicitWidth: 16
+                                                implicitHeight: 16
+                                                radius: 8
+                                                color: "#ffffff"
+                                                border.color: Theme.primary
+                                                border.width: 2
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Tarjeta 2: Elementos del Sistema (Full Width, con márgenes amplios)
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 116
+                                    radius: Theme.radiusSmall
+                                    color: Theme.bgSurface
+                                    border.color: Theme.border
+                                    border.width: 1
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 4
+
+                                        Text {
+                                            text: "ELEMENTOS ESPECIALES DEL SISTEMA"
+                                            color: Theme.overlay
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 10
+                                            font.bold: true
+                                        }
+
+                                        Repeater {
+                                            model: [
+                                                { key: "showFolders", name: "Carpetas y Archivos locales (~/Escritorio)", icon: "󰉋", val: DesktopManager.showFolders },
+                                                { key: "showTrash", name: "Papelera de Reciclaje", icon: "󰩹", val: DesktopManager.showTrash },
+                                                { key: "showDrives", name: "Dispositivos de Almacenamiento y USB", icon: "󰋊", val: DesktopManager.showDrives }
+                                            ]
+
+                                            delegate: Rectangle {
+                                                Layout.fillWidth: true
+                                                implicitHeight: 25
+                                                color: "transparent"
+
+                                                RowLayout {
+                                                    anchors.fill: parent
+                                                    anchors.leftMargin: 4
+                                                    anchors.rightMargin: 4
+                                                    spacing: 10
+
+                                                    Text {
+                                                        text: modelData.icon
+                                                        color: modelData.val ? Theme.primary : Theme.overlay
+                                                        font.family: Theme.iconFontFamily
+                                                        font.pixelSize: 14
+                                                    }
+
+                                                    Text {
+                                                        Layout.fillWidth: true
+                                                        text: modelData.name
+                                                        color: modelData.val ? Theme.text : Theme.subtext
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: 11
+                                                        elide: Text.ElideRight
+                                                    }
+
+                                                    // Mini switch
+                                                    Rectangle {
+                                                        implicitWidth: 36
+                                                        implicitHeight: 20
+                                                        radius: 10
+                                                        color: modelData.val ? Theme.primary : Theme.bgHover
+
+                                                        Rectangle {
+                                                            x: modelData.val ? parent.width - width - 2 : 2
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: 16
+                                                            height: 16
+                                                            radius: 8
+                                                            color: "#ffffff"
+                                                            Behavior on x { NumberAnimation { duration: 140 } }
+                                                        }
+
+                                                        MouseArea {
+                                                            anchors.fill: parent
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: DesktopManager.setSetting(modelData.key, !modelData.val)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Tarjeta 3: Selección de Aplicaciones en el Escritorio
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 6
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+
+                                        Text {
+                                            text: "ACCESOS DIRECTOS DE APLICACIONES"
+                                            color: Theme.overlay
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 10
+                                            font.bold: true
+                                        }
+
+                                        Text {
+                                            text: "(" + (DesktopManager.selectedApps ? DesktopManager.selectedApps.length : 0) + " activas)"
+                                            color: Theme.primary
+                                            font.family: Theme.monoFontFamily
+                                            font.pixelSize: 10
+                                            font.bold: true
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+
+                                        // Buscador de aplicaciones
+                                        Rectangle {
+                                            implicitWidth: 190
+                                            implicitHeight: 28
+                                            radius: Theme.radiusSmall
+                                            color: Theme.bgSurface
+                                            border.color: appSearchInput.activeFocus ? Theme.primary : Theme.border
+                                            border.width: 1
+
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                anchors.leftMargin: 8
+                                                anchors.rightMargin: 8
+                                                spacing: 6
+
+                                                Text {
+                                                    text: "󰍉"
+                                                    color: Theme.overlay
+                                                    font.family: Theme.iconFontFamily
+                                                    font.pixelSize: 11
+                                                }
+
+                                                TextInput {
+                                                    id: appSearchInput
+                                                    Layout.fillWidth: true
+                                                    text: DesktopManager.appsSearchQuery
+                                                    color: Theme.text
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 10
+                                                    clip: true
+                                                    onTextChanged: DesktopManager.appsSearchQuery = text
+
+                                                    Text {
+                                                        anchors.fill: parent
+                                                        visible: !parent.text && !parent.activeFocus
+                                                        text: "Buscar aplicación..."
+                                                        color: Theme.overlay
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: 10
+                                                    }
+                                                }
+
+                                                // Botón limpiar
+                                                Text {
+                                                    visible: DesktopManager.appsSearchQuery.length > 0
+                                                    text: "󰅖"
+                                                    color: Theme.overlay
+                                                    font.family: Theme.iconFontFamily
+                                                    font.pixelSize: 10
+
+                                                    MouseArea {
+                                                        anchors.fill: parent
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: DesktopManager.appsSearchQuery = ""
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Lista de aplicaciones en contenedor con altura automática
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: appsCol.implicitHeight + 8
+                                        radius: Theme.radiusSmall
+                                        color: Theme.bgSurface
+                                        border.color: Theme.border
+                                        border.width: 1
+
+                                        ColumnLayout {
+                                            id: appsCol
+                                            anchors.fill: parent
+                                            anchors.margins: 4
+                                            spacing: 2
+
+                                            Repeater {
+                                                model: DesktopManager.filteredAvailableApps
+
+                                                delegate: Rectangle {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 38
+                                                    radius: Theme.radiusSmall - 2
+                                                    color: appItemMouse.containsMouse ? Theme.bgHover : "transparent"
+                                                    border.color: modelData.isSelected ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.4) : "transparent"
+                                                    border.width: 1
+
+                                                    RowLayout {
+                                                        anchors.fill: parent
+                                                        anchors.leftMargin: 8
+                                                        anchors.rightMargin: 8
+                                                        spacing: 10
+
+                                                        Image {
+                                                            Layout.preferredWidth: 24
+                                                            Layout.preferredHeight: 24
+                                                            width: 24
+                                                            height: 24
+                                                            sourceSize: Qt.size(24, 24)
+                                                            source: modelData.iconPath ? ("file://" + modelData.iconPath) : ""
+                                                            fillMode: Image.PreserveAspectFit
+                                                            smooth: true
+                                                            asynchronous: true
+                                                        }
+
+                                                        ColumnLayout {
+                                                            Layout.fillWidth: true
+                                                            spacing: 1
+
+                                                            Text {
+                                                                Layout.fillWidth: true
+                                                                text: modelData.name || ""
+                                                                color: modelData.isSelected ? Theme.primary : Theme.text
+                                                                font.family: Theme.fontFamily
+                                                                font.pixelSize: 11
+                                                                font.bold: modelData.isSelected
+                                                                elide: Text.ElideRight
+                                                            }
+
+                                                            Text {
+                                                                Layout.fillWidth: true
+                                                                text: modelData.categories ? modelData.categories.replace(/;/g, " • ") : modelData.id
+                                                                color: Theme.overlay
+                                                                font.family: Theme.fontFamily
+                                                                font.pixelSize: 8
+                                                                elide: Text.ElideRight
+                                                            }
+                                                        }
+
+                                                        // Switch selector
+                                                        Rectangle {
+                                                            implicitWidth: 36
+                                                            implicitHeight: 20
+                                                            radius: 10
+                                                            color: modelData.isSelected ? Theme.primary : Theme.bgHover
+
+                                                            Behavior on color { ColorAnimation { duration: Theme.anim.fastEffects } }
+
+                                                            Rectangle {
+                                                                x: modelData.isSelected ? parent.width - width - 2 : 2
+                                                                anchors.verticalCenter: parent.verticalCenter
+                                                                width: 16
+                                                                height: 16
+                                                                radius: 8
+                                                                color: "#ffffff"
+                                                                Behavior on x { NumberAnimation { duration: 140 } }
+                                                            }
+
+                                                            MouseArea {
+                                                                anchors.fill: parent
+                                                                cursorShape: Qt.PointingHandCursor
+                                                                onClicked: DesktopManager.toggleApp(modelData.id)
+                                                            }
+                                                        }
+                                                    }
+
+                                                    MouseArea {
+                                                        id: appItemMouse
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        z: -1
+                                                        onClicked: DesktopManager.toggleApp(modelData.id)
+                                                    }
+                                                }
+                                            }
+
+                                            // Estado vacío si no hay resultados en la búsqueda
+                                            Item {
+                                                Layout.fillWidth: true
+                                                implicitHeight: 60
+                                                visible: !DesktopManager.filteredAvailableApps || DesktopManager.filteredAvailableApps.length === 0
+
+                                                ColumnLayout {
+                                                    anchors.centerIn: parent
+                                                    spacing: 4
+                                                    Text {
+                                                        Layout.alignment: Qt.AlignHCenter
+                                                        text: "󰅖"
+                                                        color: Theme.overlay
+                                                        font.family: Theme.iconFontFamily
+                                                        font.pixelSize: 18
+                                                    }
+                                                    Text {
+                                                        Layout.alignment: Qt.AlignHCenter
+                                                        text: "No se encontraron aplicaciones coincidentes"
+                                                        color: Theme.overlay
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: 10
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Barra de desplazamiento visual
+                        Rectangle {
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: 3
+                            radius: 1.5
+                            color: Theme.bgHover
+                            visible: deskFlickable.contentHeight > deskFlickable.height
+
+                            Rectangle {
+                                width: parent.width
+                                height: Math.max(24, (deskFlickable.height / deskFlickable.contentHeight) * parent.height)
+                                y: (deskFlickable.contentY / (deskFlickable.contentHeight - deskFlickable.height)) * (parent.height - height)
+                                radius: 1.5
+                                color: Theme.primary
                             }
                         }
                     }

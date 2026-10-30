@@ -65,6 +65,7 @@ cleanup_shell_children() {
     pkill -f "quickshell_.*\.data" 2>/dev/null || true
     pkill -f "quickshell_.*\.start" 2>/dev/null || true
     pkill -f "quickshell_.*\.stop" 2>/dev/null || true
+    pkill -f "quickshell_.*\.reload" 2>/dev/null || true
 }
 
 stop() {

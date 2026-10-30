@@ -85,6 +85,9 @@ QtObject {
         if (activeTab === "apps") {
             refreshPackages(false);
         }
+        if (activeTab === "desktop") {
+            DesktopManager.refreshAll();
+        }
     }
 
     // -------------------------------------------------------------------------

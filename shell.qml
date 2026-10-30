@@ -19,6 +19,7 @@ ShellRoot {
     property var _calendarMgr: CalendarManager
     property var _netSpeedMgr: NetworkSpeedManager
     property var _reminderMgr: ReminderManager
+    property var _deskMgr: DesktopManager
 
     // Pantalla activa / enfocada actualmente por Hyprland (con fallback seguro a la primera pantalla disponible)
     readonly property var focusedScreen: {
@@ -39,6 +40,18 @@ ShellRoot {
 
         delegate: Component {
             WallpaperWindow {
+                required property var modelData
+                screen: modelData
+            }
+        }
+    }
+
+    // 1.1 Iconos y accesos directos interactivos en el escritorio por pantalla
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            DesktopWindow {
                 required property var modelData
                 screen: modelData
             }
